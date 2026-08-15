@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research Novelty Triangulation"
+  short_description: "真实文献近邻与可发表性审查"
+  default_prompt: "使用 $research-novelty-triangulation 对研究机会进行真实文献三角审查。"

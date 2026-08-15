@@ -1,0 +1,4 @@
+interface:
+  display_name: "素数结构与计算数论"
+  short_description: "为素数结构问题提供可证伪、可复现且资源可行的计算研究路径"
+  default_prompt: "Use $prime-structure-computational-number-theory to design a falsifiable computational research plan for a prime-number question."

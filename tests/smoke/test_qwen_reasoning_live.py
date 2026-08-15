@@ -52,8 +52,8 @@ def test_enabled_reasoning_returns_nonempty_reasoning_and_content() -> None:
     assert result.parsed_json.get("answer") == "391"
 
 
-def test_absent_reasoning_is_recorded_as_absent() -> None:
-    """With no reasoning requested the transport must be recorded as absent."""
+def test_omitted_mode_is_recorded_as_qwen_default_thinking() -> None:
+    """Qwen3.7 Max defaults to thinking, so omission must be made explicit."""
 
     result = run_llm_json_completion(
         messages=[
@@ -65,5 +65,6 @@ def test_absent_reasoning_is_recorded_as_absent() -> None:
         max_tokens=256,
     )
 
-    assert result.reasoning_transport == "absent"
+    assert result.reasoning_transport == "dashscope_enable_thinking"
+    assert result.reasoning_text, "default Qwen thinking was not represented in the request budget"
     assert result.parsed_json.get("answer") == "ok"

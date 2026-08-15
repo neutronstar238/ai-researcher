@@ -34,6 +34,7 @@ _SECTION_ORDER: tuple[tuple[str, str], ...] = (
     ("methods", "方法"),
     ("technical_details", "技术细节"),
     ("experiments", "实验设计"),
+    ("results", "预实验结果"),
     ("expected_results", "预期结果与可反驳条件"),
     ("risks_and_alternatives", "风险与备选方案"),
     ("datasets", "数据与度量"),

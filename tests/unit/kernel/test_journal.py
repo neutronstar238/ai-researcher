@@ -32,6 +32,7 @@ from autoresearch.kernel import (
     TerminalJournalError,
     WriterLease,
     calculate_lineage_hash,
+    validate_persistable_content,
 )
 
 BASE_TIME = datetime(2026, 7, 28, 7, 0, tzinfo=timezone.utc)
@@ -105,9 +106,7 @@ def _next_event(
         event_type="journal.test",
         status=status,
         action=action or f"Record {event_label}",
-        parent_event_id=(
-            parent_event_id if parent_event_id is not None else default_parent_id
-        ),
+        parent_event_id=(parent_event_id if parent_event_id is not None else default_parent_id),
         parent_event_hash=(
             parent_event_hash if parent_event_hash is not None else default_parent_hash
         ),
@@ -291,10 +290,43 @@ def test_append_rejects_wrong_run_parent_and_duplicate_event_id(tmp_path: Path) 
         ({"api_key": "not-persisted"}, None, "sensitive field"),
         ({"nested": {"email": "person@example.org"}}, None, "sensitive field"),
         ({"note": "Contact person@example.org"}, None, "direct email identifier"),
-        ({}, "Use Bearer abcdefghijklmnop", "bearer credential"),
+        ({}, "Authorization: Bearer abcdefghijklmnop", "bearer credential"),
         ({"credential": "sk-proj-abcdefghijklmnop"}, None, "API-key-like"),
+        ({"credential": "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"}, None, "API-key-like"),
+        ({"credential": "github_pat_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"}, None, "API-key-like"),
+        ({"credential": "AKIAIOSFODNN7EXAMPLE"}, None, "API-key-like"),
+        ({"credential": "ASIAIOSFODNN7EXAMPLE"}, None, "API-key-like"),
+        ({"credential": "AIzaSyDUMMYDUMMYDUMMYDUMMYDUMMYDUMMY"}, None, "API-key-like"),
+        ({"credential": "hf_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"}, None, "API-key-like"),
+        ({"note": "api_key=DUMMYSECRET12345678"}, None, "API-key-like"),
+        ({"note": "研究者@例子.公司"}, None, "direct email identifier"),
+        (
+            {"note": "researcher@xn--fsqu00a.xn--55qx5d"},
+            None,
+            "direct email identifier",
+        ),
         (
             {"credential": "-----BEGIN PRIVATE KEY-----\nvalue"},
+            None,
+            "private key",
+        ),
+        (
+            {
+                "credential": (
+                    "-----BEGIN ENCRYPTED PRIVATE KEY-----\nvalue\n"
+                    "-----END ENCRYPTED PRIVATE KEY-----"
+                )
+            },
+            None,
+            "private key",
+        ),
+        (
+            {
+                "credential": (
+                    "-----BEGIN PGP PRIVATE KEY BLOCK-----\nvalue\n"
+                    "-----END PGP PRIVATE KEY BLOCK-----"
+                )
+            },
             None,
             "private key",
         ),
@@ -329,6 +361,18 @@ def test_sensitive_scan_covers_the_full_event_envelope(tmp_path: Path) -> None:
     with pytest.raises(SensitiveContentError, match="direct email identifier"):
         journal.append(event)
     assert journal.snapshot().events == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The bearer certificate remained valid.",
+        "Bearer abcdefghijklmnop",
+        "matrix@vector and @article are not email addresses",
+    ],
+)
+def test_sensitive_scan_allows_noncredential_bearer_and_nonemail_phrases(text: str) -> None:
+    validate_persistable_content(text)
 
 
 def test_non_sensitive_token_metrics_are_allowed(tmp_path: Path) -> None:
@@ -552,9 +596,7 @@ def test_event_filename_gap_and_unexpected_entry_fail_closed(tmp_path: Path) -> 
         created_at=BASE_TIME,
     )
     gap_journal.append(_next_event(gap_journal))
-    (gap_journal.events_dir / "0000000001.json").rename(
-        gap_journal.events_dir / "0000000002.json"
-    )
+    (gap_journal.events_dir / "0000000001.json").rename(gap_journal.events_dir / "0000000002.json")
     with pytest.raises(JournalCorruptionError, match="sequence gap"):
         gap_journal.snapshot()
 
@@ -836,9 +878,7 @@ def test_property_append_replay_checkpoint_and_reopen_are_deterministic(
 
         assert retry.reused is True
         assert snapshot.events == appended
-        assert [event.sequence for event in snapshot.events] == list(
-            range(1, len(appended) + 1)
-        )
+        assert [event.sequence for event in snapshot.events] == list(range(1, len(appended) + 1))
         assert snapshot.lineage_hash == calculate_lineage_hash(
             journal.metadata.run_id,
             appended,

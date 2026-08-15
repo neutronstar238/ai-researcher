@@ -1,0 +1,5 @@
+interface:
+  display_name: "Causal Mechanism Identifiability"
+  short_description: "反事实实验与机制可识别性审查"
+  default_prompt: "使用 $causal-mechanism-identifiability 审查机制假设和决定性实验。"
+

@@ -6354,3 +6354,843 @@ update a factual problem entry below.
 - 验证：108 个聚焦测试通过；competition 全量回归在仅显式排除已记录的 4 个 `P-20260807-093` 宿主 NumPy 子进程用例后为 `670 passed, 4 deselected`；聚焦 Ruff、Mypy 和 Python 编译通过。回归证明缺证、模型不一致、质量门红灯、聚合指标缺失与 `publication_ready=false` 均会阻断，同时证明 repair 调用绑定和失败单元规格哈希正确。
 - 剩余边界：本任务刻意不生成科学散文，也不伪造创新或独立复跑证据。历史 `task2700` 仍不可提交。任何提交就绪主张之前，必须运行新的系统自产中文、计划对齐真实谱系。
 - 关联任务：`270.4`、`270.3`、`270.2`、`270.1`；在不改写历史证据的前提下扩展 `P-20260808-099` 至 `P-20260808-101`。
+
+### P-20260809-104 - 严格真实烟测无法产生通过科学门禁的系统自产中文预注册
+
+- 状态：Open；Task `270.5` 保持未完成，执行/发表/提交均未授权。
+- 严重性：Critical，直接阻断榜题所要求的“项目独立完成有创新性科研”主张。
+- 发现时间：2026-08-09，Task `270.5` 真实 provider + ArXiv/OpenAlex 验收。
+- 来源：`runs/manual-live/task2705-preregister-plan-smoke-v11/`、`task2705-preregister-plan-smoke-v12/` 和 `task2705-preregister-plan-smoke-v13/`。
+- 现象：系统能冻结新零消耗谱系、自主生成检索式、保留真实检索目录、生成中文方向并保存精确模型回执，但没有一个真实谱系产生通过全部门禁的正式研究计划。`v11` 的五方向初审选出“观测流形折叠”，完整计划审查随后认定它只是标准投影残差改名，空间打乱对照破坏数据生成关系，阈值、分析单位、替代解释和统计功效均不足；八轮计划生成仍被拒。增加单方向反方审查后，`v12` 与 `v13` 在方向层即失败关闭。`v13` 四个有界组合共 20 个模型自产中文方向，独立评审 20/20 拒绝。
+- 影响：当前仓库不能严格声称“已经自主提出可发表创新、生成正式研究计划并独立完成科研”。能证明的是系统确实自主检索、发散、批判并拒绝坏方向，而且没有在失败后让实现代理补写科研内容。若把任一被拒方向或人工题目包装成正式计划，会直接违反用户要求与榜题真实性。
+- 证据：`v13` 保存 `plan-literature-queries.json`、`plan-literature-selection.json`、`plan-literature-survey.json`、四份方向作者回执和四份方向评审回执；最后一次评审仍以既有方法等价、因果不可识别、科学假设不适用于冻结系统、或资源/接口不可执行为由全拒。目录中 `system-plan-ideation.json=false`、`plan/research-plan.json=false`、审批文件不存在，谱系锁正常释放。`v12` 同样无正式方向/计划；`v11` 的安全续跑也未写官方计划。
+- 根因：不是单一解析错误。冻结 MDBench 面板、现有接口和预算把研究空间限制在很窄范围；当前模型反复回到 PDE-Net、隐式/弱形式 SINDy、BIC/MDL、多任务/状态估计、非局部/随机/DAE/RG 等成熟或不适用机制。早期方向初审又比完整计划审查宽松，导致一个重命名残差方向进入高成本计划循环；该流程错配现已由独立入选方向反方审查修复，但新的真实运行尚未产生可让它通过的方向。
+- 已采取措施：实现完整近邻目录前置、五视角发散、五项不可加权初审、可全部拒绝、单方向反方否决、中文逐字段门、真实引用编号、精确作者回执、模型批评回流、完整计划独立审查、有限重试、安全续跑和审批前执行拒绝。没有降低科学标准，也没有无限新建谱系直到偶然通过。
+- 下一步：必须在结果盲条件下重新评估研究任务范围和证据来源。可选合法方向是增加可核验全文/更系统的新颖性搜索、让假设生成与反方评审围绕可执行接口共同收敛，或创建范围更适合原创机制检验的新预注册；仍不得由实现代理提供具体假设/方法。只有真实谱系产生并通过中文计划，Task `270.5` 才能完成。
+- 验证：聚焦回归 `137 passed`；加入反方审查、两字符 token 与终端安全后专门回归 `26 passed`；聚焦 Ruff/Mypy 均 clean。真实 `v13` 保留四轮共 20 个方向与四轮拒绝回执，无方向制品、计划或授权。
+- 关联任务：`270.5`；延续 `P-20260808-095`、`P-20260808-100`、`P-20260808-103` 的中文、计划对齐和来源证明边界。
+- 2026-08-09 继续验证：`v15` 由模型自产四条查询，保留 59 条真实目录、10 条中文入选文献、12 个公开数据画像和 24 个数组路径哈希。六个 ideation 续跑共 47 份精确交互回执，累计拒绝记忆、去锚定、目标签名白名单与反复投递门均未让任何方向通过；所有目录均无 `system-plan-ideation.json`，正式计划仍不存在。
+- 2026-08-09 更严格复核：机会评审曾暂留 O04，但其作者字段仍以 20 秒 synthetic-sentinel 预算评价正式系统可行性。当前消费 schema 已实测拒绝该制品；故 `v15` 也不能满足“有效机会图”前置条件。问题状态与严重性不变。
+
+### P-20260809-105 - 两字符方法 token 误杀与 GBK 拒绝报告二次崩溃
+
+- 状态：Resolved。
+- 严重性：Medium；不改变科学结论，但会浪费有限方向轮次并遮蔽真实拒绝原因。
+- 发现时间：2026-08-09，`task2705-preregister-plan-smoke-v12`。
+- 来源：`system_plan_ideation.py` 的方法 token 正则、`plan_execution_contract.py` 的提取下限，以及 `competition mdbench lineage-preregister-plan` 的异常输出。
+- 现象：模型多轮使用常见科学缩写 `ir`，原正则要求至少三字符，使整条方向在 Pydantic 聚合校验中失效；随后最终科学评审正确全拒，但 CLI 在 Windows GBK 终端打印含 `∇` 的中文理由时又抛 `UnicodeEncodeError`，Rich 输出了巨大二次 traceback，干扰真正结论。
+- 根因：方法 token 的三字符下限是实现方便而非科学/安全必要条件；AST 审计本来按 identifier term 精确匹配，允许两字符不会让注释、变量或子串通过。CLI 则假定所有模型输出字符都能被当前终端编码，也未限制异常文本长度。
+- 解决：token 改为总长至少两字符，明确允许 `ir`、`tv`、`sde` 等缩写；后续 AST 门仍要求它出现在从 `fit_equations`/`predict_derivative` 可达的 callable term 中，单字符和泛化标识仍拒绝。CLI 新增终端编码探测、`backslashreplace` 安全转义、4000 字符上限及保留证据目录提示，并在阻断时正常释放谱系锁。
+- 证据：新增测试证明 `ir`/`tv` 可由计划合同提取且只有真实可达调用能满足；GBK 测试证明 `∇` 转为 ASCII `\\u2207` 且长错误被截断。真实 `v13` 的四份方向作者回执均直接进入科学初审，无该 token 结构误杀；最终阻断命令没有 Unicode traceback，并输出 retained evidence 路径。
+- 验证：相关 26 项 pytest 通过；聚焦 Ruff/Mypy clean；`v13` 真实退出保持无正式计划且锁文件已清理。
+- 关联任务：`270.5`；属于工程可观测性/契约误杀修复，不构成科研成果或门禁放宽。
+
+### P-20260809-106 - 机会作者把 synthetic-sentinel 预算污染到正式科研机会
+
+- 状态：新生成与消费路径已 fail-closed；历史 v15 制品判为无效，仍需新的真实机会运行。
+- 严重性：High；若不阻断，会让错误 scope 的模型文本在评审修复后伪装为合格科研输入。
+- 发现时间：2026-08-09，对 `task2705-preregister-plan-smoke-v15-opportunity-resume-v6/system-plan-opportunity-map.json` 作逐字段复核时。
+- 现象：独立评审原来错误用 synthetic sentinel 的 20 秒/512 MB、fit count 或 free-symbol 契约否决正式系统机会，透明机械过滤已只删除这些评审原句；但唯一暂时通过的 O04 自己仍在 `feasibility_risk` 中写“20 秒 sentinel 预算”。评审摘要改用正确的 official development cell 300 秒/4096 MB 后接受 O04，造成作者格与评审 scope 不一致。
+- 影响：O04 不能作为干净的机会输入。基于它运行的六组方向尝试虽然最终全部失败、没有产生方向制品，但其过程不能证明系统曾拥有一个有效的已审机会图。若消费端只检查评审文本，会把模型作者中的同类污染漏掉。
+- 根因：scope 门只覆盖 reviewer `critical_findings`，并通过透明规则修正错误否决；作者机会格的 11 个科研字段此前只做中文、证据编号、目标与画像绑定，没有扫描仅属于 sentinel 的预算/契约 token。artifact validator 也只在调用 `.binding()` 时间接检查部分目标归因。
+- 解决：机会作者提示明确禁止在任何正式机会科研字段中使用 synthetic sentinel 的时间、内存、fit count、free-symbol 或数值方程门；`_cell_evidence_scope_findings` 对全部 11 个科研字段逐字段检查；作者响应在独立评审前失败并携精确字段反馈进入有限 repair；最终 artifact validator 与 binding 再次复核接受格，旧 JSON 不能绕过消费门。
+- 证据：新增单元测试把 `O01.feasibility_risk` 改为“20 秒 sentinel 预算”，系统在第一次作者响应后、评审前退回，第二份模型响应清除污染后才进入评审。用当前 `SystemPlanOpportunityMapArtifact` 实际加载 v15/v6，明确抛出 `O04.feasibility_risk` 错用 `20 秒 sentinel`，不再返回 binding。
+- 关联任务：`270.5`；与 `P-20260809-104` 共同说明现有真实谱系仍无有效计划前置物。
+
+### P-20260809-107 - 仓库广泛质量门仍有 4 个环境测试、3 个 Ruff 和 5 个 Mypy 红项
+
+- 状态：Open；均位于本次未修改文件，不能因与 Task `270.5` 无关而省略。
+- 严重性：Medium；直接阻止严格 submission audit 把质量门判绿。
+- 发现时间：2026-08-09，Task `270.5` 完成聚焦验证后运行广泛门。
+- 证据：`poetry run pytest tests/unit/competition -q --no-cov` 为 `729 passed, 4 failed`；四项均是 `P-20260807-093` 已记录的 `scientific_contract_harness.py` 子进程缺 NumPy。`poetry run ruff check src tests` 在未修改的 `tests/unit/competition/test_official_lineage_lock.py:44,58,77` 报 3 个 `SIM117`。`poetry run mypy src/autoresearch` 在未修改的 `scientific_contract_harness.py:2946` 报 Path/str 类型不符，并在 `route_p2_paradigm_audit.py:397,424,450,466` 报 4 个未使用 `type: ignore`，共 5 项。
+- 影响：聚焦改动可独立证明为 clean，但整仓质量回执必须保持 false；当前不允许声称 submission ready。
+- 下一步：单独建立范围明确的质量修复任务，决定 NumPy 是宿主开发依赖还是容器专用依赖，再修复三个嵌套 `with` 风格问题和五个真实类型问题；不得把这些修复混入未完成的科研计划任务或通过 deselect/ignore 粉饰为全绿。
+- 关联任务：`270.5`、`270.4`；更新并扩展 `P-20260807-093`，不改变其根因判断。
+
+### P-20260809-108 - 赛事必交 PDF 与百炼调用凭证不在仓库，提交总审计也未覆盖
+
+- 状态：Open；需要科研链成功后补赛事材料，并扩展提交级合取审计。
+- 严重性：Critical；即使代码本身可运行，当前目录也不是满足榜题形式要求的提交包。
+- 发现时间：2026-08-09，逐条对照 `XH-202619_基于国产开源大模型的AI Scientist的研发与应用.pdf` 第 4—6 页与仓库制品清单。
+- 榜题要求：最终《科学假设与研究计划》须含 Problem、Rationale、Technical Details、Datasets Source/Target、Paper Title/Abstract、Methods、Experiments、Baselines、Metrics、Results 和真实 References；技术基础必须通过阿里云百炼调用榜题列举的 Qwen-Max/Plus/Turbo 等千问模型并提供调用凭证/截图；必交技术方案 PDF 不超过 20 页，需含问题与方法、多智能体/Skills 架构、真实案例和源码说明。
+- 现状证据：`config.yaml:45-47` 与真实回执记录 `qwen-dashscope`、`https://dashscope.aliyuncs.com/compatible-mode/v1`、`qwen3.7-max`，所以模型/API 来源有机器记录；但 `rg --files` 只找到 5 张 `docs/assets/readme/` 架构/安装图片，没有百炼凭证图，也没有任何 PDF。更重要的是 Task `270.5` 尚无合格方向、正式计划、实验 Results 或可发表真实案例。
+- 审计缺口：`submission-evidence-bundle-v1` 能检查内部计划—代码—结果—复现链，却没有检查赛事 PDF 页数/章节、百炼截图和最终材料清单。因此未来内部 `submission_ready=true` 也不能单独代表榜题形式合规，必须新增 contest-material gate。
+- 下一步：不得由实现代理编造真实案例或代写科研计划。先让新真实谱系通过全部科学门并执行；随后由人类提供不含密钥的百炼控制台调用截图，系统从已审证据构建≤20页中文技术方案，最后扩展提交审计对 PDF、截图、源码清单与真实案例哈希做严格合取。
+- 关联任务：`270.4`、`270.5`；这是赛事外部交付要求，不由现有科研证据审计自动满足。
+
+### P-20260809-109 - 中文、拒绝理由与“三篇文献”门禁可被结构合法载荷绕过
+
+- 状态：Resolved；新生成与历史制品消费均由模型级校验失败关闭。
+- 严重性：High；三个缺陷都可能让形式完整但科研语义不足的系统输出进入后续循环。
+- 发现时间：2026-08-09，Task `270.5` 的独立 Qwen/循环对抗审计。
+- 来源：`language_guard.py`、`CriticalPlanAssessment`、方向初审与入选方向反方审查 schema。
+- 现象：旧中文比例把整段连续拉丁字母只计作一个 token，实测“两个汉字 + 约 2000 个英文字符”仍得到约 `0.666` 并通过 `0.55` 门；完整计划评审可把科学门设为 `false`，同时提交空 findings/required revisions，使 `repair_findings()` 返回空元组；要求“至少三篇”的三个评审列表只校验长度，`reference_index=[1,1,1]` 可冒充三篇近邻文献。
+- 影响：英文科研散文可能被错误认作中文；评审已否决却无法给作者循环提供任何可操作反馈；新颖性审查可用同一篇文献重复凑数。三者都会夸大系统自主中文科研、修复闭环和文献比较的可信度。
+- 根因：语言门按 Latin token 而非字符计数；计划评审 readiness 只计算布尔合取，没有建立 false gate 到行动项的结构不变量；文献字段使用 `min_length=3`，但未约束引用编号互异。
+- 解决：中文比例改为 CJK ideograph 与非豁免 Unicode Latin letter 的逐字符比值；仅自动豁免有界且形状明确的代码标识符，并为可信调用方提供显式 identifier 豁免。`CriticalPlanAssessment` 现在拒绝空白占位项，并要求每个没有类别 finding 的 false gate 至少对应一个互异 required revision。完整计划评审、五方向逐项评审和入选方向反方审查均要求所有比较项的 `reference_index` 互异，提示词同步说明该约束。
+- 反例验证：新增超长连续英文、超长蛇形伪标识符、显式合法标识符、false gate 空列表、空白 finding、两个无解释 false gates 共用一个 revision，以及三份相同文献比较的定向测试。
+- 验证：相关中文门禁消费者聚焦回归 `165 passed`；聚焦 Ruff `All checks passed!`；聚焦 Mypy `Success: no issues found in 3 source files`。未运行新的真实 provider 科研谱系，本修复只收紧确定性消费门，不产生或改写任何科研内容。
+- 关联任务：`270.5`；扩展 `P-20260808-095` 与 `P-20260809-104`，不改变当前无合格正式计划、不可发表、不可提交的真实负结论。
+
+### P-20260809-110 - 提交质量门未把未跟踪或已忽略的关键源码纳入 source commit 洁净性
+
+- 状态：Resolved；提交质量门现在对未跟踪和 ignored 状态均失败关闭，仅放行显式运行输出与缓存路径。
+- 严重性：Critical；此前关键 Skills、源码、配置或文档可实际参与运行，却不属于回执记录的 `source_commit`。
+- 发现时间：2026-08-09，Task `270.4` 提交证据包对抗审计。
+- 来源：`submission_evidence_bundle.py::_tracked_worktree_clean()` 及仓库实际 `git status`。旧实现只执行 `git diff --quiet` 与 `git diff --cached --quiet`，两条命令均不报告 untracked；普通 porcelain 状态又默认不报告 ignored，而当前仓库的 `config.yaml`、`.env` 和临时谱系驱动均在 ignore 规则内。
+- 影响：一个提交质量回执可能声称源码洁净并绑定当前 commit，但运行实际依赖的未提交 `skills/`、Python 模块、配置或文档不在该 commit 中；检出同一 commit 无法重建受审系统，也无法证明提交材料对应受测源码。
+- 解决：改用 NUL 分隔的 `git status --porcelain=v1 -z --untracked-files=all --ignored=matching`；命令失败、非字节输出、缺终止符、非法状态、非 UTF-8、绝对/盘符/反斜杠/控制字符、空段及 `.`/`..` 路径均返回不洁净。仅显式放行 `runs/`、`artifacts/`、`outputs/` 和常规测试/分析缓存；其他 tracked、untracked 或 ignored 项全部阻断。
+- 反例验证：临时 Git 仓库分别证明未跟踪源码、Skills、文档以及被 `.gitignore` 隐藏的配置均被拒；允许的 lineage 输出和 pytest 缓存不误拒；路径逃逸记录、未暂存修改和已暂存修改均被拒。
+- 验证：`tests/unit/competition/test_submission_evidence_bundle.py` 聚焦测试、该生产/测试文件的 Ruff、生产模块 Mypy 与当前真实工作区探针均通过；真实工作区因存在未提交关键文件返回 `False`，符合严格提交边界。
+- 关联任务：`270.4`；加固 `P-20260808-103` 的 `source_commit` 绑定，不改变当前 `submission_ready=false` 结论。
+
+### P-20260809-111 - 方向双审 JSON 修复可翻转科学否决，续跑未恢复方法技能约束
+
+- 状态：Resolved；方向初审、入选方向反方及 rejected-receipt 续跑均已失败关闭。
+- 严重性：Critical；旧循环可能把同一评审的机器格式修复伪装成新的科学判断，从而让已否决方向进入完整计划。
+- 发现时间：2026-08-09，Task `270.5` Qwen 修复链对抗审计。
+- 来源：`system_plan_ideation.py` 的 review/prosecution repair loops、反馈赋值和 `_load_rejected_ideation_receipts()`。
+- 现象：提示词虽要求“保留原有科学判断”，代码只保存上一份 parsed JSON 供模型查看，不比较前后门禁或 findings。首份响应因中文、引用或结构问题进入 repair 后，第二份可把任意 false gate 改为 true、删除 critical finding、把全拒改成选择一个，或把反方 `survives_adversarial_review=false` 改成 true。每次 transport/JSON 异常又会用单元素元组覆盖此前反馈。续跑只核对冻结证据、机会图和文献，未恢复回执中的独立 SKILL 消息，也未重新要求有技能时两个回执都含至少 200 字 Qwen reasoning。
+- 影响：一个方向可能不是经过独立科学评审而通过，而是利用格式/语言 repair 删除否决；后续作者只看到最后一次错误，先前科学反例丢失；方法技能在续跑边界可静默消失或漂移。这直接破坏“系统自主批判、自循环不放宽、学科技能独立注入”的来源证明。
+- 根因：repair 被实现为提示词约定而非跨响应不变量；反馈状态使用替换赋值而非保序合并；receipt resume 只验证最后一条业务 payload，没有解析独立技能消息和 reasoning 字段。
+- 解决：为初审九项门和反方九项门保存同一 repair loop 的全部 parsed judgment history；接受候选前逐项禁止 false→true、扩大入选集合、全拒后新增入选、已拒方向变合格，以及删除/减少非机械 critical findings 和 required revisions。synthetic-sentinel scope 句与明显误放的正面评价仍可机械删除；非中文否决可翻译但数量不得减少、既有中文否决必须逐字保留。所有模型调用、解析、reasoning、引用、scope 和绑定诊断通过保序去重合并，原始 false gates 与科学 findings 同时转成累积反馈。首轮 history 为空，仍可合法独立通过。
+- 技能续跑：从作者和评审回执恢复规范化 `system_selected_project_method_skills` 独立消息，校验角色、使用边界、selection artifact、模型自产选择、完整 SKILL 内容与 SHA-256；两份回执必须一致并等于当前机会绑定。有技能时两份 receipt 的 `reasoning_content` 均须不少于 200 字。
+- 反例验证：覆盖初审 false→true/全拒改选、中文科学 finding 替换、矛盾 gate 下负面 finding 删除、反方 veto→pass、反方 finding 替换、transport 错误覆盖、技能绑定漂移及短 reasoning 续跑；同时保留首轮直接通过、中文修复、纯引用修复、明显正面误放和 synthetic-sentinel scope 机械删除的既有合法行为。
+- 验证过程问题：首次窄测为 `2 passed, 19 failed`，共同原因是并发更新后的 `ResearchOpportunityCell` 新增必填 `method_application_trace`，而本测试文件的旧机会夹具尚未同步；生产 ideation 改动尚未进入断言。仅在本任务允许的最窄测试夹具补齐同源结构后恢复，不修改 opportunity 生产模块。
+- 验证：`tests/unit/competition/test_system_plan_ideation.py` → `29 passed`；聚焦 Ruff → `All checks passed!`；聚焦 Mypy → `Success: no issues found in 1 source file`。未运行真实 provider；本修复只收紧评审/恢复边界，不生成科研内容。
+- 关联任务：`270.5`；扩展 `P-20260809-104` 与 `P-20260809-109`，不改变当前无合格正式计划、不可发表、不可提交的真实结论。
+
+### P-20260809-112 - 正式谱系止于裁决，系统结果解释未接入生产入口
+
+- 状态：Resolved in code；历史真实谱系因结果摘要与原始结果不一致被新门禁正确拒绝，仍需一条新的完整 Task `270.5` 谱系做真实 Qwen outcome smoke。
+- 严重性：Critical；缺少此阶段时，仓库虽有独立的结果解释函数，却不能证明生产谱系在读取真实执行结果后由配置模型自主生成中文科研解释，也不能阻止 scratch 驱动绕过官方计划、原始结果或模型推理来源核验。
+- 发现时间：2026-08-09，对 `official_lineage.py`、生产 CLI 与 `system_authored_outcome.py` 的 adjudicate 后链路作独立审计时。
+- 现象：正式 `LINEAGE_STAGES` 终止于 `adjudicate`；生产 `competition mdbench lineage-stage` 无 outcome 入口。已有结果解释作者可以读取签名包并做中文/数值审计，但调用方没有在模型调用前核验官方系统计划、审批、执行合同、候选/runner/data/source、逐阶段 spec/summary、逐 cell 原始 spec/result 与裁决复算，也没有在模型返回后防止输入竞态改变。
+- 影响：仅凭签名汇总包即可向模型提供结果，零哈希或手工占位 summary 可能被误当真实实验；模型 reasoning transport、精确 authorship receipt、配置模型身份与最终 outcome 没有被正式谱系合取，因而不能严格声称科研结果解释全程由系统独立完成。
+- 解决：新增只读 `outcome` 正式阶段并放在 `adjudicate` 之后。模型调用前逐字节/逐哈希核验系统自产中文计划、人工批准绑定、执行合同、冻结身份与预算、候选及源文件、runner、数据、三阶段 spec/summary/raw result 和可复算裁决；模型调用后重做同一输入核验以关闭 TOCTOU，再核验 outcome 中文字段、数值溯源、数值关系、冻结门结论、模型回执、reasoning transport/token 及配置模型身份。生产 CLI 可传 provider-neutral `--config/--env`；阶段只解释既有结果，不执行实验、不新增批准、不发布或提交，也不由编排器撰写科研散文。
+- 反例证据：篡改 raw `result.json` 后即使保留旧 `result_hash` 也在模型调用前拒绝；模型调用期间改变 package 在返回后拒绝；reasoning 内容缺失即使中文、数值与关系审计全过仍拒绝。对保留的 `task2700-latex-plan-lineage-v1` 作只读探针时，系统在 pilot 原始结果处发现 summary 使用全零哈希/占位失败原因而原始结果携真实哈希与耗时，按预期拒绝，证明历史谱系不能被追认成严格 outcome 输入。
+- 验证：outcome/原始结果定向反例 `7 passed`；official-lineage、CLI 与 system-authored-outcome 联合回归 `86 passed`；lineage lock/final report/submission evidence 只读回归 `32 passed`；四个改动文件 Ruff、Mypy、py_compile 与 `git diff --check` 均通过。
+- 关联任务：`270.5`；该修复只补齐结果解释的正式、失败关闭消费阶段，不生成科研结果，也不改变 `P-20260809-104`、`P-20260809-108` 所记录的当前无合格正式计划、无赛事材料、不可发表且不可提交结论。
+
+### P-20260809-113 - 提交授权可伪造且质量门、独立重执行缺少实物绑定
+
+- 状态：Resolved in code；真实 v2 质量/重执行制品、外部签名工作流与最终全绿谱系仍待运行，当前提交状态必须保持 false。
+- 严重性：Critical，直接影响提交证据包的真实性与可发表状态。
+- 发现时间：2026-08-09，对新增 `HumanPublicationAuthorization`、`record_human_publication_authorization` 与提交总审计做红队复核时。
+- 现象：原人工授权只保存任意 `authorized_by` 字符串、布尔自述和无密钥哈希，模型或普通脚本可自行构造；质量 API 允许把任意零退出命令命名为 pytest/Ruff/Mypy，复用回执时不检查日志文件；默认审计在授权后重跑带时间/时长的质量门会改变回执哈希，使授权永久失配；独立重执行只依赖一份自述 JSON，审计忽略其 `source_commit`、输出目录与真实逐单元文件；`project_id` 和显式质量回执路径可越出谱系；仅凭据检查为红时，旧 schema 仍可出现 `publication_ready=true`、`submission_ready=false`。
+- 影响：攻击者可以在没有运行真实质量门或独立重执行、没有真实人类签名的情况下制造内部自洽的“绿”回执；正常用户又会因默认重跑使合法授权失效。即使最终合取门在部分情形仍会拦截，这些制品本身也不足以证明源码、复跑结果或人类决定。
+- 根因：回执哈希只证明 JSON 自洽，不证明生产命令、日志字节、重执行实物或外部身份；授权、质量和最终审计之间没有冻结顺序；路径由制品字段直接拼接；发表标志未把 secrets 门纳入 schema 级推导。
+- 解决：质量回执升级为 v2，精确冻结当前解释器下的三条生产命令，拒绝任何替换；每条命令写规范 JSON 日志并绑定文件 SHA-256/字节数，复用时重新解析日志、复算 stdout/stderr 与 skip/deselect，缺失或篡改均失败。授权文件存在时总审计强制复用其绑定质量回执，不再重跑覆盖。独立重执行回执升级为 v2，并新增内容寻址 manifest：要求 commit 与当前 HEAD、质量回执完全一致，专用 clean output 位于谱系内且存在，manifest 覆盖签名包每个 attempt，逐文件验证路径、字节、SHA-256、结果自哈希、不可变 cell 身份并从真实重执行结果重算签名结论；旧 JSON-only 回执失败关闭。计划决定与质量回执路径均经 containment 检查；`publication_ready` 同时合取 secrets 门。
+- 人类信任边界：authorization 升级为 v2，先生成不写授权的 `human-publication-authorization-request-v1`，其哈希绑定全部最终制品、源码提交、人类身份/说明、授权时间和“非科学证据”边界；外部人类只对 domain-separated request hash 作 Ed25519 detached signature。记录与审计只调用验证器，必须由调用方提供外部可信公钥指纹，不能从 artifact 自推导信任根，也没有任何私钥或签名生成入口。当前 CLI 尚未配置该外部指纹，因此会明确失败关闭，而不会退回弱授权。
+- 验证：提交证据、签名与 CLI 聚焦回归 `41 passed`；聚焦 Ruff clean；生产模块与最窄测试 Mypy clean；Python 编译通过。反例覆盖三条伪绿 no-op、质量日志缺失/篡改、授权后重跑、陈旧 commit、重执行目录越界/缺失、raw cell 缺失、project/quality 路径逃逸、旧 unsigned authorization、自签公钥替换外部信任根及 secrets-only 红门。
+- 验证过程问题：首次把最窄测试一并纳入 Mypy 时发现既有同目录 fixture import 无包类型信息，以及本任务早先状态模拟器把 `*args: object` 直接交给 `CompletedProcess`；两项均在测试内收紧并复跑为 `Success: no issues found in 2 source files`，没有放宽生产门禁。
+- 并发复跑状态：在一次成功回归后追加旧 unsigned v1 反例，pytest 曾被并发新增、非本任务范围的 `src/autoresearch/knowledge/raw_memory.py` 顶层导入阻断；本任务未改动该模块。并发作者随后改用 `kernel.contracts` 稳定入口，最新提交证据/签名/CLI 聚焦复跑恢复为 `41 passed in 4.96s`；收集失败没有被计作绿门。
+- 剩余边界：尚未生成一份真实 v2 独立重执行 manifest 或质量回执，也没有一条满足全部科学、创新、报告、质量、签名和赛事材料门的真实谱系；CLI 的外部 trust fingerprint 需要单独的人类配置入口。跨进程 checkout/制品改写的完整 TOCTOU 防护仍应由 repo+lineage 锁和审计前后快照单独完成，本轮只关闭明确授权的命令、实物、commit、路径与就绪语义绕过。该问题的确定性伪造路径已关闭，但不能据此声称当前项目已有可发表成果或可提交包。
+- 关联任务：`270.4`、`270.5`；扩展 `P-20260808-103`、`P-20260809-107` 与 `P-20260809-108`，不改变当前正式计划/成果/赛事材料仍缺失的事实。
+
+### P-20260809-114 - 机械机会路由可把系统名猜测与未证性能机制写入派工理由
+
+- 状态：确定性消费门已 Resolved；旧 v29 已失败关闭，新的真实 Qwen 路由仍 pending。
+- 严重性：High；污染发生在临时科研作者之前，会把主路由模型的无证判断伪装成 worker 的已给定研究背景。
+- 发现时间：2026-08-09，对 `runs/manual-live/task2705-preregister-plan-smoke-v29/system-plan-opportunity-routing.json` 做冻结事实逐字段红队复核时。
+- 现象：v29 的自由文本 `assignment_rationale` 写出“这四个ODE系统涵盖振荡、衰减和混沌特性”“这三个ODE系统涵盖不同动力学特性”“基于BIC的模型选择是否导致过拟合或欠拟合”等内容；其他路由还声称“显著效应差异”“极端负向效应”“系数估计”“数值伪影”。冻结路由上下文只提供目标标识、ODE/PDE 类型、事实编号、完整效果值、三篇文献和已审 atom，不提供这些系统动力学/物理性质，也没有实验支持组件的性能机制；所选方法 SKILL 还明确禁止从系统名称猜测机制。
+- 根因：旧 `opportunity-worker-route-portfolio-v3` 虽对事实编号、组件、目标类型和中文做确定性核验，但把 `assignment_rationale` 以及单组件边界后缀保留为任意中文字符串；提示词约束不是消费门，Qwen 可以在结构完全合法时补写科学主张。
+- 解决：将 `assignment_rationale` 改为 `MechanicalAssignmentRationale` 封闭结构，只允许固定的“冻结事实覆盖与独立核查”类型、三类冻结事实、全目标覆盖、三篇入选文献、必须独立核查，以及系统性质/机制/性能/一般科学推断均未授权的常量；`StrictFrozenModel` 拒绝任何额外解释字段。`single_component_assignment` 也必须逐字等于由已审 atom 标签和固定冻结边界导出的确定性模板，不能在合法前缀后追加机制句。既有事实全集、文献、目标类型和 atom 核验继续生效，形成“封闭理由 + 完整事实闭包”的通用 grounding guard，而非针对当前中文短语的禁词表。
+- 版本边界：portfolio、route、worker binding 与 routing artifact 升级为 v4。对真实 `task2705-preregister-plan-smoke-v29/system-plan-opportunity-routing.json` 调用当前 `SystemPlanOpportunityRoutingArtifact.model_validate_json` 实测得到 `ValidationError`（17 项），旧 v3 字符串理由不会被默认迁移或继续消费。
+- 验证：`poetry run pytest tests/unit/competition/test_system_plan_opportunity_routing.py -q --no-cov` → `17 passed in 1.74s`；包含 v29 原句反例、额外科学字段、旧 v3、合法封闭结构和单组件尾随机制句。聚焦 Ruff → `All checks passed!`；聚焦 Mypy → `Success: no issues found in 2 source files`。下游 `poetry run pytest tests/unit/competition/test_system_plan_opportunity_distributed.py -q --no-cov` → `10 passed in 3.32s`。
+- 剩余边界：v29 的路由及其后续制品不能作为有效计划前置物；必须从主 Qwen 路由阶段以 v4 schema 重跑，并重新生成独立临时作者/评审制品。reasoning 回执仍是非证据过程审计，不能被后续 worker 当作事实；本修复没有生成科研假设、实验结果、可发表成果、执行许可或提交授权。
+- 关联任务：`270.5`；扩展 `P-20260809-104`，不放宽科学门或中文要求。
+
+### P-20260809-115 - 完整临时 Qwen 任务载荷超限，单测只覆盖了 worker binding 子对象
+
+- 状态：Resolved in code；新的 v4 真实 Qwen 谱系仍需 live 验证。
+- 严重性：Critical；正式计划链在创建第一个临时作者身份之前失败，七作者/七评审阶段完全无法启动。
+- 发现时间：2026-08-09，真实 `task2705-preregister-plan-smoke-v29` 运行到分布式机会阶段时。
+- 现象与根因：此前只测 `_binding_payload` 小于预估阈值，没有构造 `TemporaryQwenContentTask` 触发其 32,000 字符硬门。v29 单路 binding 最大为 26,378 字符；再叠加 5,135 字符的完整 Pydantic JSON Schema、任务指令和 input refs 后，第一个 author task 即报 `temporary task payload is too large`。reviewer 还会重复完整作者机会格，按真实形状估算最大约 32,948 字符。旧测试因此是子对象级盲区。
+- 解决：模型侧 Schema 仅剥离 JSON Schema 规范中不参与验证的 title、description、default、examples 等注解，保留 type、required、additionalProperties、pattern、minLength/minItems 等全部约束；最终响应仍由原 `ResearchOpportunityCell` / `OpportunityCellAssessment` Pydantic 模型全量验证。task 专用 binding 视图保留完整路由科学字段、全部事实值、三篇文献、组件来源和冻结预算，只删除已由不可变 routing/binding input refs 与独立 SKILL refs 重复承诺的逐事实哈希、中间上下文哈希和封闭机械理由。reviewer 只省略已在派工前由编排器逐字核验的 cell 编号/事实编号/文献编号/目标副本，保留完整 cell 哈希与全部科研散文。
+- 反例与余量：新增当前 v4 `OpportunityWorkerBinding` 的 real-shape 大载荷测试，把完整 binding 扩展到 26,309—26,311 字符，并实际构造七个 author 与七个 reviewer `TemporaryQwenContentTask`。最大 author 为 29,555，距 32,000 留 2,445；最大 reviewer 为 28,456，留 3,544。测试同时确认 compact schema 仍拒绝额外字段并保留完整 required 列表，端到端原 Pydantic 校验、归档和独立评审路径保持通过。
+- 验证：`poetry run pytest tests/unit/competition/test_system_plan_opportunity_distributed.py tests/unit/competition/test_temporary_qwen_pool.py -q --no-cov` → `21 passed in 3.96s`；聚焦 Ruff → `All checks passed!`；聚焦 Mypy → `Success: no issues found in 2 source files`；定向 `git diff --check` 无空白错误。
+- 剩余边界：v29 是已经被 v4 路由 schema 拒绝的历史制品，不能续跑。主 Agent 必须从 v4 路由重新生成正式制品并用真实 Qwen 验证 14 个临时任务；本修复不生成科研内容、不授权实验、发表或提交。
+- 关联任务：`270.5`；不提高 `_MAX_TASK_PAYLOAD_CHARACTERS`，也不放宽最终科研输出校验。
+
+### P-20260809-116 - 正式计划阶段没有 routing 后的不可变续跑入口
+
+- 状态：Code-resolved；当前 v29 的 routing v3 按新 v4 合同失败关闭，须由新谱系做真实 Qwen 验收。
+- 严重性：High；长链模型调用在机会路由后失败时，过去只能重跑文献、方法、组件和路由，既浪费调用，又会改写已经形成的系统推理决策。
+- 发现时间：2026-08-09，`task2705-preregister-plan-smoke-v29` 在保存 survey、method、component、routing 后、distributed 前中止。
+- 现象：既有 `resume_plan_authoring_from_retained_reasoning` 只接受已经存在的 distributed 与 ideation，不能从 routing 继续。再次运行 `lineage-preregister-plan` 又因谱系目录非空正确拒绝；没有正式 API 能在不覆盖旧回执的前提下完成七作者、七评审、方向竞赛和中文计划。
+- 风险：若用临时脚本手工拼接后半程，就无法证明只复用了同一 lineage/hash 的四件前置物，也无法证明 stage controller 只签发一次、旧 reasoning 没被覆盖、已有 distributed 没被重跑、最终计划仍来自系统模型。
+- 解决：新增 `resume_plan_from_retained_routing(...)` 与生产 CLI `competition mdbench lineage-resume-plan`。入口在谱系锁内重建 frozen context，逐件校验 survey/method/component/routing 的 schema、lineage、artifact hash、规范 output path 和实际模型回执；按 `distributed/`、`ideation/`、`authoring/` 隔离新回执。只有不存在 distributed 时才签发一个绑定 routing hash 的 stage controller；已有 distributed/ideation 必须连同 phase、batch、assignment、result、receipt、archive 与 manifest 实物全部复核后才跳过。残缺阶段目录、跨谱系、hash mismatch、非新鲜目录和已有正式 plan 全部失败关闭。
+- 正式输出：最终中文计划继续由 `author_research_plan` 和独立 `review_system_authored_plan` 生成；根目录规范计划 artifact、`plan/research-plan.json` 和 resume manifest 都只写一次并绑定计划、评审、distributed、ideation 及四件 retained hash。编排器不写科研散文，且 `execution_authorized=false`。
+- 验证：反例/CLI 聚焦 `8 passed`；完整 plan-chain 回归 `204 passed`；聚焦 Ruff 与 Mypy 全绿。对 v29 运行新生产 CLI 只读探针时，当前 v4 loader 以 17 项 schema 错误拒绝 routing v3，未创建 resume 目录、未留下锁、未调用模型；没有为历史制品放宽。
+- 剩余：需要新 v4 谱系真实跑到 routing 后，再用本入口完成一次 opt-in Qwen smoke。当前修复只提供可追溯续跑机制，不产生研究成果、不授权实验、发表或提交。
+- 关联任务：`270.5`；与 `P-20260809-114`、`P-20260809-115` 一起关闭未来正式计划后半程的工程恢复缺口。
+
+### P-20260809-117 - 提交源码洁净门把本地主权记忆与正式配置永久误判为源码污染
+
+- 状态：Code-resolved；新 `submission-quality-gate-receipt-v3` 的真实正式谱系回执仍需在完成源码提交后生成。
+- 严重性：Critical；旧门在存在项目要求的 `.env`、忽略的 `config.yaml` 或 `autoresearch-vault/_private/` 时必然为红，使外部授权请求不可达，同时若直接把这些路径统统白名单又会放过配置漂移、私有杂项或敏感内容打包。
+- 发现时间：2026-08-09，对 Task `270.4` 提交门与 Task `271.1` 本地主权原始记忆的交叉红队审计。
+- 现象与根因：`_tracked_worktree_clean` 使用 `git status --ignored=matching`，但只允许 `runs`/`artifacts`/`outputs` 和通用缓存。项目规范同时要求真实凭据只存根目录 `.env`、正式 provider 配置使用被忽略的根目录 `config.yaml`、原始记忆保存在被忽略的 `autoresearch-vault/_private/raw-memory`，故即使全部源码已提交，质量回执仍无法全绿。旧质量回执只绑定 commit 与命令，不绑定忽略的配置字节；若简单忽略 `config.yaml`，质量运行后改变模型或任一运行参数不会被 Git 洁净门发现。旧 bundle 收集器也没有一个明确的私有路径拒绝边界。
+- 解决：质量回执升级为 v3，精确绑定规范仓库根 `config.yaml` 的完整 SHA-256；生成、复用、外部签名请求和最终审计均重新解析该配置并重验当前字节，配置漂移立即失败。外部人工授权原有的 `quality_gate_receipt_hash` 因而间接绑定完整配置；配置内容只在本地读取和凭据扫描，回执不保存内容。`.env` 仅允许作为未跟踪且确由 Git 忽略的根目录常规文件，值不哈希、不记录、不加入 artifact inventory；模型 provider/base URL/model 与精确响应继续由既有三类作者回执证明。
+- 主权记忆边界：只有被 Git 忽略、从未 tracked、位于规范 `_private/raw-memory` 的树可以绕过源码洁净门。消费端逐目录拒绝杂项和符号链接，逐 record 验证规范 JSON、project/date/record ID，逐 blob 验证路径、字节数和 SHA-256，并要求 blob/record 引用集合完全闭合；兼容已留存且仍由严格 record 合同验证的 v1 suffix 与当前 v2 opaque blob。任何额外 `.py`、未知目录、孤立 blob 或篡改 record 都使门禁为红。`.env`、整个 `_private` 以及其原始哈希均被 artifact inventory 的硬拒绝器排除，不会进入证据 bundle、质量回执或授权请求。
+- 反例：新增测试覆盖 ignored/untracked `src`、`tests` 等输入继续阻断；配置无预期哈希、错误哈希或运行后漂移阻断；规范 `.env` 不泄露值；内容寻址 raw-memory 正例通过但其中额外 `injected.py` 阻断；即使 `.env` 被强制加入 Git 且工作区表面无变化也由 `git ls-files` 阻断；任何收集 `.env` 或 raw blob 的请求直接抛错。
+- 验证：`poetry run pytest tests/unit/competition/test_submission_evidence_bundle.py tests/unit/competition/test_publication_signature.py tests/unit/competition/test_competition_cli.py::test_submission_audit_cli_writes_truthful_blocked_bundle -q --no-cov` → `48 passed in 8.52s`；聚焦 Ruff、Mypy、py_compile 全绿；真实本地 `_private/raw-memory` 只读结构/内容寻址校验返回 `True`。反例另证明 YAML 配置中的凭据字面值在任何质量命令启动前即失败关闭。未运行完整生产质量命令，因为共享工作区仍有大量并发未提交源码与明确应阻断的 ignored scratch scripts；这不是本门禁可合法豁免的运行状态。
+- 剩余边界：`.env` 的凭据值有意不进入任何哈希或制品；它只提供认证能力，科研语义由配置身份、原始模型响应和结果制品绑定。若未来 `.env` 承载会改变科研语义的非凭据参数，必须迁入被 v3 哈希绑定的 `config.yaml` 或新增独立无秘密运行合同，不能扩大 `.env` 白名单语义。当前没有提交就绪授权，也未生成或发布 bundle。
+- 关联任务：`270.4`、`271.1`；解决两者的可达性冲突，不放宽源码、测试、Skills、私有杂项、科学执行或人工签名门禁。
+
+### P-20260810-118 - 固定流水线可重复运行但不能证明自主科研，统一严门又会抑制探索
+
+- 状态：High，部分解决；Task `271.3` 保持未完成。
+- 发现时间：2026-08-10。用户追问当前系统究竟能否从一个目标自行循环，还是由 Codex 逐条指令、代写科研内容或为单一问题做特殊处理，并要求吸收记忆管理、自修改和自主科研前沿而不把所有阶段都做成严格式填表。
+- 现象：既有 `autopilot --watch` 能重复执行“检索→候选→计划→演示→报告”，但内部下一步基本由固定代码决定；这只能证明周期运行，不能证明开放式科研决策。competition 计划链的严格 schema、中文、来源、组件与执行门适合晋级和发表，却不应提前要求每个探索猜想都具有完整引用和可发表结构。相反，完全依赖同一模型自我批判也不可靠：已有研究显示无外部反馈的内在自纠可能退化。
+- 根因：旧架构混淆了三种不同目标：开放探索的信息增益、候选晋级的证据充分性、正式执行/发表的权限与可复现性；同时把 Skill 选择当一次性前置固定步骤，而不是每轮可为零的动态方法路由。原始记忆、派生记忆和行动策略也没有形成一个可执行的统一控制器。
+- 本轮解决：新增通用 `adaptive_sovereign_loop`，由 Qwen 主 Agent 在 13 个算子中自主选择下一动作；编排器只提供目标、范围、能力、预算和机械门，不提供假设、方法答案、预期结果或计划。开放区允许无引用但明确未验证的猜想；只有 `promote_branch` 才检查多来源、证伪、判别性对照、外部反馈和独立验证；通过仍只等待人工范围审批。所有模型可见响应、有界 reasoning 和转移载荷先进入私有只追加原始记忆；分支、事件和快照可重放。新增动态 Qwen Skill 路由，只看元数据、允许零技能、按补集机械生成未入选账本，再把精确入选 `SKILL.md` 作为独立消息注入；路由和动作共享模型预算。
+- 真实证据：`airesearcher adaptive-explore` 从一个中文目标/范围启动 `qwen3.7-max`，中间没有人工消息；两轮自主选择 `reframe_question → decompose_uncertainty`。第一轮路由并使用 `research-novelty-triangulation`，第二轮主动选择零 Skill；两次路由加两次动作共四次模型调用后 `paused_budget`。四份 reasoning 分别为 3284、3838、2537、4170 字符，原始绑定重验通过，外部动作、人工范围批准、执行和发表均为零/false。
+- 后续能力级证据：生产入口 `airesearcher adaptive-research` 已接入 Arxiv/OpenAlex、Dreaming、当前主 Agent 的临时 Qwen 池和独立 Qwen 晋级审查。`task2713_adaptive_capability_v2` 从同样只有目标/范围的 seed 自主选择 `retrieve_evidence → reframe_question → decompose_uncertainty`；首轮真实 API 请求均传输成功但返回零篇，Qwen 在看见这条负反馈后主动换路，没有按固定检索阶段重试。内容寻址审计 `1564498d36958c5fe2a0d69e26ce509b8b5859dcc12121c32f5a7ab0e7e208d2` 重放三轮快照与原始记录，确认每轮提供 12 个动作、三轮选择互异、后两轮反馈暴露率 1.0、模型身份/可见 JSON/reasoning 均匹配、零条启动后人工科研消息；它故意把科学正确、创新、执行、发表全部保持 false。
+- Qwen 适配与失败保留：首个 capability live 因 `decompose_uncertainty` 错带仅临时 Agent 算子允许的 `temporary_tasks` 被机械拒绝；当时旧控制器尚未在校验前保存失败响应，这是已确认的证据缺口。现已先把每次可见响应/reasoning写成 `AdaptiveActionModelAttempt`，再做 schema/跨字段校验；最多两次仅修合同形状的 Qwen repair，并冻结算子与已经生成的科研散文，禁止编排器改写内容。另一个真实问题是模型生成 18 个术语的全 AND 文献查询，合法但几乎必空；现由模型在动作正文明确给出 3—10 个 ASCII 关键词，适配器只做确定性抽取，fallback/Arxiv AND 上限收紧。修后真实外部检索 smoke 通过。
+- 对照边界：旧结果盲协议（hash `69a79baa68592fe244805af960a415d62c73f0d76347075fb76c342087f5e721`）把四臂、五模板和三个种子误写成 60 个独立单元，已撤销确认性资格。替代 v3 冻结 60 个独立场景×四配对臂=240 个 blinded cells，但当前只有协议、诊断执行器和无结果回执，没有正式运行或评分，因此不能声称主权记忆或自适应双环更优、创新成立或可发表。
+- 开发期失败与修复：最初安全配置探针错误读取 `SystemConfig.llm`，实际路径是 `SystemConfig.deployment.llm`，修正后确认配置为 `qwen-dashscope/qwen3.7-max` 且凭据环境存在，未输出密钥。首次 live 路由虽然正确判断“当前无需 Skill”，却因没有重复填写四个 rejected ID 被过严账本拒绝；原始响应已保留。修复为模型只判断 selected、程序按目录补集机械生成 rejected，不改变方法判断，第二次 live 通过。新增 live 测试时使用未注册 `live` marker 导致严格收集失败，已改为环境变量 opt-in；单独 Mypy 对 live 文件因包上下文误判 untyped，改为与 source 模块联合检查后通过。
+- 前沿依据与设计边界：2026 年 Agent Memory/Agent-Native Memory 把记忆拆为构建、存储、检索/路由、维护和成本权衡，并报告不存在通吃架构；GEM强调状态轨迹正确性；AgeMem把记忆管理变成策略动作；AI Scientist-v2、AFlow、Darwin Gödel Machine和AI Research Agents分别支持树搜索、工作流搜索、分支档案与算子/搜索策略共同设计。上述只能构成设计动机，不能证明本项目架构已创新或更优。
+- 剩余阻断：通用沙箱探针仍未接入；独立晋级审查尚未在一次真实、非空、至少两篇直接近邻文献的分支上完成 live；240-cell 预算匹配实验未执行。进程内 transport 只能证明请求/响应字节完整性，不能证明外部 Qwen 身份；正式 runner 在独立签名 gateway 可用前必须保持 `formal=false`。检索保存规范元数据和摘要，不是原始 HTTP/full text，故不能支撑全文新颖性。更下游的正式 prospective control/treatment 成对执行仍未实现，结果、报告和提交必须继续阻断；正式计划完整上游谱系重放与人工计划审批外部签名问题也不能由本控制器掩盖。
+- 下一步：先实现仓库外信任锚的签名 transport gateway、A4 实际召回消费回执、非空文献晋级 live 与有界通用沙箱；再用不进入确认性统计的 pilot 找协议缺陷。只有这些稳定后，才冻结新的 runner-only seed 并执行 240 cells；对照结果通过且正式单干预成对执行链闭合后，方可把“主权记忆双平面 × 自适应科研双环”升级为可发表系统贡献候选。
+
+- 2026-08-10 红队更正：上述“内容寻址审计确认模型身份/零中途人工并已证明控制器自循环”和“60-cell 已冻结可作确认性对照”不再是当前有效结论。确定性反例证明旧审计可被自报 Qwen 字符串、含人工强制语句的 external context、重算 hash 但不重验原始投影、未进入快照却伪装成 canonical source ref 的 extra binding、以及不存在于原始字节的重哈希 excerpt 绕过；失败 transport 还可在同一初始 snapshot 上反复调用而不消耗预算。旧 60-cell 又是四臂×五模板×三种子，独立任务最多五个。具体替代契约、测试和剩余阻断见 `P-20260810-119`。在该问题闭合前，P-118 只支持“已有自适应实现与历史真实轨迹”，不支持“自循环已证明”。
+
+### P-20260810-119 - 旧自循环审计可自证且四臂协议把种子误当独立样本
+
+- 状态：High，部分解决；Task `271.3` 保持未完成，当前不得声称自循环、主权记忆因果收益或可发表创新已经得到证明。
+- 发现时间：2026-08-10。对 `P-20260810-118` 的 live 轨迹、raw recall、Dreaming audit 和四臂预注册执行确定性红队后确认。
+- 确定性反例：
+  1. 两轮 external context 写入“必须选择指定算子/禁止改选”，旧 autonomy audit 仍得到 `controller_self_loop_verified=true`、forcing=0、人工消息=0；`provider_generated_context=true` 与 Qwen provider/model 名均为调用方自证。
+  2. 保留旧 raw binding，修改 context 中文并逐层重算 context/interaction/event/snapshot hash，旧 resume 接受；说明内容寻址不能替代原始字节与消息投影重放。
+  3. `max_model_calls=1` 时，provider 返回结构失败或 transport 异常后可从同一初始 snapshot 再调用，真实请求数超过预算且失败没有 durable state。
+  4. 从未进入 snapshot/messages 的记录只要伪造 canonical `adaptive-loop:...` source ref，就可经 `extra_bindings` 被当作“曾经可见”；Dreaming selection 还可把 excerpt 改为原文不存在的文本并重算全链 hash 后通过旧 memory audit。
+  5. 旧四臂×五 challenge template×三 seed 的 60 cells 只有五个任务模板；seed repeat 不是独立样本，不能支撑确认性优越性或跨任务泛化。
+- 已解决：
+  - `AdaptiveResearchLoopSnapshot` 升 v2；动作与模型型 Skill 路由均在调用前写不可变 registration，并把规范预约 JSON 同时追加到私有主权原始账本。transport/结构失败即使没有 event 也被保守计费；即便普通输出镜像被删除，续跑也会从 raw ledger 恢复未决预约，并在 context、Skill 或 model 调用前转 `BLOCKED`，不能免费重试。普通目录被改名的 JSON 也不再因窄 glob 静默消失。若具备同一操作系统账户权限的恶意进程同时删除输出镜像与 raw ledger，仍必须由外部 runner/transport seal 防御，不能由单目录哈希自证。
+  - 首次摄取与每次 resume 共用 external-context raw replay：逐项核 loop/project/step/source ref、record/blob hash、TOOL_OUTPUT provenance、精确 UTF-8 字节和 messages 一一投影。event transition 改为完整 `_ActionTransition` 强类型精确 JSON，拒绝未声明字段，复核 raw envelope 的 kind/ref/label/name，再从唯一根分支逐 event 重放分支、状态、zone、外部/临时计数、stall 与终止覆盖，禁止把额外幽灵字段或修改后的状态/计数重新哈希后绑定进召回成员集合。
+  - sovereign recall v3 只允许 exact snapshot binding membership；`extra_bindings` 仅进入候选库存与隐私排除计数，永不获得 controller-visible 资格。selection v2 冻结选择/截断预算。
+  - memory-loop audit v2 从 predecessor snapshot 与 frozen recall 参数确定性重跑完整选择，伪造 excerpt 或 candidate/order/hash 立即拒绝；指标改名为 `selected_older_than_eight_events_count`，不再把 event-age 误称为实际 prompt 可见性。
+  - autonomy audit v2 递归扫描所有 user context 的 forcing；任意未有独立环境谱系的 external context 保守判红；provider/model 字符串只记为 declared identity，缺少外部 transport anchor 时永远不能让 generic audit 变绿。
+  - Qwen 动作响应 Schema 现在按每轮真实可达能力机械收窄 `ResearchOperator` enum；任务正文、provider schema 与调用前 registration 绑定同一动态 schema。此前“正文只列八个算子、Schema 却允许十三个”导致 Qwen 合法生成 `retrieve_evidence` 后被预算门拒绝的矛盾已由通用契约修复，没有更换或代写模型的科研判断。
+  - 确认性 protocol v3 改为 60 个独立 scenario×四配对 arm=240 blinded cells；每 scenario 12 轮，最晚评分相关轮 3 到终态轮 12 相隔九轮，严格超过 recent-eight；public protocol、runner assignment 与 hidden oracle 分离，主检验只冻结 A4−A3 双侧 exact McNemar、alpha 0.05、SESOI 0.25。public context adapter 逐轮先写 raw 再注入，并拒绝跨 cell/乱序/重放/篡改/private-scoring 泄漏。
+  - v3 receipts 已形成 `bridge → arm attestation → budget/pre-call/transport/attempt/mechanical → runtime bundle+journal → terminal → 240-cell global seal → post-seal reveal`，旧 v1、239-cell 提前揭盲、跨 cell/arm、伪 Qwen 与隐藏失败成本均失败关闭。四臂 runtime plan 也已机械派生：A1/A2 只暴露固定十二轮单算子序列，A3/A4 保持同一自适应能力集合，主对照只差 Dreaming 与主权 raw recall；realization audit 从真实 messages/events/skills/branches/artifacts 重放，A4 仅有能力不会被误报成实际使用。
+  - 单-cell diagnostic runner 已把四臂各跑满十二轮，闭合 context/raw/registration/arm/budget/journal/terminal 重放；它拒绝 hidden oracle 与网络，并固定 `formal=false`、`actual_sovereign_recall_use_verified=false`。进程内 LLM trace 与 benchmark transport anchor也已统一降级为 `process_local_only=true`、`boundary=false`、`formal=false`；自报 Qwen、HTTP 200、任意 bytes/adapter 或替换全局 opener均不能提升，provider response ID 只保留 SHA-256，旧 `boundary=true/formal=true` 制品失败关闭。
+- 已验证：loop 专项 21 项，完整 LLM 单元 56 项、完整 research 单元 343 项全部通过，相关 Ruff/Mypy/format 亦全绿。真实 `qwen3.7-max` 两轮 smoke 在第一次暴露动态 Schema 矛盾并失败关闭后复跑成功：只给一次中文目标/范围，Qwen 动态路由两次 Skill，随后自主执行 `branch_hypothesis → adversarial_critique`，四次模型调用、零条中途用户科研指令；最终 snapshot hash 为 `b1008c3e8967f05ba323571609765c7bb4f912c9b70382be1965897d433af47c`，15 条主权 raw record 已重验并保留于 ignored run。该结果只证明功能性两轮自循环，不证明 provider 身份不可伪造、A4 记忆因果收益或科学正确性。
+- 尚未解决：仓库外独立签名 transport gateway、formal live cell runner、A4 “召回 turn1—3 raw→turn4—11 Dreaming→影响后续请求/turn12 动作”的实际消费回执、真实十二轮 pilot、240-cell 运行和盲化计分仍未完成；generic audit 因此预期为红。当前正式 prospective control/treatment 双臂 runner 仍是另一条独立阻断。
+- 下一步：先实现独立签名 gateway 与 `SovereignRecallUseReceipt`，再跑不进入确认性统计的小型 live pilot，验证十二轮注入、A4 实际消费、A3 不可访问、所有失败成本计账；只有 pilot 不再发现协议/运行缺陷时才冻结新的 runner-only seed 并启动 240 cells。任何协议、评分或主效应修改都必须另起预注册，不能覆盖本版。
+
+### P-20260810-120 - skill-creator 在 Windows 默认编码下无法处理中文 SKILL.md
+
+- 状态：Resolved；调用端以 Python UTF-8 模式运行官方脚本，生成和校验均通过。
+- 严重性：Low；只影响中文方法 Skill 的脚手架/验证流程，不影响运行时科研循环。
+- 发现时间：2026-08-10，Task `271.3` 将 Agent 记忆评估方法从主提示词拆为独立 Skill 时。
+- 现象：`init_skill.py` 已创建目录和模板，但因初始中文 `short_description` 少于 25 字符而未生成 `agents/openai.yaml`；修正 Skill 后，`generate_openai_yaml.py` 与 `quick_validate.py` 又在 Windows 系统默认 GBK 下调用无显式编码的 `Path.read_text()`，对 UTF-8 中文 `SKILL.md` 抛出 `UnicodeDecodeError`。
+- 解决：保留官方 `init_skill.py` 创建的规范目录，使用 `apply_patch` 完成无占位符的 `SKILL.md`，把界面短描述扩到规定范围；随后用 `python -X utf8` 运行官方 `generate_openai_yaml.py` 与 `quick_validate.py`。没有手写或跳过 `agents/openai.yaml` 生成，也没有放宽 Skill 校验。
+- 验证：`quick_validate.py` 输出 `Skill is valid!`；生产 `load_repository_skill_contexts(Path('skills'), ['agent-memory-evaluation'])` 成功加载唯一 Skill；纳入“低依赖发散—高保真复核”与记忆锚定反例后的当前内容 SHA-256 为 `d67d9c48712635e03a3aee57900fe7fb19178bd8e0147f7ecd682f8ca82f153e`；`git diff --check -- skills/agent-memory-evaluation` 无输出。
+- 后续：在 Windows 创建或验证含非 ASCII 内容的 Skill 时固定使用 `python -X utf8`；如维护上游脚本，应显式给 `read_text(encoding='utf-8')`，但本项目本轮不修改用户级系统 Skill 工具。
+
+### P-20260810-121 - 签名网关初版无法把同一次模型响应送回循环，终局重验又会过期或重复消费 nonce
+
+- 状态：Resolved in code；gateway v3、A4 消费回执和 formal live runner 已闭合，真实外部签名 pilot 的部署阻断另见 `P-20260810-122`，Task `271.3` 仍未完成。
+- 严重性：Critical；若控制器为取得正文再调用普通 client，会把两个不同 provider 请求拼成一条伪证据链；若十二轮结束后才首次或再次验签，前几轮会超过五分钟 freshness，或因 nonce 已在逐轮验签时消费而失败。
+- 发现时间：2026-08-10，对独立签名 transport gateway 与十二轮主权记忆审计做接线级复核时。
+- 确定性证据：初版 one-shot worker stdout 只有 `SignedAdaptiveTransportGatewayReceipt`，其中只有 visible/reasoning/usage 哈希而没有对应内容，不能直接形成下一轮模型状态；初版 `SovereignRecallUseReceipt` 草稿又在终局用一个 `now_utc` 对十二份 receipt 调用消费式 verifier。真实 Qwen 单次调用已可持续数分钟，因此不能假设十二轮在 freshness 窗口内完成。
+- 解决：worker stdout 升为规范 `AdaptiveTransportGatewayWorkerOutput`，把同一次 HTTPS 响应的 `visible_output/reasoning_output/usage` 与签名 receipt 一起返回，三项逐字重算且必须匹配签名哈希；成功响应还必须签入非空 `provider_response_model`，并与调用前 commitment 的模型名逐字一致，缺失、空白或 alias 猜测全部失败。失败与非 2xx 不得携带 completion，API key、私钥、原始 response body 和 provider ID 不输出。逐轮仍由 `verify_adaptive_transport_gateway_receipt` 在 freshness 内验签并原子消费 nonce；终局改用 `replay_verify_adaptive_transport_gateway_attestation`，重验 Ed25519、外部 key/build/source/origin、精确 commitment 与原始 acceptance 记录，不使用当前时钟、不再次消费 nonce。该 ledger 只声明本地 anti-replay 完整性，绝不充当独立签名或外部身份依据；正式身份来自外部 gateway Ed25519 和仓库外 pins。
+- 解决：`SovereignRecallUseReceipt` 已闭合 A4 的十二轮 public context/raw、早期记录、Dreaming 确定性选择、后续已签名请求、终轮原始 action-v2 五键消费声明和 gateway v3 replay；A1—A3、诊断 transport、只暴露未消费或任一绑定篡改均不能得到 `actual_sovereign_recall_use_verified=true`。该字段仍固定不代表因果收益、创新、科学结果或发表。
+- 验证：gateway 专项 `43 passed`，A4 consumption 专项 `9 passed`，二者联动 `95 passed`；formal live runner 专项 `9 passed`、gateway/recall/loop/arms/diagnostic 联动 `102 passed`。反例覆盖 completion/response-model 串换、旧回执 post-run replay、伪造 attestation、篡改 local anti-replay entry、跨 request/lineage、旧 process-local trace、stale/future、私有 IP、自铸信任锚、失败未计费及无实际消费。Ruff、Mypy、py_compile 全绿；主 Agent 已独立复跑 gateway 43 项、recall-use 9 项、formal runner 9 项及后续 111 项 loop/recall/gateway 联动。
+- 后续：正式部署仍必须在每个 provider call 后立即持久化 worker output、signed receipt、verified attestation 和 anti-replay entry；终局 A4 审计只消费 gateway 的 post-run replay API。正式生产 API 不得读取、生成或接收网关私钥，外部公钥/build/source/origin/model 指纹需操作者在仓库外固定，worker nonce root 也必须由独立 launcher 固定。真实 pilot 与 A4 实际使用未通过前，不得声称十二轮外部 Qwen 身份或记忆收益已证明。
+
+### P-20260810-122 - 十二轮 Qwen 自循环未主动使用 Dreaming，独立签名烟测又被本机 TUN 地址正确阻断
+
+- 状态：Open；功能性十二轮自循环已得到真实 Qwen 轨迹，但主权记忆实际消费和外部签名身份均未通过，因此 Task `271.3`、240-cell 与发表主张继续阻断。
+- 严重性：High；它直接回答“系统是否真能自循环、是否只是逐条代写、记忆能力是否真的被用到”。
+- 发现时间：2026-08-10，运行 Task `271.3` 的非确认性 signed pilot 与 A4 behavior pilot 时。
+- 签名 pilot 证据：`runs/manual-live/task2713-adaptive-benchmark-a4-live-pilot-v1/` 在第一份调用前预约后失败关闭；当前 VPN/TUN 把 `dashscope.aliyuncs.com` 解析为 RFC 2544 基准网段地址 `198.18.0.35`，独立 gateway 的 global-peer 检查按设计拒绝。制品保留一次已结算请求、零事件、`formal=false`，没有放宽 IP/TLS/签名门，也没有把普通 client trace 冒充外部身份。
+- 行为 pilot v2/v3：v2 完成十二轮但没有 Dreaming，且测试自身把临时 Agent 预算设为零，使 A4 capability audit 正确报红；v3 修正能力矩阵后在第三轮暴露 Qwen repair 协议自相矛盾——首答把本轮 external context 的 raw binding 误报为 Dreaming 消费，修复提示又同时冻结该错误声明，随后仅因中文弯引号变为 ASCII 引号而把等义文本判作“科学改写”。三次原始响应、reasoning、预约和 findings 均已留存，没有覆盖失败。
+- 通用修复：主动作提示现在明确 `external_turn_context` 不是 Dreaming `memory_exposure`；修复期科研字段仍冻结，但只把中文/ASCII 引号视为排版等价；`memory_consumption_claims` 只能从首答逐字原集合中撤回，不能新增、改写或把外生上下文重新包装为长期记忆。新增反例证明错误声明可保守撤回而不改科研判断，实质性科研改写仍连续拒绝。核心定向 `25 passed`，loop/recall/context/arm/live-runner/gateway 联动 `111 passed`，Ruff/Mypy/format 全绿。
+- 行为 pilot v4：`runs/manual-live/task2713-adaptive-benchmark-a4-behavior-pilot-v4/` 在同一冻结公开场景上完成 12 轮真实 `qwen3.7-max` 动作，12 次调用全部一次通过、零中途人工科研散文、零编排器科研散文、最短 reasoning 1842 字符；算子轨迹为 `decompose_uncertainty×4 → branch_hypothesis → adversarial_critique×4 → decompose_uncertainty×2 → promote_branch`。终轮晋级被确定性门以来源不可追溯、无真实外部反馈正确拒绝。最终 snapshot hash `8e05f684e813a53139b63eb5785ac5217a066a100c867a1d28942ee21ef39388`，arm audit hash `3e0ce11648307c42cb16351ba1041626a293669f8a29a74cc60f2e11237698e0`，capability matrix 为真；但 Dreaming 次数、selection artifact 和结构化记忆消费均为零，`actual_sovereign_recall_use_verified=false`，pytest 按预注册判据失败。
+- 结论边界：v4 已证明“给一次目标/范围后，Qwen 可以连续自行选算子并生成十二轮中文科研动作”，不是 Codex 每轮代写；它没有证明 Qwen 会主动管理长期记忆，更没有证明记忆带来因果收益、科学正确、创新或可发表。拥有能力与使用能力必须分开评价。
+- 下一步：不得在看见 v4 后修改或覆盖冻结 v3 四臂协议。把“反局部循环 + 可调记忆依赖”作为新的策略候选：借鉴 SteeM/MemCon，在开放发散、复核和污染场景使用不同的非强制记忆依赖档位，并先对冻结轨迹/全新开发场景做预算匹配影子比较；只有外部终点改善且污染不升，才可另起预注册成为新 arm。真实 signed pilot 需在不把 provider 解析到 `198.18.0.0/15` 的独立 launcher/网络环境中运行，并由操作者在仓库外固定 gateway trust pins 与持久 nonce root。完成前禁止启动 240-cell、宣称主权记忆收益或提交发表。
+
+### P-20260810-123 - 冗余 Qwen 输出字段与 provider Schema 方言造成无意义修复循环
+
+- 状态：Resolved in generic code；全新 v6 已完成 15 轮，但长期记忆实际使用仍按 `P-20260810-122` 保持阴性。
+- 严重性：High；若把同一语义编码为相互依赖的多个字段，或把 provider 不支持的 JSON Schema 关键词当成科学失败，系统会频繁重试，既浪费预算又误导为“Qwen 不会自循环”。
+- 发现时间：2026-08-10，在全新 `task2713-adaptive-operator-steering-development-pilot-v1` 至 `v5` 逐代保留并重放真实 Qwen 失败时。
+- 确定性证据：v1—v3 中 Qwen 能正确说明检索目的，但自由文本查询先后变成长段自然语言、重复长响应和逗号分隔短语，旧 repair 无法在冻结科研散文的同时安全推断机器查询；v4 的 Skill 路由 reasoning 与空 `selected_skill_ids` 都明确“不需要 Skill”，却因冗余 `no_skill_required=false` 被拒；v5 在首个 Skill 路由请求即收到 HTTP 400，原因是 provider 不支持 response schema 中的 `uniqueItems`，没有产生科学响应。所有失败目录、调用前预约、原始 response/reasoning 或 HTTP 失败均保留，未覆盖为成功。
+- 通用修复：action schema 升 v3，`retrieve_evidence` 时由 Qwen 自行填写 3—10 个互异 ASCII 检索短语，每项 1—4 个技术词；编排器只确定性连接并做本地验证，不从科研散文抽取、截断或代写。Skill selection v2 只保留权威 `selected_skill_ids`，空数组即零 Skill；旧含否定布尔的 v1 只为历史重放且继续校验一致性。传输 response schema 移除 provider 不支持的 `uniqueItems`，本地模型 validator 仍拒绝重复 ID，所以没有降低语义门。repair 继续冻结科研判断，只处理结构收敛。
+- v6 结果：`runs/manual-live/task2713-adaptive-operator-steering-development-pilot-v6/` 从一次中文目标/范围完成 15 轮；15 次 Skill 路由和 15 次动作共 30 次 Qwen 调用，最短 reasoning 2731，2 次外部动作、3 个由当前主 Agent 自主派发并归档的临时 Qwen。模型自行完成缓存一致性类比、分支、晋级申请、拒绝后检索、负检索后放弃和新分支；最终预算暂停快照 `4871ac139be2775c69b066b78922cf47a975d7f7845b73896ed7d5cc5add3167`。两次去文本结构 steering 干预只删除饱和内省动作，每次仍留 10 个选择，从未强迫 Dreaming。
+- 结论边界：这证明此前多次失败主要是输出契约/Schema 方言与循环衔接问题，通用适配后 Qwen 能继续自循环；不能反推科研正确或记忆收益。v6 仍零 Dreaming、零窗口外召回、零消费声明，memory audit `3949648dff9be950f61d6be252c00e3080bbc2ba8c22df6ea4da3c6204a39b08` 全红，live pytest 按冻结判据预期失败。
+- 验证注意：PowerShell 不会按 Bash 方式把 `tests/unit/research/test_adaptive_*.py` 通配符展开给 pytest；首次宽回归命令因此未收集目标文件。后续使用 `Get-ChildItem | Sort-Object` 生成显式文件列表，避免把 shell 差异误报成产品测试失败。
+- 下一步：保留 v1—v6 全部失败/成功证据，不为通过测试强制 Dreaming。若继续评估 steering，只能在全新开发场景比较同预算 baseline 与 candidate，并把算子多样性、实际记忆消费和外部任务终点分开；确认性 v3 benchmark、隐藏 oracle 和 240-cell 主效应不得因 pilot 结果回改。
+
+### P-20260810-124 - 二手文章把模型原生记忆综述误读为“外部 Agent 记忆即将淘汰”
+
+- 状态：Resolved in research memory；OB 前沿笔记已改用一手论文限定结论，系统架构不再接受该二手断言作为事实。
+- 严重性：High；若把模型内部状态、用户主权原始记录和每轮活跃上下文混为一层，会错误删除可迁移、可审计的原始证据，或把“全量留存”误实现为“每轮全量注入”。
+- 发现时间：2026-08-10，精读用户提供的长图文字并核验其引用的《Memory for Large Language Models》及相关最新论文时。
+- 确定性证据：该综述研究模型级参数化/激活记忆，并明确把 Agent 外部记忆管线排除在主范围之外；它没有证明外部主权记忆会整体失效，也没有把“刚性”定义成推理期任何外接记忆必然失败。TF-Engram 与冻结编码器—解码器的持久记忆工作还提供了受限但直接的外接反例。另一方面，LongMemEval、EvoMemBench、AgeMem、Forget to Improve、MINJA、SPORE 和 Memory Provenance Laundering 又共同反驳“保留得越多、活跃使用得越多一定越好”：长期记忆会陈旧、污染、泄密或放大错误。
+- 解决：OB 固定三层分工——私有原始层只追加、全量保留且可迁移；Dreaming/索引/语义层可删除并从原始层重建；工作层按预算、任务、年龄、来源和权限选择性暴露。模型原生记忆负责推理效率与压缩，Agent 主权层负责十年后仍可查、可溯、可证，二者是互补关系。Dreaming 永远不覆盖原文，也不自动晋升为科学证据。
+- 适配边界：开放发散可低记忆依赖甚至零 Skill；复核、冲突消解和延迟意图可提高记忆依赖；污染风险时允许 fresh-start。是否使用 Dreaming 由当前 Qwen 主 Agent 在机械能力集合中自行选择，系统不按固定轮次强制，也不把记忆学科方法塞进本体主提示词。
+- 后续：任何声称“原生记忆使外部记忆过时”“千万 token 会消灭上下文窗口”或“全量原文必然提高 Agent 表现”的产品表述，都必须提供直接实验和适用条件；否则只可作为待证假设写入开放探索，不能进入架构事实或投稿结论。
+
+### P-20260810-125 - v12 观察到自主 Dreaming，但冻结 delayed-relevance 协议无法识别主权原始记忆效应
+
+- 状态：Critical，部分解决；运行与重放缺陷已修，冻结 v3 的 240-cell 确认性资格已撤销，后继协议尚未预注册，因此 Task `271.3` 继续未完成。
+- 发现时间：2026-08-10，运行 `task2713-adaptive-operator-steering-development-pilot-v8` 至 `v10`、失败关闭的 `v11` 以及 delayed-relevance `v12` 后进行原始制品重放。
+- 通用 Qwen 适配问题与解决：v8 证明旧中文门把每个拉丁字母都计成英文负载，技术标识会使完整中文动作被拒，而旧 repair 又冻结正文导致无法收敛。现改为有界拉丁词组负载；只有无效 `action_body_cn` 可由同一配置 Qwen 重写，算子、理由、信息增益、假设、来源和授权字段全部冻结，修复前后响应永久留存。v9 又证明历史提案中的“本轮/下一轮”会在未来被误读成当前指令；现将它投影为带 `authored_step_index`、`age_in_turns` 和“历史建议非当前指令”边界的强类型上下文，原文仍不删除。
+- 真实运行：v9/v10 各完成 15 轮、30 次模型调用；v9 自主分派并归档 3 个临时 Qwen，v10 自主检索一次。v12 从一次冻结中文目标/范围完成 12 个动作、12 次 Skill 路由和 27 次总模型调用，在第 7 轮非强制选择 Dreaming，精确选择反馈进入第 8 轮，并在第 12 轮自主停止。最终 snapshot 为 `24d2d173ea434f8704f5269906ec779cdcba9e5ed40febdbce0de30edf051a1d`。
+- 阴性记忆结论：v12 的 8 条 Dreaming 记录全部仍属于最近历史，终轮没有结构化消费声明；审计 `7286fb8fb748f99164b075c8037db77f79ad513e5970e0d046cca13f763b4498` 因此保持 `controller_memory_transport_verified=false`，且科学、因果收益和创新均为 false。动态 Skill 合法选择了别的学科方法；原 live 断言强制 `agent-memory-evaluation` 已删除，Skill 路由仍必须每轮真实发生，选中内容仍只作为独立只读消息注入。
+- 协议失效根因：v3 第 3 轮公开刺激逐字重述第 1 轮关键数值并明确它具有判别力，Qwen 随后把该值写入可跨窗口持续的工作假设。即使第 1 轮 event 离开 recent-eight，终轮也可从普通工作状态取得答案；“公开刺激相隔九轮”不等于“非主权工作状态相隔九轮”，所以 A4−A3 不能识别原始记忆主效应。不得通过强制第 N 轮 Dreaming 或强制某个 Skill 来补洞。
+- 重放修复：原始 action/Skill 预约以内容哈希路径枚举，文件系统顺序与 typed attempt/call index 不同，合法 v12 曾被误判为缺失/乱序；现先按强类型序号排序再验证连续性。召回相关度原先对 `set` 求和，`PYTHONHASHSEED` 会改变最后小数位及 selection hash；现以排序 token 和 `math.fsum` 计算，四种 hash seed 的独立进程结果一致。
+- 失败命令与处置：v11 因 live harness 传入普通函数而不是含 `contexts_for_turn` 的 provider，在任何模型调用前失败关闭；已换成受终轮边界约束的强类型 provider。首次人工审计错误地向 `RawMemoryStore` 传入不存在的 `project_id` 参数；修正调用后，先后暴露预约排序与浮点重放问题并完成上述通用修复。PowerShell 两次只读 `foreach` 管道写法解析失败、首次直接 Mypy 未设置 `MYPYPATH=src`、初次追加策略笔记定位错误，均未写坏制品，随后用显式路径/正确环境重跑。
+- 验证：聚焦 `61 passed, 1 skipped`；显式收集全部 adaptive 单元加默认关闭的 live 文件为 `197 passed, 1 skipped in 180.07s`；聚焦 Ruff、Mypy 均通过。v12 的 opt-in 真实测试按冻结记忆成功判据失败，这是保留的科学阴性结果，不应通过放宽判据伪造成功。
+- 下一步：保留 v3 及 v8—v12 全部字节作为历史与失败证据，不启动 240 cells。后继协议必须在看新结果前冻结：超过工作状态容量的高熵早期事实面板、终轮不重复值的内容寻址线索、受限工作状态预算，以及任务正确性、原始记录召回、下一请求精确暴露、模型结构化消费和外部终点五个分离指标。只有同预算盲测证实 A4−A3 改善且污染不升，才允许讨论记忆收益。
+
+### P-20260810-126 - successor 记忆协议已具备可识别设计，但尚无独立释放与完整状态投影运行边界
+
+- 状态：High，部分解决；result-blind successor v1 协议、公开/私有分离、配对随机化、功效合同与对抗测试已实现，13-turn 正式运行链仍缺失。
+- 发现时间：2026-08-10，在 `P-20260810-125` 撤销 v3 的 240-cell 确认性资格后设计后继协议时。
+- 已解决的设计缺口：五个合成领域各二十八个独立场景，共 140 个实验单位；每场景四臂配对随机化，共 560 cell。前三轮合计 192 个随机地址—二十二字值，第十二轮才选择并释放查询地址，第十三轮评分，后十轮不重复答案。普通工作状态冻结为 2048 UTF-8 bytes，但允许模型采用任意压缩；答对与状态容量、原始召回、请求暴露、结构化消费分开，避免用“禁止普通工作记忆”人为夸大 A4。主分析固定为双侧 exact McNemar A4−A3、alpha 0.05、SESOI 0.25；0.25—1.00 discordance 密集网格最低功效 0.809086。公开承诺加入私有 256-bit nonce，修复直接 payload SHA 可枚举 192 个候选的泄题；bundle 又逐场景、逐 turn、逐 blinded cell 重做交叉绑定，修复只重算局部自哈希即可串换场景承诺的问题。
+- 仍未解决的运行边界：当前 builder 在一个 Python 进程同时持有公开承诺与全部私有刺激，不能证明控制器看不到未来 turn；release helper 只验证声称的前序号，不证明前轮真实完成；working-state audit 只核调用者提供的片段，不证明它覆盖实际完整 prompt；两个输出树的 preflight/write-once 不是跨进程原子事务。旧 12-turn context/arm/formal runner 不能静默复用，测试里的固定 seed 也禁止用于真实实验。
+- 失败与处置：首次试用 SciPy 做功效复核因环境无 SciPy 报 `ModuleNotFoundError`，随后改用纯 Python exact binomial-mixture；第一版全枚举计算超时并被中断，改为按 discordant-count 的二项混合后完成。初版 builder 错把“查询选择在第十二轮前不可用”写成“地址本身不在早期面板”并自拒绝，已纠正为地址早期存在、选择未知且中段不重复。初版泄漏测试用任意子串 `arm` 误中安全字段 `arm_hidden...`，已改为递归精确键检查。交叉绑定补丁首次 Mypy 报 Optional 变量窄化冲突，重命名局部变量后聚焦 Mypy 全绿。
+- 验证：successor 专项 `12 passed in 17.93s`；adaptive benchmark/context/arms/receipts/diagnostic+formal runner/loop/recall/use 联动 `137 passed in 181.79s`；聚焦 Ruff 与 Mypy 全绿。最终 bundle hash `d6285932929e569a81434ec26641cb9b53feb86e37de01062ce9ed2fbffc906a`，public preregistration hash `d6ef98c921a4edd15282d726e03353a5e5d8ceab63f29e5c902060817aab86e7`。这些是代码与确定性 fixture 哈希，不是生产预注册或科学结果。
+- 下一步：新增只读取 public leaf 的 13-turn context adapter、从第一轮起强制的完整普通状态投影器、独立逐轮 release service/受保护 secret seed、successor 专用 signed formal runner 与揭盲屏障。先跑不用于调阈值的 fresh pilot 验证运行合同，再由人批准是否承担 560-cell 成本；未闭合前不得执行全量、评分或声称主权记忆收益。
+
+### P-20260811-127 - 首题研究目标评审首次运行因网络传输超时中断
+
+- 状态：Resolved；已用仅限明确网络故障的一次性新 capability 重试修复，并在全新输出目录完成真实首题闭环。
+- 发现时间：2026-08-11。`science125-question-001-objective-review-final` 的三个头脑风暴临时 Agent 均已完成并归档，但独立评审调用抛出 `LLMClientError [WinError 10060]`，因此主计划未继续生成。
+- 根因与边界：这是外部模型传输超时，不是研究内容、JSON、Schema 或中文格式失败。辅助评审若把这类瞬时故障直接升级为整条交付失败，会破坏交付优先目标；但对内容错误自动重写又会重新引入机械循环。
+- 解决：研究目标组件只在已归档 task record 同时满足 `failure_type == LLMClientError` 且诊断明确命中 timeout/transport/network/connection/request-failed 时，签发同 lineage、同输入、`stage_attempt + 1` 的新 controller/capability，最多重试一次。失败与成功 batch、receipt、archive 全部保留；JSON、Schema、普通异常和科学校验错误不重试。CLI 的模型调用计数改为读取实际 attempt 数。
+- 验证：全新目录 `runs/contest-delivery/science125-question-001-objective-review-final-v2` 真实运行 exit 0，三个构思 Agent、一次独立评审和一次主计划生成全部完成；总模型调用 6 次，三个候选经评审选择候选 2。最终中文 JSON/Markdown/TeX/PDF 均存在，PDF 为 4 页、100688 bytes、SHA-256 `962ce23384207f59d04c037d4bbeed486225a46ad3d7862e2c75eff349aec7df`。计划明确声明尚未执行预实验，不伪造结果。
+- 后续：保留首次失败目录作为运维证据。若两个独立评审 attempt 均网络失败，则继续清晰失败，不扩为无限重试或内容修复循环。
+
+### P-20260811-128 - 真实预实验修订被表示层数字守卫误拒且首次响应未保留
+
+- 状态：Resolved；第二次真实 Qwen 响应已完整保留并在不新增网络调用的前提下完成最终交付。
+- 发现时间：2026-08-11，首题真实素数预实验完成后执行一次结果反馈修订时。
+- 现象：第一次 Qwen 已返回完整研究计划，但旧实现先做数字字符串完全匹配、后保存响应，导致合理的小数舍入和科学记数法被当成“虚构数字”，且该次响应没有落盘。第二次真实响应已先保存 raw response 和作者回执，但旧守卫仍误拒 `-85.104→-85`、区间端点 `-30.946→-30`，并把明确标为后续候选设计的模 `2310` 当作已观察结果。
+- 根因：表示层校验混淆了“数值语义等价”“已观察证据子句”和“未来设计参数”；保存 provider 字节又错误地位于内容校验之后。问题不在 Qwen 的科学内容，也不应通过无限重试解决。
+- 解决：provider 原始响应和完整 `ModelAuthorshipReceipt` 在任何内容守卫前 write-once 保存；数值比较改为 Decimal 及最后书写位分辨率，支持标准舍入、百分数、科学记数法和保守的尾随零粗粒度；只对声称已观察的子句执行证据数字门，明确的后续计划、候选对照、不能排除和替代解释不冒充观察。真正把未执行模 2310 写成已观察结果仍会拒绝。
+- 恢复证据：保留响应 `runs/contest-delivery/science125-question-001-preexperiment-feedback-v1/revision/responses/direct-plan-revision-0e49580e625053cc-32d1e5f4cfec.txt` 的 SHA-256 为 `32d1e5f4cfec4774949e46754357fef59c1b4b1c12b7d7a52389b48c053a8200`。最终离线 finalize 重新构造同一 completion，并机械确认原始与最终回执的 `messages_sha256`、`response_sha256`、`parsed_payload_sha256` 全部相等；没有第三次模型调用，也没有由编排器改写科研正文。
+- 最终制品：`runs/contest-delivery/science125-question-001-preexperiment-feedback-final/` 已含原始 Qwen revision artifact、独立 evidence-correction artifact、JSON/Markdown/TeX/PDF 与 delivery report；PDF 独立验证为 6 页、可读取且未加密。真实 pilot 的 17 份 evidence 及 report 绑定的 41 个文件全部重新计算 SHA-256 通过。
+- 验证：聚焦联合 `37 passed`；Ruff、Mypy、py_compile 全绿；`exact_saved_response_guard=PASS`；独立 artifact/report/PDF 重放均 PASS。Poetry 环境没有 `pypdf`，首次一体化只读验证命令因此失败；末次校验又曾从错误模块导入 `canonical_model_hash`，随即改用其真实定义模块 `autoresearch.competition.manifest` 复跑。最终用项目 Poetry 环境验科研制品与哈希、用独立 PDF 工具验 6 页和文字，两部分均通过。
+- 最终科学审计：只读审计另发现局部分块置换机理写反、摘要混合 aggregate/interval standardized diagnostics、未执行 OEIS 核验却使用完成语气，以及描述性范围误称总体 CI。原始 Qwen response/revision artifact 均保持不变；新增 `scientific-editorial-corrections.json`，仅按已执行代码和 metrics 更正上述事实、补入锁定目录中的 Bian modified-PE 引用，并机械证明主假设、问题和研究方向未改。审计后的重复标点也已更正，最终 correction hash 为 `6141dc5a2baa3a06d5ef8e30319b37253c935b36bebeb45794581e05f3d6c666`。
+- 剩余非阻断告警：现有 TeX 编译 helper 在 Windows 读取一段混合编码子进程日志时会在线程中报 GBK 解码告警，实际编译 exit 0 且 PDF 文本/页面均有效；内部 manifest 的 `page_count` 因此为 null。交付报告以独立 PDF 工具记录 6 页。数学符号已在渲染器中显式转换为 TeX `\leq/\geq/\tau/\Delta/\times` 并目视复核，不再丢失 `≤` 或 `τ`。末次 `pdftotext` 标题逐字子串检查因抽取层插入空白首次返回 false；去除布局空白后，标题及全部必要章节、OEIS 未执行限定、非总体置信区间限定和 Bian 引用均通过。
+
+### P-20260812-129 - 指定方向 live 闭环暴露大检索目录载荷与无界 reasoning 截断
+
+- 状态：Resolved；保留失败目录和截断响应，最终从已验证检索与目标评审制品恢复完成中文计划和 6 页 PDF。
+- 发现时间：2026-08-12，首次运行 `contest_direction_plan_cli` 的真实 Arxiv/OpenAlex/Qwen 冒烟时。
+- 现象一：`direction-prime-gap-arithmetic-live-v1` 成功生成 4 个检索式并取得 45 条去重记录，但把 39 条合格完整摘要与 3 个 Skill 同时复制进每个临时任务，超过 `TemporaryQwenContentTask` 的 32,000 字符 transport 上限，模型调用前以 `temporary task payload is too large` 结束。完整 132,676-byte 检索 artifact 被保留，没有静态目录兜底或伪造计划。
+- 解决一：完整检索 artifact 仍为权威原件；下游新增仅用于上下文传输的确定性投影，按模型生成检索式的重复核心词、文档逆频率和题名命中排序，在 14,000 字符预算内选择完整记录，不截断摘要、不把未入上下文记录误称不合格。真实 v1 目录由 39 条合格记录投影为 6 条、13,882 字符，首项变为 `Large gaps between consecutive prime numbers` 等相关论文；新增大目录反例测试。
+- 现象二：v2 的检索、两个临时批次和独立目标评审均完成，但前两个最终计划作者响应的可见 JSON 分别只到前 1—2 个字段；第二次保留响应仅 528 bytes、在第一段中途结束。根因不是字段别名，而是 direct-plan 调用未显式限制 Qwen 隐藏 reasoning，12,000 token 预算被推理消耗后只剩极短可见输出。首个截断响应发生在 raw-before-validation 修复前，未能恢复；第二个响应已 write-once 保存为 `responses/direct-plan-e751a53b30c6af42-911c8928107e.txt`，SHA-256 `f90d876c1a1503e2311a54bfcf4f7019045248c4fb8f01b7893399d7915cb584`。
+- 解决二：direct-plan 现在在科学字段验证前 write-once 保存可见响应；本地投影可递归展开包装对象和双语章节键；调用显式启用 reasoning 并把 thinking budget 绑定为正数，方向链使用 3,000。复用同一 v2 检索、Skill 与目标评审制品只重跑一次作者，得到 6,993-byte 完整响应，SHA-256 `34b397ab3da4416ca48bfe4a8faefd75ed95fb164e9abff50f24d8fbea7667c5`；没有重跑检索或临时 Agent，也没有编排器代写科研正文。
+- 最终制品：`runs/contest-delivery/direction-prime-gap-arithmetic-live-v2/` 含 47 条真实检索记录、43 条合格记录、3 条实际进入本轮计划的完整记录、2 个临时批次、独立目标评审、系统计划、JSON/Markdown/TeX/PDF 与 delivery report。报告诚实记录 `completion_mode=resumed_from_verified_retrieval_and_objective_after_local_format_fix`、7 次制品绑定成功调用、2 次失败作者调用、共 9 次观察到的 provider request；PDF 6 页、未加密，35 个 inventory 文件逐项 SHA-256 通过。
+- 其他命令问题：最初配置探针错误地从 parser 导入不存在的 `load_config`，随后改用 `ConfigParser().parse_file`；PATH 首项 `pdfinfo.cmd` 是失效 override，改用实际 `C:\texlive\2026\bin\windows\pdfinfo.exe`。TeX helper 仍会产生非致命 GBK reader-thread 告警，但编译 exit 0，独立 `pdfinfo.exe` 与 Markdown/JSON 复核均通过。
+- 验证：九模块联合 `82 passed, 1 skipped`；Ruff、format、Mypy（三生产模块）、py_compile 全绿。跳过项仍是测试套件中的显式 opt-in live case；本问题记录的手工 live 运行已真实访问默认 Arxiv/OpenAlex 和配置 Qwen。
+
+### P-20260812-130 - v1 evidence-first 计划的终审漏检 Monte Carlo 不可达门与分析单位漂移
+
+- 状态：Resolved by versioned v5 scientific amendment；v1 的 6 页计划、原终审与 v2–v4 失败尝试仍保持 write-once，不再被当作最终可交付计划。最终有效交付为 direction-prime-gap-evidence-first-live-v5/delivery-report-v2.json 及其绑定的 8 页计划。本状态只表示研究计划的已知设计缺陷已修正，不表示正式实验已执行。
+- 版本化修正过程：v2 和 v3 各保留一次全文 Qwen 修订及对应的审计/评审原始字节，但程序审计分别拒绝 RT-05/06 与 RT-02/05/06；v4 改为只返回七个含问题字段的局部修订，其他九个计划字段由程序逐值冻结，但当时语义审计仍报 RT-05/06 失败；v5 最后只让 Qwen 修订 paper_abstract、results、limitations 三字段，其他 13 字段与 v4 完全相同。每个版本均无内容重试，且未重跑检索、Skill 路由、假设构思或真实 pilot。
+- v5 科学修正：残基路径条件键准确限定为 (segment,left mod30,right mod30)；wheel-210 只作保持 100k 宽数轴段观察点数/端点并从 wheel 允许候选点无放回抽取的敏感性参照，不再声称“纯模”、消除其他结构或解释力上界；pilot 如实报告 199 draws、raw p=0.005、四模型 Holm adjusted p=0.02，仅作 alpha=0.05 探索性描述；formal protocol 改为 999 draws、+1 Monte Carlo p 与四模型 Holm、目标 adjusted p<0.01；weak-order 模式按 ordered Bell/Fubini(5)=541 编码；pilot 的五个宽 10^6 数轴整数区间（每区 56359–70434 gaps）与 formal 的每块 10^6 个连续素数明确标注为不同分析单位；z 仅为相对本次有限 simulation null SD 的诊断，不是 population effect size，并删除因果解释比例。
+- 审计假阴性与恢复：v4 的 RT-05 是词面 marker 未覆盖“二者定义不同，不可混同”造成的假阴性；v5 的 metrics 已明确写“此 z 诊断仅相对于有限 simulation null SD，不是 population effect size”，旧 RT-06 却只扫描 abstract/results/limitations。程序仅扩展审计语义范围后，对原 v5 不可变字节本地重审得 RT-01–RT-07 全部通过；targeted-scientific-repair-audit.json 保留原假阴性，新结论写入 targeted-scientific-repair-audit-v2.json，没有因审计修正重放 repair provider。
+- 最终独立复核：只在程序七项审计全绿后物化 v5 JSON/Markdown/TeX/PDF，再发起一次 fresh freeform scientific review。reviewer 不需机械复述 RT ID，但收到完整、哈希绑定的红队 findings，并实质核对 z 诊断、分析单位、wheel-210 边界、多重比较与替代解释后给出 pass。终审绑定的是物化后 plan/research-plan.json 的文件 SHA-256 46394106cedfb11f449034c1ed080a492f21894246220c2a9b733efe533c1ec2，而非中间 revision 文件。
+- 最终验收：v5 revision 为 direct-plan-revision-cd64725380df9b6b，pilot 仍为 prime-pilot-87a71991dcd3b3ed；正式 loader 重验 pilot 的 17 个 manifest-bound evidence 文件、revision response/receipt、review response/receipt/Markdown，15 项非 report inventory 的字节数与 SHA-256 全部一致。PDF 为 A4、8 页、138965 bytes、未加密，SHA-256 017b753749c44549b0cdf9f0938ba172c431a7d97800e25c069a2e15c58e0d02；最终 report SHA-256 fcaf0b2ff9d14149c4bc4ad2a0a7e665905910fd476093660334c6b68a44f770。v5 本身总计 2 次 provider request（一次三字段 repair + 一次 fresh review），无内容重试。
+- 验收命令纠正：首个只读验证脚本把 v3 文件名误假设为 system-authored-targeted-research-plan.json，实际是 system-authored-amended-research-plan.json；第二个断言又错误假设终审应绑定模型 revision 文件。两次均在只读阶段失败，未改任何制品；改按实际版本文件名和“终审绑定物化最终 JSON”的正式合同后，全量哈希重验通过。这是验收脚本假设错误，不是科学制品损坏。
+- 其他非阻断故障补充：首次 live finalization 使用 PTY 时，Windows 在进程启动前因访问被拒绝而失败；改为非 PTY 执行后成功，未形成重复 provider 调用。TeX helper 的 Windows GBK reader-thread 告警仍为非致命，独立 PDF 工具和逐页视觉检查均通过。
+- 后续边界：v5 是修正后的研究计划交付，不是正式实验或论文。后续可执行 999 draws 的正式方案及 wheel-2310 敏感性分析；共享工作树含其他 Agent 改动，本子任务未 staging、未 commit。
+- 严重性：High（针对 v1 历史计划；v5 已修复）；问题从未影响已执行预实验原始数据、日志、metrics 或其哈希真实性，但若按 v1 文字执行正式实验会无法满足自己预设的多重比较显著性门，并暴露原终审 reviewer 的假阴性。
+- 发现时间：2026-08-12，在 `direction-prime-gap-evidence-first-live-v1` 完成后对最终计划和 reviewer 判断做人工反证复核时。
+- 统计缺陷：最终 Methods/Experiments 对四类零模型各生成 `100` 个独立实现，同时要求 `alpha=0.01` 且作 Bonferroni 校正。若使用防止零 p 值的标准 Monte Carlo `+1` 估计，单项最小原始 p 为 `1/(100+1)=0.00990099`，四项 Bonferroni 后最小约 `0.03960396`，因此不可能达到校正后 `p<0.01`。若仍坚持四项 Bonferroni 与严格小于号，至少需 `400` 次 null draws 才使 `4/(B+1)<0.01`；实际稳定估计尾概率通常还应明显多于这个数学下限。终审却写“统计方法恰当”并给出 `pass`，未发现该不可达判据。
+- 分析单位缺陷：真实 pilot 使用五个固定、宽度均为 `10^6` 的**整数数值区间** `[1M,2M)`、`[5M,6M)`、`[10M,11M)`、`[20M,21M)`、`[50M,51M)`；最终正式计划另拟“每块包含 `10^6` 个连续素数”。终审把两者连写成“每块 `10^6` 个素数，预实验使用五个固定 benchmark 区间”，没有明确承认 pilot 与正式计划分析单位不同。该 protocol delta 可以合理存在，但必须显式说明，不能把整数区间宽度误写成素数计数。
+- 本轮工程故障与恢复：首次 post-pilot 构建因真实任务超过 32 KiB 在 provider 调用前停止；随后只投影入选候选、其完整引用、四类 aggregate 和紧凑证据清单，完整 38 文件仍逐项验证。schema 后增 `verified_inputs_bundle_sha256` 曾使旧 post-pilot artifact 无法加载，现只读从旧 `verified_inputs` 重算并接受对应 legacy hash，旧字节未改。保存后的唯一 revision response 又先后被 `M/million/百万`、裸 `10^6` 和“可能源于模2310”词法误判；现按单位语义解析并把“可能源于”限定为替代解释语气，Observed Results 中无证据的 `2310` 仍拒绝。严格 resume 校验原 messages/response/receipt 哈希后本地重放，没有第二次 Qwen revision，也没有重跑检索、路由、构思或 pilot。
+- 已完成证据：交付报告为 `completed`，真实 pilot 为 `prime-pilot-87a71991dcd3b3ed`，最终计划 revision 为 `direct-plan-revision-19aadbda96c28fd0`；PDF 6 页、126039 bytes、未加密且中文文本可提取。终审绑定的 materialized plan 文件 SHA-256 与实际 JSON 一致，结论 `pass`；报告诚实记录历史 8 次 provider request、本次 resume 仅 1 次最终 review、总计 9 次，并记录一次 post-provider 数字守卫失败由保留响应本地恢复。65 项 inventory 及总 hash 重算完全一致。
+- 当时冻结的最小纠正方案：不覆盖 v1 计划或手工改写原终审 verdict，而是另起明确版本的科学修订，让模型在同一 verified pilot 上修正式阶段的 null draw 数、Monte Carlo p、多重比较规则与 pilot/formal 分析单位说明，程序验证目标 alpha 的可达性，再对新物化 JSON 做一次 fresh independent review。后续 v2–v5 正是按该 write-once/versioned 原则实现；失败版本均保留，最终以 v5 完成。
+- 其他非阻断故障：首次用 Poetry 环境的 `pypdf` 做只读验收因依赖未安装失败，随后按 PDF Skill 使用实际 TeX Live `pdfinfo.exe`/`pdftotext.exe` 验证；PATH 前置的 `pdfinfo.cmd` 仍是损坏 override。TeX helper 产生一次 Windows GBK reader-thread 告警，但实际 PDF、manifest 和独立文本抽取均成功，未重编译或覆盖科学制品。
+
+### P-20260812-131 - 文献元数据把“来源未报告”伪装为零引用，历史 v5 又正向引用已撤回预印本
+
+- 状态：High，代码路径已解决；历史 `direction-prime-gap-evidence-first-live-v5` 仍保持不可变且需要另起版本重新检索、修订和评审，不能继续把该条目当作可靠正向证据。
+- 发现时间：2026-08-12，人工复核 v5 PDF 中 `An information-theoretic upper bound on prime gaps` 的 DOI、引用次数和来源状态时。
+- 根因：旧 arXiv Atom parser 在来源根本不提供 citation count 时硬写 `0`，模型又只允许非负整数；Atom 没有通用 DOI 时输出层显示“DOI 未提供”。该论文实际只有 DataCite 注册的 arXiv 仓储 DOI `10.48550/arXiv.2110.15271`，不是期刊发表 DOI。旧规划选择仅按词法重合排序，宽查询每源只取少量候选，也没有最终候选撤回状态核验，因此把一个作者已撤回并承认论证不足的预印本排到正向证据前列。
+- 代码解决：`AcademicPaper` 已把引用改为可空值并绑定来源与截至日期，显式区分“未查询/来源未报告”和“来源明确报告 0”；发表 DOI 与仓储 DOI 分离；状态字段支持 preprint/published/withdrawn/retracted。检索提示扩为核心机制、方法数据、权威/奠基证据、反证/争议四个互补视角；每条 query/source 在同一次请求内取 20 个候选，再以相关性为主、年龄归一化引用、可核验期刊质量、发表与 DOI 完整性、跨源佐证和来源多样性作软排序，不设最低引用硬门。只有实际拟入上下文的少量 arXiv finalist 才访问官方 abs 页面核验状态；撤回/撤稿条目剔除并由下一候选补位。
+- 频率边界：仍最多四条 query，每个 source/query 一次且顺序执行；保留 arXiv 3 秒、OpenAlex 1 秒、Semantic Scholar 按是否有 key 为 3/1 秒的 limiter、指数退避和 429 circuit breaker。扩大的是单次响应候选数，不是请求矩阵；resume 只读回放状态回执，状态网络调用为 0。
+- 验证：相关 literature/competition 联合 `60 passed, 1 skipped`；Ruff、Mypy、py_compile 全绿；两个 opt-in live literature smoke 均通过。目标 `2110.15271v2` 的 shortlist-only live 状态核验返回 `withdrawn` 并触发 replacement；旧 v1 literature artifact 仍可按原 hash 只读加载，但不会被冒充为已执行新状态核验。
+- 遗留风险：历史 v5 的 JSON/Markdown/TeX/PDF 仍含该撤回预印本并在 rationale 中作正向论据。它们是内容寻址、write-once 交付，不能在原地改字节。若继续使用该研究计划，必须生成 v6：以新检索协议重建文献目录，移除或仅把该条目作为失败案例，补入真正同行评审的主证据，再由 Qwen 做一次有证据边界的计划修订和一次 fresh scientific review。
+
+### P-20260812-132 - 轻量方向链此前未消费已有上下文压缩、主权记忆和全阶段恢复能力
+
+- 状态：Resolved；fresh、partial resume 与 completed resume 已完成代码接线和故障注入验证，尚未为此功能重新执行一条付费的完整 Qwen 科研链。
+- 发现时间：2026-08-12，在用户要求恢复 80% 上下文压缩、OB 原始记忆、Dreaming 与断点续跑到 evidence-first 轻量方向链时。
+- 根因：相关能力已分别存在于 `model_capabilities.py`、`task_context.py`、`raw_memory.py`、持续循环和自适应研究模块，但轻量 CLI 直接调用各 leaf runner；因此模型阶段没有统一 active/completed task 边界，落盘制品没有进入 OB/Dreaming，早期恢复只覆盖特定 postpilot/revision 情形，进程在 provider 返回后、stage artifact 物化前崩溃仍可能再次付费。
+- 解决：七类 Qwen 阶段现经 task-aware context runtime 执行；模型上限只从配置模型的官方页面/哈希缓存解析，80% 触发值由程序计算，当前 stage 始终逐字保留，仅已完成阶段可进入 Qwen 合并摘要。九个科研/交付阶段写完成回执；七类模型响应、每 source/query 文献响应和 finalist 状态核验都在返回上层前 write-once 托管，resume 从首个缺失阶段继续。不完整阶段目录只隔离留存，不删除。九阶段制品按原始字节进入 `autoresearch-vault/_private/raw-memory`；Dreaming 只生成可重建导航，postpilot、计划修订和终审以独立非证据消息选择性读取，记忆故障降级而不阻断科研。
+- 官方能力 live 验证：2026-08-12 强制刷新 Qwen 官方页面成功；`qwen3.7-max` 当前 `context_window_tokens=1,000,000`、thinking hard input `983,616`，故 80% trigger 为 `800,000`，能力 snapshot hash 为 `0096701e0ac6546f6295f59d0ee571203f5df3e3ef2054979560d9d0af9e5561`。这些数值来自当次官方页面，不是 CLI/config 的人工窗口常量；未来页面变化会产生新的 snapshot/hash。
+- 验证：context/checkpoint/memory/research-loop/计划修订/终审联合 `66 passed`；Ruff、Mypy（9 个生产模块）与 py_compile 全绿；opt-in official capability live test `1 passed`。completed resume 测试证明九个 memory receipt 只读重放、原始记录数不增长；故障注入证明已有 provider/API response 零联网恢复。
+- 剩余边界：若进程恰在 stage artifact 已写完但 context manager 尚未成功退出的极窄窗口崩溃，provider response 与 OB 原始记录仍保留且恢复不会再次付费，但该调用可能没有晋升到 completed-task context journal；这只影响后续工作摘要的完整性，不影响科研制品真实性或断点恢复。后续可从 stage completion receipt 非阻断地补一份 deterministic reconciliation，但不得为此阻塞当前交付。
+### P-20260813-133 - 轻量科研链此前没有可调用 API，且同步运行器没有安全强停合同
+
+- 状态：Partially resolved；本地 API/前端、单题/批量入口、断点续跑、公开制品读取和自进化影子入口已接通；运行中同步科研函数仍只能记录协作式取消请求，不能安全强杀线程。
+- 严重性：Medium。没有 API 时榜题要求的“可调用测试 API 和可交互前端入口”无法满足；若把 Python 线程的 `Task.cancel()` 冒充科研任务已停止，又可能让后台继续产生付费请求或写入制品。无认证服务若绑定 `0.0.0.0` 还会暴露运行创建和制品下载。
+- 发现时间：2026-08-13，在把 evidence-first 指定方向链、125 问批量服务和 evidence-to-Skill 服务接到产品入口时。
+- 解决：新增 `aiohttp` 本地单用户 API 和中文前端；单题执行只调用既有 `run_contest_direction_research_loop`，阶段查询复用 `load_completed_stage` 重新验 hash，resume 复用既有 checkpoint。批量入口只接收本地官方 PDF 与题号范围，通过 `Science125BatchAdapter` 调用批量服务；自进化 POST 只调用冻结 evidence-to-Skill 影子入口，不自动激活 Skill。私有 provider response、OB 原始记忆和 context memory 不进入下载列表，路径穿越被拒；未认证服务只允许 `127.0.0.1`、`::1` 或 `localhost`。
+- 验证：API/adapter、PDF 题集、125 问批量服务与 evidence-to-Skill 联合 `31 passed`（其中 API 自身 `15 passed`）；Ruff、Mypy、py_compile 全绿。本地真实启动后 `/api/health` 返回 `status=ok`、batch/evolution service configured，首页 HTTP 200 且包含“科研计划台”。API adapter 又对用户的 `sjtu-booklet.pdf` 完成全 125 问 dry-run：`all_125_source_questions_available=true`、`selected_count=125`、`completed_count=0`、`formal_experiment_executed=false`、`result_paper_generated=false`，没有调用模型或外部文献 API。该烟测首次暴露 API 外层 receipt 把内部 dry-run 写成 `dry_run=false`，已定向修为保留请求值并加入回归测试。
+- 剩余边界：运行中的同步 direction loop 暂无逐阶段 cooperative cancellation token。API 对 running job 只写 `cancel_requested`，不会谎称进程已停止；queued job 可以直接取消。后续若需要硬停止，必须在科研链加入阶段边界取消令牌或改为独立可回收 worker 进程，同时保持 provider escrow/OB/checkpoint 的写入语义。
+
+### P-20260813-134 - Science 125 手册的纯文本问号匹配会静默漏掉 22 题
+
+- 状态：Resolved。
+- 严重性：High。用户要求全部 125 问批量输出；既有输入适配器只绑定第 1 题，而对手册 `pdftotext -layout` 逐行筛选问号只能得到 103 行，因为双栏版式和大量加粗题目跨行。若直接让模型补足，会失去题目原文、页码和来源证明。
+- 发现时间：2026-08-13，审计 `C:/Users/Z/Downloads/sjtu-booklet.pdf` 的真实文本层和标题坐标时。
+- 根因：手册不是单列逐行清单；同页可在半页切换学科，并有两个并行栏。题目标题可拆成 2–3 个加粗 XML 文本片段，普通文本抽取还会把两栏正文并排混合。
+- 解决：新增 Poppler `pdftohtml -xml` 确定性提取路径，只读取 PDF 加粗标题、坐标和栏位；在同栏 35 坐标单位内拼接跨行问句，按页面视觉顺序排序，并跟踪页面内学科切换。每题保存 source PDF hash、页标题层 hash、英文原文 hash、原始片段、PDF/印刷页码和程序 ID；除已核验第 1 题外，不擅自生成中文翻译。提取必须同时满足恰好 125 题、连续序号、首末题指纹和 12 学科冻结计数，否则失败关闭。
+- 批量边界：新增严格串行批量服务，默认 `limit=1`、每题独立目录/attempt/state、最小请求间隔、start/limit/include ID、dry-run、失败隔离和断点续跑；第 1 题固定 `required` 真实 pilot。无兼容真实 pilot 的其余题可复用已经完成的真实检索、post-retrieval Skill 路由和临时 Agent 假设，继续生成明确“尚无兼容真实预实验适配器”的中文 plan-only PDF，不能伪造实验。正式实验和结果论文字段始终为 false。完成后暴露非阻断 post-run hook 给独立自进化服务，但本模块不依赖未冻结 Skill 核心。
+- 验证：真实本地 PDF 得到 `question_count=125`、manifest `dd6b24581b994d6c329fa2e7a0077eb4f5c5a47659c78405e717bdf2e243bfd1`、首题 `What makes prime numbers so special?`、末题 `Can robots or AIs have human creativity?`；正式 CLI `--limit 1 --dry-run` 成功写入 batch report，零模型/外部 API。提取器+批量 mock 联合 `12 passed`；Ruff、Mypy 通过。恢复测试证明 failed state 不冒充完成、内层同 attempt checkpoint 以 `resume_existing=True` 接续、成功题零重跑，旧失败 receipt 不覆盖。
+- 剩余边界：125 题的中文翻译没有官方逐题来源，因此第 2–125 题只把原始英文作为可信输入，并要求最终计划中文输出；这比程序或模型静默发明中文题目更可信。正式全量运行仍会产生大量付费模型和文献 API 调用，必须显式扩大 `limit`，不能把 dry-run 误称批量生成完成。
+
+### P-20260813-135 - 候选 Skill 验证的初始 pilot fixture 与 Windows 文本编码不稳定
+
+- 状态：Resolved；没有放宽真实 pilot 的科学门，也没有修改系统级 `skill-creator` 脚本。
+- 严重性：Low，仅影响本子任务的开发验证，不影响既有真实交付或其哈希。
+- 发现时间：2026-08-13，在验证 evidence-to-Skill shadow pipeline 时。
+- 问题一：最初测试 fixture 使用 30,000 宽的素数区间，真实执行返回 `variable_fraction=0.787217`，低于 pilot adapter 既有的 `0.8` 有效性门。该失败说明 fixture 不稳定，而不是格式问题；测试改用既有验证稳定的 50,000 宽区间，科学门保持不变，真实小型预实验随后通过。
+- 问题二：直接运行 `C:/Users/Z/.codex/skills/.system/skill-creator/scripts/quick_validate.py` 时，脚本的无显式 encoding `read_text()` 在中文 Windows 的 GBK 默认编码下读取 UTF-8 中文 `SKILL.md` 会抛 `UnicodeDecodeError`。在不改系统脚本的前提下以 `PYTHONUTF8=1` 调用同一 validator 后通过；候选文件仍是规范 UTF-8。测试固定该环境，避免把宿主 locale 缺陷误判为候选结构失败。
+- 验证：自进化专项、文献、真实 pilot、Skills、shadow、promotion、rollback 联合 `42 passed`；Ruff、Mypy、py_compile 全绿。显式激活与回滚测试验证候选可恢复归档、父 Skill 字节不变；completed replay 对篡改失败关闭。
+
+### P-20260813-136 - Science 125 第 1 题宽母题被素数间隙适配器文本门误拒
+
+- 状态：Resolved；仅放行冻结的官方第 1 题母题，未放宽任意素数问题或适配器科学边界。
+- 发现时间：2026-08-13，首题真实一键运行已完成检索、Skill 路由和三个候选构思后。
+- 现象与根因：官方题目“素数为何如此特别？ / What makes prime numbers so special?”是上位科学问题，不会在题干中预先写出 `gap + information`。实际运行已选中 `prime-structure-computational-number-theory` Skill，三个候选均精确匹配适配器对象、可观测量、指标和零模型，却被方向文本词面门拒绝，写出 `blocked_no_compatible_real_preexperiment_adapter`。
+- 解决：将冻结的中文、英文和批处理程序生成的三行双语题干识别为唯一 broad parent；它仍必须同时通过 required Skill 和 exact candidate 门才能使用素数间隙适配器。“素数判定算法为何高效”、“蛋白质中的素数间隙编码”以及在官方句子后追加冲突任务的文本仍被拒绝。
+- 断点处理：旧 adapter selection 和 blocked receipt 保持 write-once。`--resume-existing` 只在“官方第 1 题 + 上游 artifact hash 全相同 + 旧 receipt 已记录 required Skill + 旧 receipt 已记录 exact compatible candidate”时，新增带 `supersedes` 文件绑定的 reassessment receipt。检索、路由和三个临时 Agent 已有响应通过 checkpoint/escrow 重放，不再次付费。
+- 验证：方向链专项 `12 passed`；方向链、Science125 batch、stage checkpoint 和 PDF 题库联合 `30 passed`；Ruff、Mypy、py_compile 与 targeted `git diff --check` 全绿。实际 blocked receipt 的只读检查证实：`required_skill_selected=true`，3/3 候选 `compatible=true`，唯一失败字段是旧 `direction_compatible=false`。
+
+### P-20260813-137 - postpilot 将 MathML 与全量 Dreaming 导航误当科研正文计入 32KB 旧门
+
+- 状态：Resolved；未扩大全局临时任务上限，未截断文献摘要，未改写真实 pilot 或其原始证据。
+- 发现时间：2026-08-13，Science 125 第 1 题 v2 真实 pilot 已完成后续跑 postpilot objective review 时。
+- 现象：被选中的 Goldbach 文献摘要包含大量 `inline-formula`/MathML/XML，原字符数 3,205；postpilot 在构建 `TemporaryQwenContentTask` 时报 `one whole literature record`，模型调用前即失败。真实定位后发现，该错误文案还遮蔽了第二个输入源：完整 Dreaming recall 携带大量逐文件 summary/raw bindings，也被全量复制进 32,000-character 临时任务旧传输门。
+- 解决：
+  - `_normalize_literature_catalog` 对 abstract 作完整显示投影：HTML/XML tag 移除、HTML entity 解码、CDATA/公式 annotation 文本保留、空白规范化；不按长度截断。Goldbach abstract 从 3,205 字符降为 1,034 字符，实际文本和公式 annotation 均保留。`record_sha256` 仍对完整原 record 计算，投影字段明示 `no_length_truncation`。
+  - postpilot 仅注入 Dreaming 的 recall/stage receipt/projection ID 与 hash、summary hash、raw-binding bundle hash 及数量；完整 recall receipt 和 raw bindings 仍在原路径不变落盘。这些导航始终标记为非证据，科学输入继续使用独立核验的文献和 pilot 制品。
+  - 若多条完整投影仍超预算，改为删除序列化 UTF-8 体积最大的整条 record，而不是机械删最后一条；剩余 record 保留 `source_catalog_index`，仅重编当次任务 `catalog_index`，不变造原引用映射。非 payload-size 类型的 task validation 错误不再被误报为文献过长。
+- 精确实测：在已完成的 v2 真实文献、Skill、brainstorm、pilot、OB/Dreaming 制品上 build-only（无联网、无模型调用），postpilot `exact_task_input_utf8_bytes=21,793`；临时池实际 payload `18,623 chars / 32,000`；2 条文献 abstract 为 1,034 + 199 字符；投影 Dreaming 为 3,628 字符。因此不需要也没有把全局 pool cap 放宽到 64KB。
+- 验证：hypothesis-stage 专项 `11 passed`；hypothesis/loop/memory/temporary-pool 联合 `41 passed`；Ruff、Mypy、py_compile 与 targeted `git diff --check` 全绿。v2 resume 会重新 normalize planning catalog 并从 postpilot 继续，不重跑真实 pilot。
+### P-20260813-137 - 首条超长文献绕过计划上下文预算并污染 Q1 已完成阶段
+
+- 状态：Resolved in selection code；历史 Q1 v1 attempt 保持不可变，必须使用全新输出目录重跑，不能把已消费旧上下文的 Skill/假设 checkpoint 当作修复后结果。
+- 严重性：High。`_select_planning_literature_with_status` 的原始与状态核验后两处预算判断都以 `selected_indices` 非空为前提，导致最高分首条完整记录可以无条件突破 14,000 字符预算。真实 Q1 因此让低质量 Choice/OpenAlex 记录 `Introduction to number theory` 的超长目录摘要独占 planning catalog，并进入 Skill routing 和三个假设 Agent。
+- 发现时间：2026-08-13，在 `science125-q001-full-feature-live-v1` 首题失败后检查真实 planning 输入与完成阶段回执时。
+- 解决：任何单条“目录 JSON + 完整人类可读上下文”在状态核验前已超过预算时直接跳过，继续尝试下一质量排序候选且不发起无用 finalist 状态请求；状态核验若增加上下文，则对核验后的完整记录再次无条件检查。单条从不截断；累计预算、相关性主排序、年龄归一化引用/期刊质量软信号、来源多样性和 withdrawn/retracted 排除逻辑均保持不变。若每条完整记录都超预算，明确报错 `every complete planning literature record exceeds ... records are never truncated`。
+- 验证：`tests/unit/competition/test_contest_direction_plan_cli.py` → `12 passed, 1 skipped`；新增“最高分超长记录跳过、短记录补位”和“全部超长明确失败且不截断”。既有大目录排序、相关性优先无引用硬门和 shortlist-only withdrawn backfill 测试继续通过。对历史 Q1 原始 literature 与 finalist receipt 做只读重投影后，旧 `Introduction to number theory` 不再入选，预算内补入 4 条完整记录（combined chars 分别为 3528、5039、3336、1740）；未联网、未写历史制品。目标文件 Ruff、Mypy、py_compile 全绿。
+- Q1 checkpoint 处置：v1 的 `01-literature-query` 只绑定原始检索与 finalist 状态文件，可留作历史；`02-skill-routing` 和 `03-hypothesis-brainstorm` 已消费旧的超长 planning catalog，其 stage input hash 会随修复后的 catalog 改变。write-once `record_completed_stage` 会拒绝用新 hash 冒充旧 receipt，所以不得原地删除/覆盖或把该 attempt resume 为修复后成功。应保留整个 v1，使用新的 batch/output root 创建 fresh attempt，使路由和假设重新读取修复后的短文献集合；旧 provider response 仅作失败证据，不能重放到新输入。
+
+### P-20260813-138 - Q1 v2 内部 provisional plan 的隐藏推理挤占可见研究计划
+
+- 状态：Resolved in code；真实 `science125-q001-full-feature-live-v2` 的 disabled-thinking 请求已返回完整 JSON 并进入 write-once escrow，等待按原目录 `--resume` 本地重放该响应并继续后续阶段。
+- 严重性：High。Qwen3.7-Max 在该次单请求中获得 `max_tokens=14000`、`thinking_budget=3000`，usage 记录约 2938 个 reasoning tokens，但可见响应只有 1186 字符；虽然 JSON 可解析，却仅覆盖 13 个科学字段中的 4 个，导致一次性计划投影诚实失败。缺失内容不能由编排器补造，也不应进入格式重试循环。
+- 根因与解决：`generate_contest_direct_plan` 过去强制 `thinking_mode="enabled"`，方向链又把全局 thinking budget 传给仅供 pilot 使用的内部 provisional 基线。现在 direct-plan API 保留旧默认（enabled/4000）并增加显式 `thinking_mode`；disabled 模式必须配 `thinking_budget=None`。只有 fresh/resume 的内部 provisional 调用关闭 thinking，正式 post-pilot objective review、最终 revision 和独立科学评审保持原 reasoning 配置。新请求完整返回后又暴露既有语言验证与模块合同矛盾：`source/target/baselines/metrics` 是英文 machine IDs，docstring 明确允许，但校验仍要求中文。现四字段仅要求非空；problem/rationale/details/datasets/abstract/methods/experiments/results 等科学叙述仍必须含中文。
+- 断点语义：provider response escrow 的 request hash 原本就包含 `thinking_mode` 与 `thinking_budget`。因此 resume 的新 disabled 请求不会重放旧 enabled 的不完整响应，而 literature、Skill route、三个 hypothesis Agent 等前五次已完成调用仍从既有 artifact/checkpoint 恢复；不删除、不覆盖旧响应，也不额外增加模型重试。
+- 验证：direct-plan、direction-loop、stage-checkpoint 联合 `43 passed`；新增测试证明旧默认不变、disabled 真正向 LLM 发送 `thinking_mode=disabled/thinking_budget=None`、内部 provisional 两条 fresh/resume 路径均使用该设置，enabled→disabled 产生一个新 request checkpoint、相同 disabled 请求随后本地重放，四类技术 ID 可保持英文，八类 narrative 字段纯英文仍拒绝。专项 Ruff 与两个生产模块 Mypy 全绿。
+
+### P-20260813-139 - Q1 v2 真实效应量的十进制截断被数字来源守卫误拒
+
+- 状态：Resolved in code；已保存的 final-plan-revision response 可由原 checkpoint 本地重放，无需再次调用模型或重跑真实预实验。
+- 发现时间：2026-08-13，Q1 v2 已完成真实素数预实验与 postpilot objective review 后生成最终研究计划修订时。
+- 现象与独立判断：修订结果写出标准化诊断 `-7.4`，真实 `metrics.json` 对应值为 `-7.465853262881276`。`-7.4` 不是标准四舍五入（按一位小数应为 `-7.5`），而是向零截断到一位小数；两者不能混称。但数字来源守卫的职责是验证表示能否确定性回溯到真实证据，不应把唯一舍入风格当作科研真实性门。
+- 根因与最窄修复：`_matches_source` 原先只接受精确值或不超过末位分辨率一半的普通舍入。现在在保持原规则后，额外接受证据值按声明分辨率执行 Decimal `ROUND_DOWN`（向零）后恰好等于声明值的同一档位；不做字符串改写、不改变 metrics、不扩大为任意近似容差。真实 `-7.465853... -> -7.4` 通过，而相邻错误档位 `-7.3` 仍拒绝。
+- 精确响应审计：对已托管 parsed response 逐字段本地扫描，Results 19 个、paper abstract 9 个、rationale 1 个、limitations 6 个证据性数字在修复后对真实 pilot evidence 均为零 unsupported；未发现下一处数字阻断。该检查只读保存响应和真实制品，没有联网或模型调用。
+- 验证：revision 专项 `18 passed`；revision + direction-loop 联合 `30 passed`；Ruff、Mypy 与 py_compile 全绿。新增测试同时覆盖真实形态的 `-7.465853262881276 -> -7.4` 和 `-7.3` 拒绝。
+
+### P-20260813-140 - Q1 v2 一次科学修订的两个叙述字段在 JSON 输出中被截断
+
+- 状态：Resolved for the preserved Q1 v2 run；没有第二次模型内容修订，没有重跑检索、Skill 路由、头脑风暴或真实预实验。
+- 发现时间：2026-08-13，对已保存的 Q1 v2 final-plan-revision 原始响应做科学质量审计时。
+- 现象：唯一 fresh Qwen 科学修订已正确加入 raw `p=0.005`/Holm `p=0.02`、`simulation-standardized diagnostic` 非 population effect、mod30 residue path 与 wheel-210 分界、fixed `n=5` 边界以及最终锁定文献，但 `rationale` 停在“若素数的”，`results` 停在“则应接受”。两者都是可证明未闭合的末尾，不能当作可交付科学文本。
+- 解决：先将未接受的模型 artifact 原字节保存到 `revision/machine-recovery/model-output-artifact-before-recovery.json`。`rationale` 仅逐字节恢复同一已验证 provisional artifact 的完整 Qwen 字段；`results` 仅删除精确匹配的未闭合最后 clause，不补字、不改写、不拼接。恢复版保存在 `revision/machine-recovery/recovered-revision-artifact.json`，通过后才发布到 direction-loop 预期的标准 root artifact 路径。
+- 审计与验证：`revision/machine-recovery-audit.json` 绑定 provisional、未恢复模型 artifact、raw response、authorship receipt、pilot artifact/metrics、最终文献目录和恢复 artifact 的路径/哈希；明记 `provider_calls=1`、machine recovery calls `0`。仓库现有 numeric truthfulness guard、reference gate、sidecar gate 及 9 项定向科学/完整性检查全部通过。标准 artifact 与 versioned recovered artifact 文件 SHA-256 同为 `003189a07a52218f1b3a8941d21a3f858d05e81b76ab0802d8c4a2d89bb705ab`，artifact hash 为 `f642d94a452d66de335b6a046ffd555fc99ea7a9c3c63c3686fd526d51fc216a`。
+- 开发过程插曲：首次机械恢复校验调用 `_guard_observed_numbers` 时误传原始 dict，在未发布恢复 artifact 前因 `AttributeError` 停止；已从保留的 source snapshot 恢复，改为经 `ContestDirectPlanArtifact` 验证的原计划后通过。该失败未触发模型或外部 API，也未丢失原字节。
+
+### P-20260813-141 - 自进化候选把开发文献 record_id 当作 evidence case_id 而被误判越界
+
+- 状态：Resolved in code and verified live；既有候选生成 completion 已本地重放，未再次调用候选生成模型。新的独立 held-out 评审真实执行一次并诚实保留失败 shadow 结论。
+- 发现时间：2026-08-13，首题完整研究计划与真实素数预实验完成后运行 evidence-to-Skill 自进化时。候选 lessons 正确引用了本轮 development 文献，但复制了 prompt 同时展示的 `direction-paper-...` 原始 `record_id`；程序只接受规范 `paper:direction-paper-...` case ID，因此报 `candidate lessons cite unknown or held-out evidence IDs`。这属于同一证据的双标识机械歧义，不是科学证据越界。
+- 最窄修复：模型输出经 Pydantic 结构验证后，程序只为**本轮 development paper** 建立精确 `record_id -> evidence_id` 映射并重建冻结 draft。未知 ID、held-out paper 的原始 record ID、pilot 别名和近似字符串均不映射，继续由既有 development 子集门失败关闭；若别名与规范 ID 在同一 lesson 折叠为重复项也清晰拒绝。候选 Skill、bindings、artifact 和 seed hash 只使用规范 ID，write-once generation completion 原字节不改。
+- 断点与调用证据：现有 `evolution-v1/process/generation-completion.json` 的 input hash 仍为 `975e24a264b5e693f949a51453c375a619865c94143ee0404f3c24b1a8b120f4`，因此直接本地 replay。live artifact 记录 `model_calls_at_creation=1`，唯一新调用是 Qwen3.7-Max held-out validation；随后用会主动抛错的 completion 回放 completed artifact，得到 `resumed_existing=True`，证明零新增 provider 调用。
+- 科学结果边界：候选 `prime-structure-computational-number-theory-evo-49b98a088bfa` 的 development 目录校验通过，但独立评审认为候选不适用于两个隐藏文献案例且其中证据边界未保持，仅隐藏 pilot interval-05 通过。因此最终状态是 `heldout_failed_shadow`、`promotion_eligible=false`，没有写入 active Skills。这是受控自进化正确拒绝，不是待绕过的格式故障。
+- 验证：自进化专项 `7 passed`，新增开发文献 raw alias 成功规范化并 completed replay、unknown/held-out raw aliases 仍拒绝测试；Ruff、Mypy、py_compile 全绿。真实报告与 artifact 位于 `runs/contest-delivery/science125-q001-full-feature-live-v2/evolution-v1/`。
+
+### P-20260813-142 - 宽泛 Q1 自进化文献排序把生物医学语义的 prime 误当数论素数
+
+- 状态：Open，非本次 ID 规范化阻塞；当前候选已经 held-out 失败且未激活，因此没有污染 active Skills。
+- 发现时间：2026-08-13，对 `evolution-v1/evidence-to-skill-evolution.md` 做 live 结果只读审计时。8 条自进化文献中包含 `Signals through T cell receptor-zeta chain alone are insufficient to prime resting T lymphocytes.`，其 `prime` 是动词“启动/激活”，不是数论素数；被引 292 的软影响力代理不能弥补领域不相关。
+- 根因：第 1 题是“What makes prime numbers so special?”宽母题，当前 evolution paper rank 主要依靠查询 token/TF-IDF 与 citation proxy；英语同形词 `prime` 可获得表面命中，而没有独立的数学/数论领域一致性判断。该问题与 DOI/被引元数据真实性无关，也不能通过提高被引阈值解决。
+- 风险与边界：无关高被引文献可能稀释 development evidence 并诱导候选抽象出错误的跨域经验；本轮独立 held-out 门已将候选保持为 `heldout_failed_shadow`，所以不得把它当作高质量可晋升 Skill。不能为了交付绕过 held-out 或手工激活。
+- 下一步：在生成下一候选前增加领域一致性**软过滤/重排**，优先复用方向链已经锁定且通过目标相关性检查的 planning shortlist，或要求题名/摘要同时命中 `prime number`、`number theory`、`arithmetic` 等数论语境并对 T-cell/protein 等冲突语境降权；保留 citation/DOI 为次级质量信号，避免写死期刊或严格阈值。
+
+### P-20260813-143 - 锁定检索目录字符串被原样渲染为参考文献，污染人类可读 PDF
+
+- 状态：Resolved；完成态标准 `plan/` 五制品已恢复原字节，清洁展示版独立发布在 `plan-polished-v2/`，没有修改外层完成回执或重跑模型/预实验。
+- 发现时间：2026-08-13，对 Q1 v2 最终 PDF 做人工可读性检查时。
+- 根因：最终计划中的 `references` 为真实性门锁定的完整目录字符串，除作者、题名、日期、期刊、DOI、URL 外还故意保存 record ID、完整摘要、MathML、检索谱系、被引来源和 record hash。旧 renderer 只会整理 mapping reference，对字符串直接 `_text`，因此约三页审计传输内容进入六页 PDF。上游 JSON 和文献真实性并无损坏，问题只在 presentation boundary。
+- 通用修复：renderer 新增与题目无关的书目投影器，字符串和 mapping 均只在人类输出中显示作者、题名、年份、期刊/会议、正式 DOI（缺失时仓储 DOI）、可选元数据来源和 URL；摘要、MathML、检索谱系、hash、被引/影响因子审计字段继续逐字保留在 `research-plan.json`。manifest 升为 v2，记录投影版本、display references 及程序计算的 display hash。
+- 完成态边界：首次本地重渲染曾显式覆盖标准五制品，随即识别到 `delivery-report.json` 与 `08-render-plan.json` 已锁定旧 hash。已从内容校验过的本地归档精确恢复 JSON/MD/TeX/PDF/manifest 原字节；新增 `materialize_versioned_contest_plan_presentation` 强制 source/output 不同，先重验标准 manifest 和四项 inventory，再在 sibling 目录生成展示版及 immutable `presentation-render-audit.json`。审计绑定旧五制品、delivery report、render stage receipt、outer direction result 与新五制品，明记 scientific content 未改变及所有模型/检索/预实验/正式实验调用均为 0。
+- 验证：renderer 专项 `12 passed`；与 direction plan、research loop、Science125 batch 联合 `41 passed, 1 skipped`；Ruff、Mypy、py_compile 全绿。清洁 PDF 为 4 页，PDF 文本中的 `record_id`、`完整摘要`、`mml:math`、`真实检索谱系`、`record_sha256` 计数均为 0，两条真实书目信息仍存在。完成态 `--resume` 返回 `already_complete_no_model_call`，provider escrow 前后均为 10 文件且集合 hash 同为 `bc3d382ad50649c9073ca0a1e227520354e0c6685d3efd3f599e4c74624c8fbe`。展示审计 hash 为 `e8017803f6616a3a12aefc7b1abae16385edef6028bf925fcf173afb8b1da93f`。
+
+### P-20260813-144 - Windows LaTeX 成功构建时后台 stdout reader 可能按 GBK 解码失败
+
+- 状态：Open，Low；本次两个 PDF 均真实编译、可提取文字且内容审计通过，不影响已发布制品，但编译日志捕获可能不完整。
+- 发现时间：2026-08-13，对 Q1 v2 展示版执行两次真实 `latexmk` 构建时。
+- 现象与原因：`compile_research_plan_pdf` 使用 `subprocess.run(..., text=True)` 而未显式指定 encoding/errors；当前中文 Windows 默认 GBK，TeX 输出含不能按 GBK 解码的字节时，Python `_readerthread` 抛非致命 `UnicodeDecodeError`。主进程仍收到 return code 0，PDF 编译、`pdftotext` 与 hash 校验均成功。
+- 下一步：待避开 `src/autoresearch/research/plans.py` 当前并行修改后，为 LaTeX 子进程捕获显式配置容错编码并补 subprocess 回归测试。不得把该日志警告误报为 PDF 未生成，也不能仅因隐藏 reader 异常跳过 PDF 文字验证。
+
+### P-20260813-145 - 参考题名中的 Unicode 数学上标在 CTeX 字体中视觉丢字
+
+- 状态：Resolved；只改变人类参考文献投影，源 JSON、post-review 标准 plan 和既有完成报告均未改变。
+- 发现时间：2026-08-13，视觉检查 post-review PDF 最后一页书目时。
+- 现象与根因：真实题名包含 `4⋅10¹⁸`。虽然源 Unicode 合法，当前 CTeX 字体组合对 `⋅` 和 Unicode superscript 的 glyph/fallback 不稳定，视觉上可能变成 `4 10¹`。这不是文献元数据错误，也不能通过改写 JSON 证据解决。
+- 修复：reference display projection v2 在题名/不透明书目显示层把 `⋅`/`∙` 规范为 `×`，把连续 Unicode superscript run 规范为一个 `^` 加普通字符（`¹⁸ -> ^18`，不变成 `^1^8`），并同步支持 subscript run 到 `_...`。TeX 的既有 escape 将 `×` 渲染为 `\times`，其余为 ASCII-safe 文本。作者、DOI、URL 和 JSON 原值不变。
+- live 结果：仅从不可变 `post-review-revision-v1/plan/research-plan.json` 生成 sibling `plan-presentation-v2/`；源五制品逐项仍与 `post-review-delivery-report.json` inventory 相同。新 PDF 5 页，SHA-256 `56b8e2af88ce5b96549fa8781c1318f5beccb1b3ae6b52c3af2d76a0df945313`；manifest SHA-256 `1eab069abc1aeb6dcbabd01f475829657c0d3cce235cd2954a3e4233e22ae477`；presentation audit artifact hash `a7a158934f164ac4ad819b52e90441747f4b16e0a281fc628a69e0d2a2687810`。审计绑定旧 post-review report、fresh review、issue coverage audit 与 post-review plan artifact，模型/检索/实验调用均为 0。
+- 最终报告：Q1 repair 随后写出 immutable `post-review-delivery-report-v2.json`，文件 SHA-256 `35e938d0f0247bb7e9832dc65efcbb9b8cd9b2dc5ebab295b98c04b8034c1009`、artifact hash `2b377b4e67d706774e57fe39a4c929515215f98e221d8c2bc6102b49d04f4b31`；它绑定本次 presentation audit/manifest/PDF 与 superseded v1，standard 未改变。
+- 验证：renderer `13 passed`，Ruff、Mypy 通过；TeX 含 `4\ensuremath{\times}10\textasciicircum{}18`，`pdftotext` 得到 `4×10^18`。150 DPI 原尺寸页图人工检查确认 `4×10^18` 清晰完整；Unicode 原字符和五类内部 lineage 标记在新 PDF 中计数均为 0。
+### P-20260813-146 - Q1 post-review 修订仍未通过新独立科学评审
+
+- 状态：Open scientific risk；版本化研究计划、真实预实验证据和评审工件已完整交付，但不得宣称评审通过或可直接进入正式实验。
+- 发现时间：2026-08-13，对 Q1 post-review 修订版执行新的一次独立科学评审时。
+- 事实：修订前独立评审为 `major_revision`（1 major/2 minor）。一次有界 Qwen 修订补入 HL k-tuple 生成性零模型的输入、构造、重复、指标、决策与诚实降级路径，并补入 wheel-210 区间异质性和 `m=4/6` 未来敏感性。确定性 issue-coverage audit 10/10 通过，但新鲜、不读取旧评审结论的独立评审仍给出 `major_revision`（2 major/2 minor）。
+- 新 major：（1）HL 生成器对 `m=5` 排列熵的工作站可行性、复杂度和无歧义降级触发阈值仍不够具体；（2）wheel-210 在区间2 `p=0.08` 的非显著性虽诚实报告，但尚缺 gap 尾部、tie 比例、residue-path 覆盖等预注册诊断规则。新 minor：`m=5` 的理论选择依据不足；`segment_size=4096` 缺敏感性检验或理论辩护。
+- 处置：按“一次修订+一次新评审、不循环”合同立即停止，不用格式或程序审计覆盖科学结论。`post-review-delivery-report-v2.json` 如实绑定旧/新评审、修订、真实 pilot、四格式计划和 5 页 PDF；正式实验与论文字段仍为 false。
+- 附带工程事件：第一次 review 启动在 provider 前因本地 wrapper 重复传入 `thinking_mode` 抛出 `TypeError`，没有任何 provider 请求或工件；修正为直接使用组件内建 disabled-thinking 调用后唯一 provider 评审成功。这不是科学结论的反复评审。
+- 下一步：若以后恢复正式实验，先独立完成 HL 生成器小型原型/资源阈值和区间2异质性诊断预注册，再决定是否进入正式计算；不应为了获得 pass 而继续自动修改。
+
+### P-20260813-147 - 规划目录预算与模型稀疏选择使最终计划只保留两条参考文献
+
+- 状态：Resolved in code；旧 Q1 完成制品保持不可变，不能把其 2 条书目冒充新合同结果，需在 fresh run 中生成并验证 5–10 条书目。
+- 严重性：High。真实 Q1 检索有 141 条去重记录、120 条 provenance-complete eligible 记录，但旧 14K 完整记录预算只容纳 3 条 planning records；模型最终又只选择 2 条，系统把“模型没有逐条选择”误当成“书目应缩到 2 条”。这不是文献源不足。
+- 修复：完整记录上下文预算提升到 64K，规划选择最多 10 条并在 production 路径要求至少 5 条；相关性继续主导，被引、可核验影响因子、发表状态/DOI 和跨源信号仅软排序。新增查询主题/来源/题名多样性小权重；对 authorless review、review venue 与疑似整本目录摘要只软降权，不在稀缺领域硬删。withdrawn/retracted 排除；unknown citation 始终保留为 unknown。为防高引同形词凑数，长查询记录须在同一 query theme 命中至少 3 个独立 token，或命中一个连续多词 query clause；20,000 引用的 T-cell `prime` 和跨主题拼凑 generic token 的认知论文因此不能进入数论书目。
+- 模型/程序边界：Qwen 看到完整锁定 5–10 条目录并可返回最关键编号；程序只在同一已排序、真实、eligible locked catalog 内补到 5 条，最多 10 条，绝不新增条目。新 artifact 明记 `model_selected_indices` 与 `program_supplemented_indices`，不能声称模型逐条使用了程序补充的背景/方法文献。预实验通过 loader、文件 hash 与语义核验后，其程序内置 DOI 方法来源可与检索 shortlist 合并，按 DOI identity 去重并限制 10 条；这表示 DOI-bound/hash-bound，不冒充本轮联网逐 DOI 复核。最终 direction、Science125 plan-only、fresh/resume final revision、scientific amendment 和 targeted repair 在渲染前均以 5–10、唯一性和 locked-subset 合同失败关闭。
+- 验证：专项 reference/direct/revision/direction/research-loop/batch/amendment/repair 联合最终 `97 passed, 1 skipped`；Ruff、Mypy、py_compile 全绿。自包含证据 Agent 又在同一最终 worktree 交叉跑 reference-policy + embedded-evidence + render-v3 + research-loop，`40 passed in 14.55s` 且 Ruff/Mypy 全绿，证明两组合同同时成立。重复同一真实条目 5 次与同 DOI 不同文本重复均不能伪造数量。对 Q1 既有真实 literature artifact 做只读重投影得到 10 条（19,113 字符），其中 top 5 为 4 条正式发表来源与 1 条高度相关预印本，全集 3 条被引未知、0 条 withdrawn/retracted、T-cell/认知同形词/authorless Choice review 均为 0；与真实 pilot DOI 方法来源合并后锁定目录恰为 10 条且 9 条含 DOI URL。未写历史制品、未调用模型或文献 API。首次打印 Unicode 题名的 smoke 受 Windows GBK stdout 限制失败，改为 JSON ASCII escaping 后同一只读检查成功；该事件不影响选择、artifact 或公开 PDF 的 UTF-8/TeX 路径。共享 worktree 并行更新期间第一次 96-test 联合采样有 2 个 batch 断言失败；两项立即隔离重跑全过，随后收集数变为 98 的完整同命令为 97/1，未发现可复现代码缺陷。
+- 兼容性：新模型保留旧 direct/revision artifact 的缺字段 hash 兼容，便于审计历史制品；但 delivery acceptance 不因兼容加载而放宽。fresh 与 resume 都在 provisional 和 final revision 后显式验 5–10；对 Q1 旧真实 revision 的只读 gate smoke 得到 `legacy_reference_count=2`、`legacy_projection=null`、`new_locked_catalog_count=10` 和预期拒绝 `final bibliography must contain 5–10 locked references`。因此必须重新生成新版本，不能直接重渲染成 completed。
+
+### P-20260813-148 - 人类研究计划未内嵌真实预实验表图并泄漏内部路径与机器标识
+
+- 状态：Resolved in code and verified against the real Q1 preexperiment；历史完成制品保持不可变，只有新生成的 render-v3 才满足本合同。
+- 严重性：High。旧 `research-plan.json` 是内部 payload 的逐字副本，包含绝对 `artifact_path`、run/revision/adapter ID、hash 和检索 transport 字段；Markdown/PDF 又可能只让读者“参见 JSON/CSV/log”，没有把已经真实执行的指标、表格、图和有界分析直接放进研究计划。scientific amendment、targeted repair/finalize 与 prime feedback 的后续渲染路径还会丢失主链刚加入的表图。
+- 修复：新增通用 `contest_plan_embedded_evidence` 投影器，先重验预实验 artifact 语义 hash、metrics SHA、manifest SHA、manifest 中每个原始文件的 SHA/大小/根目录边界，再由程序确定性派生总体对照表、固定分析单元表和水平区间图；语言模型不抄数字、不画图。没有已完成且可报告的数值预实验时返回 `None`，不造表、不造图。所有带已验证 pilot 的 fresh/resume、科学修订、定向修复/finalize 与 feedback render 均接入同一 bundle 和 manifest-only provenance bindings。
+- 人类交付边界：renderer manifest 升为 `contest-direct-plan-render-v3`。公开 `research-plan.json` 变为科学内容白名单投影，Markdown 内联 SVG，TeX/PDF 内嵌 PGFPlots 图、两张数据表、图表配文分析和解释边界；数据/基线/指标及 machine values 在展示层转为中文。完整内部源只写到 `_private/research-plan-source.json`，绝对路径、hash、run/adapter/revision/record ID 只留在私有 source/manifest，不进入公开 JSON/MD/TeX/PDF。resume loader 只接受 v3 与其 private/public 双 hash binding，旧 v1/v2 raw render 不再被视为合格完成态。API 拒绝 `_private` 和 legacy top-level `research-plan-source.json`，且只有 `plan/research-plan.{json,md,tex,pdf}` 一类明确人类制品归类为 `plan`；system-authored/revision/manifest 归 internal。
+- 图表可读性：总体表把每行恒定的 5 个固定分析单元和 199 次抽样移入表注，正文保留 7 个关键列；未知 future-adapter 字段不会把英文 machine token 当中文表头。图采用蓝色区间、橙色点、零参考线、人类中文类别标签，并在每个点旁直接标 delta，读者不依赖颜色识别。解释明确固定区间重采样范围不是总体置信区间，预实验不能推出普适机制、因果解释或数学证明。
+- 真实 Q1 验证：只读复用既有真实素数 pilot，未调用模型、未重跑实验，生成 `runs/manual-live/task-q1-self-contained-evidence-smoke-v4/`。公开两表的每个数值均与原 `metrics.json` 精确相同；manifest 为 v3，包含 2 tables、1 figure、19 个已验证 provenance bindings。PDF 为 A4、5 页、未加密，page 4 目检表格/图可读；`pdftotext` 同时提取四个中文零模型标签和四个 delta 数值。公开 JSON/MD/TeX 联合扫描对 `.json/.csv/.log`、内部 ID、hash/path 为零命中，private source 存在且不公开。
+- 验证：相关 7 组单元/API 测试 `61 passed in 11.42s`；Ruff 全绿；Mypy 7 个生产模块全绿。真实数值/泄漏/PDF 标签复核脚本输出 `PASS exact_numeric_projection public_leak_scan pdf_labels_and_values=8/8 tables=2 figures=1 bindings=19`。TeX helper 仍出现既有 `P-20260813-144` 的非致命 Windows GBK reader-thread 警告；实际 PDF 编译、文字提取与独立 `pdfinfo` 均成功。
+- 边界：该 smoke 沿用历史 Q1 两条文献，只证明“真实 metrics → 自包含表图/公开计划”的展示链，不是新的最终 5–10 条文献交付；新文献数量与锁定目录合同由 `P-20260813-147` 单独负责。正式实验和结果论文均未执行或声称完成。
+
+### P-20260813-149 - API 与 Science125 batch 曾把 runner 状态或文件路径误当成人类计划已交付
+
+- 状态：Resolved in code；历史 completed receipt 不会被原地升级，必须在新验收器下重新生成或重跑 attempt。
+- 严重性：High。旧 API 在 runner 任意返回后直接把 job 写为 `completed`；旧 batch 只要看到 `status=completed + preexperiment_executed=true`、任一计划路径，或 delivery report 的 hash 正确，就会写 completed state。两条路径都没有重新打开最终人类 JSON/Markdown/TeX/PDF，因此可能把 2 条参考文献、旧 renderer、路径/机器 ID 泄漏、无表图的 pilot 计划，甚至仅有伪文件路径的 fixture 冒充交付。
+- 修复：新增只读统一 `contest_human_delivery_validator`。完成门要求 renderer manifest v3、JSON/Markdown/TeX/PDF/private source 五项 SHA-256/大小绑定、source/public canonical hash、5–10 条唯一真实目录投影、逐条公开 URL/DOI 与 manifest source projection 绑定、真实 PDF 文字层，以及四种公开表示均无绝对本机路径、sidecar 文件名、raw hash、run/adapter/record/revision ID 或已知 machine value。caller 提供 locked catalog 时继续执行 exact-subset 验证；API/batch 没有单独传目录时使用已经由上游 5–10 locked gate 生成并由 source/public/manifest 三重绑定的 projection，不重新联网查文献。
+- pilot 分支：runner 明示 `preexperiment_executed=true` 时，公开和 private source 必须同时含结构化 evidence，至少一张有数据且有中文分析的表、一张程序结构化区间图、综合分析；Markdown 必须内联表和 SVG，TeX 必须内嵌 table/TikZ，PDF 文字层必须含表图标题。manifest 私有 provenance 逐文件重算 SHA/大小且至少绑定 metrics 和 execution artifact。无 pilot 时 evidence/count/bindings 必须为空，正文必须明确“尚未执行预实验”，不得造图。
+- 接线：Science125 fresh 在写 completed receipt 前验收；resume 每次重新验文件，旧/篡改状态或缺少当前 validation receipt 时返回未完成并创建下一个隔离 attempt，不影响其他问题。API 在线程 runner 返回后、写 `completed` 前验收；任何不合格结果进入 `failed` 并保留错误类型/原因。私有 source 与 internal artifact 的 API 分类/下载边界保持不变。
+- 验证：validator 新增 11 个定向测试；batch 新增 false completion 隔离与旧 completed resume 重验；API 新增无验收不可 completed。相关联合 `32 passed`，再与 reference/direct/revision/render/evidence/research-loop/amendment/repair 合跑为 `141 passed, 1 skipped`；Ruff 全绿，三个生产模块 Mypy 全绿。真实 `task-q1-self-contained-evidence-smoke-v4` 的第 4 页 7 列表、第二表和四标签区间图已独立目检可读，但该 smoke 沿用旧 2 条文献，统一门按预期拒绝 `public bibliography must contain 5–10 references`，所以不能作为最终交付。
+
+### P-20260813-150 - 单轮宽题检索直接进入 Skill/假设使选题缺少“先收敛、再查最近工作”的证据阶段
+
+- 状态：Resolved in code；主 research loop 已切换到版本化两阶段协议并通过 fresh/resume 联合测试，尚待用户授权后执行一次真实外部 broad→focus→targeted→merged smoke。旧完成制品保持 legacy，不会被原地冒充为新协议结果。
+- 严重性：High for research quality。原轻量链虽已做到真实 ArXiv/OpenAlex 检索和相关性优先的书目排序，但宽母题的首轮查询同时承担“了解领域、决定具体方向、找方法和证明新颖性”四种职责。高被引或高影响载体只能作为可靠性软先验，不能证明候选相对最近相邻工作有新增贡献；在还未收敛科学对象时注入学科 Skill，也可能让方法先验反过来决定选题。
+- 核心修复：新增 `contest_direction_focus_literature.py`。它从 Skill-free、hash-bound 的 broad literature artifact 构建最多 16 条完整记录的有界 discovery projection；相关性主导，并继承近期/年龄归一化被引、发表/DOI、来源与查询主题多样性的软排序，未知被引保持 `None`，不截断单条摘要。projection 明记 `broad_discovery_only_not_final_bibliography`，且发表状态只保留上游 provenance、`status_not_rechecked`，不得冒充本阶段重新核验。
+- 科学决策边界：Qwen 只做一次候选 focus 构思，独立 Qwen 只做一次选择；无格式修复循环。每个候选必须输出 `focused_direction_cn`、可证伪目标、exact nearest-work、methods/metrics/baselines、counterevidence/failure 三类定向检索词和 broad 证据序号。程序计算候选 ID、selected focus ID、hash 与状态；明确 `unverified_until_targeted_nearest_work_search`，不宣称创新已经成立。两份原始 completion receipt 在解析前 write-once 保存，partial/completed resume 复用本地回执并重验消息、模型输出投影与文件 hash。
+- 第二轮真实检索边界：selected focus 通过现有 `retrieve_contest_direction_literature` 串行执行定向检索；broad 与 targeted 均强制 `method_skills=()`。API 不再自己调用 `default_contest_direction_searchers()` 新建客户端，而要求 caller 注入并在两轮之间复用同一 Arxiv/OpenAlex client 实例，以保留既有跨阶段访问频率限制。targeted binding 锁定 parent broad hash、focus hash/ID、targeted literature/catalog hash 和 raw query receipt；仍需后续 strict merged artifact 才能供 Skill router 与最终 5–10 条书目使用，不能伪造单次 retrieval artifact。
+- 合并与 Skill 路由修复：新增独立 `contest-direction-merged-literature-v1`，同时绑定 broad artifact/catalog、focus artifact/selected focus、targeted binding/artifact/catalog，逐条保留 origin record/hash、source phase、query、fetch hash 和检索时间，且明记 `two_distinct_searches_not_one_retrieval`。跨阶段去重在双方均有规范 DOI 时只认 DOI 交集，DOI 缺失时才允许 Unicode-safe 高相似题名且必须作者重叠；避免同名误并。最长摘要、可核验被引来源/日期、最保守发表状态来源/日期与一致 DOI 均进入 merged record，unknown citation 不变成 0，withdrawn/retracted 不在 merge 层机械删除。Skill router 新增 v3 两阶段证据合同，只接收程序显式选择且未截断的完整记录子集，继续执行 14 KiB 门；旧单检索字段保持空，九项 broad/focus/targeted/merged 哈希独立绑定，v1/v2 历史行为不变。
+- 验证：新专项 `5 passed`，覆盖两次模型调用、宽容 alias 解析、scientifically incomplete 响应一次失败不重试、第一次完成后第二次失败的局部恢复、completed 零 provider/search replay、空 Skill、targeted source 串行调用、原始回执和篡改拒绝。与 literature/plan/checkpoint 联合 `37 passed, 1 skipped`；生产和测试 Ruff 全绿，生产模块 Mypy 与 py_compile 全绿。未联网、未调用真实模型，符合本子任务“先冻结独立核心、不直接改主 loop”的边界。
+- 可执行性 follow-up：focus API 新增可选 `executable_adapter_capabilities`。程序只保留 adapter ID、科学对象、观测量、支持指标、支持零模型、中文执行边界和描述；runner/import/study phase/Skill 等额外字段即使由 caller 传入也不会进入 prompt、receipt 或 artifact。两次 prompt 均明确能力只供低成本 pilot 可行性判断，不是事实证据、方法答案或强制选题；候选可以选择 `no_adapter`，但必须给出 pilot 可行性说明，selector 也被要求在选择无适配器方向时诚实披露。能力目录及其程序 hash 同时进入 focus input、raw receipt 消息和最终 artifact hash；默认空目录保持原行为。core 专项现为 `6 passed`，新增消息级测试验证能力可见、Skill/runner 不泄漏、两个候选仍由模型自主提出且可诚实选择 `no_adapter`。
+- 入围状态核对 follow-up：`run_contest_direction_focus_selection` 新增默认 `None` 的 caller-injected `publication_status_verifier`。启用时仅对程序排序后拟进入 focus 的 arXiv shortlist 串行核对；withdrawn/retracted 记录在进入 prompt 前排除，并从有界 reserve 候选补位；非 arXiv 不触网，unknown 或 verifier 异常保留上游状态并明确标为 degraded，绝不伪判正常。独立 write-once `direction-focus-status-verification.json` 逐条绑定原 record ID/hash/URL、原始与核后 status/source/as-of、outcome、错误及 check hash，receipt 总 hash 同时进入 focus 输入、消息和 artifact；loader 用本地 receipt 重推 evidence，completed resume 零网络。默认 `None` 继续明确标注 `status_not_rechecked`，不冒充已核验。专项现为 `9 passed in 35.69s`，覆盖 top withdrawn 排除并补满 16 条、prompt 零撤稿暴露、验证失败时 unknown 原样保留、completed 零网络恢复及 receipt 篡改拒绝；Ruff、Mypy、py_compile 全绿。主 loop 的共享 ArxivClient 注入由独立集成改动完成，本 follow-up 未改 loop。
+- 合并/路由验证：merged、Skill router 与 focus 联合 `23 passed`；专门覆盖 DOI 冲突不合并、无 DOI 同题名但作者不重叠不合并、中文题名身份、跨阶段来源保留、自洽但无法由四个上游工件重推导的伪 merged 拒绝、v3 不冒充单检索、显式子集与 14 KiB 完整记录门；变更生产模块 Ruff、Mypy 均通过。
+- 主循环接线：输入/交付 schema 升为 v2，正式顺序为 broad retrieval→evidence focus→targeted retrieval→strict merged catalog→5–10 条 planning lock→Skill router v3→hypothesis→真实兼容 pilot→反馈/目标评审→中文计划→独立科学评审，共 12 个完成阶段。broad、targeted 和 arXiv finalist verifier 在同一进程复用同一客户端/limiter；focus 只接收安全 pilot 能力投影，不接收 Skill；最终书目相关性只用 `focused_direction_cn + targeted queries` 排序，broad query 不等权回流。Skill、假设、适配器判断和后续计划全部消费聚焦方向；只有聚焦方向本身同时满足 prime/gap/information 能力边界时才可选现有 pilot，母题 Q1 不再提供兜底绕过。交付报告同时保留 parent direction 与 focused direction，并分别绑定 broad/focus/targeted/merged/planning hashes。
+- 迁移/恢复：fresh 在新目录生成 v2；一般 partial resume 从首个缺失工件继续，completed resume 严格重验整个两阶段链后零模型/零检索返回；v1 单检索 input、`source_direction_delivery` 复用和旧 completed artifact 均明确拒绝并要求新建 fresh run，不能通过字段补标迁移。程序化 mock E2E 已覆盖 fresh→completed resume、12 阶段 inventory、5–10 条锁定书目、共享 limiter、focus 无 adapter 分支和 legacy-before-provider rejection。
+- 集成验证：research loop、focus core、merged catalog、Skill router、Science125 batch、API 和 human-delivery validator 联合 `77 passed`；相关生产/测试文件 Ruff 全绿，10 个生产目标 Mypy 全绿，关键模块 py_compile 通过。未联网、未调用真实 Qwen，故这里只宣称代码和确定性集成已完成，不把 mock 结果冒充真实文献或最终 Q1 交付。
+
+### P-20260813-151 - focus 内层回执与外层上下文晋升之间仍有极窄崩溃窗口
+
+- 状态：Open，Low；不阻塞两阶段检索、研究计划交付或断点续跑，但后续应做确定性 context reconciliation。
+- 发现时间：2026-08-13，将 broad→focus→targeted 接入轻量方向主循环并审计 provider escrow、80% 上下文和 completed-task journal 时。
+- 事实边界：focus core 的 brainstorm/selection 先分别写自己的 raw response receipt，主 loop 又在更外层用同一 `focus-selection` ContextRuntime task 和 provider escrow 包住两次调用。正常 fresh 及一般 resume 时，两条调用都进入同一 active task，完成后晋升为可供后续 80% 压缩的 completed context；内外回执同时保证 provider 结果不重复付费。
+- 窄风险：若进程恰在 core 已写完其中一条内层 receipt、但外层 ContextRuntime task 尚未成功退出时崩溃，resume 会由 core 直接读内层 receipt，不再把那条 completion 重新穿过 ContextRuntime。此时科研 artifact、raw receipt、hash 和恢复均完整且不会发生第二次 provider 请求，但 completed-task context journal 可能少一条已完成交互，后续 Dreaming/压缩上下文因而不完整。
+- 当前处理：本轮不扩张 core 的 crash-reconcile 合同。组合故障测试真实叠加 inner focus receipt、outer provider escrow 与 `ContestDirectionContextRuntime`：brainstorm 成功、selection 超时后，外层 focus escrow 为 1、completed context 为 0；resume 保持 brainstorm receipt 字节不变，只支付/调用缺失 selection，最终外层 escrow 为 2、两份 inner receipt 各 1。续跑成功的 selection 被晋升并在下一任务上下文可见；中止任务中 brainstorm 的独有 response marker 不进入 completed history，但 brainstorm 与 selection 原始调用都在 OB raw memory 中。另有正常 fresh 外层 escrow `1/2/1`、四个 literature stage checkpoint 和 completed artifact resume 零 provider/零 search 覆盖。后续可从已验证 inner receipt 向 completed task journal 做幂等确定性 reconciliation；不得通过重放 provider 或把未核验文本塞入记忆来修复。
+- 相关限流边界：同一进程内 broad、targeted 与 arXiv finalist verifier 共用一个客户端和 limiter；跨进程 circuit state 由现有持久回执/429 breaker 防止重复已完成请求，但普通最小间隔时钟不会跨进程继承。恢复时只有首个缺失 source/query 会联网。
+### P-20260813-152 - Science125 plan-only 与 API 仍按旧单轮文献合同解释两阶段主链
+
+- 状态：Resolved in code；旧 completed receipt 保持 legacy，不能在 resume 或 API 进程重启时原地升级为新合同结果。
+- 严重性：High for delivery continuity。主 research loop 已升级为 broad→focus→targeted→merged/planning lock 的 v2 协议，但 Science125 无兼容预实验 fallback 仍硬编码读取 `literature/direction-literature.json`、使用父问题作为假设/计划方向，并接受 v1 runner 回执；API 阶段表仍为旧 9 段，且 permissive validator 可让旧 delivery 被记成 completed。这样会使非 Q1/无 adapter 分支在真实两阶段检索已完成后无法形成计划，或把旧单轮状态误报为当前完成态。
+- 修复：plan-only fallback 现在通过主循环的 strict loader 重算并核验 broad、focus、targeted、merged、finalist status 和 5–10 planning lock；只消费 `focused_direction_cn`、v3 Skill router 与同方向 hypotheses，同时把 Science125 父问题作为问题边界传给计划作者。报告绑定两次检索、聚焦决策、合并目录和 planning lock，明确无重复检索、无预实验。batch direction result/checkpoint、question completion、request/report 与 API runner/batch service 均要求 `two_stage_literature_v1` 和当前 v2 schema；legacy completed 在 resume/进程恢复时降级或新建隔离 attempt，绝不补字段升级。API 阶段投影同步为真实 1–12 段。另修复 API 传入数字 question ordinal 时 batch 对字符串 `.strip()` 的不兼容，并移除 batch API 实际不支持的 `if_supported` 选项。
+- 验证：Science125 batch + API 聚焦 `27 passed`；两阶段 focus/merge/router/main-loop + batch/API/adapters 联合 `76 passed in 10.60s`。四个相关生产/测试文件 Ruff 通过；两生产模块 Mypy 通过；未联网、未调用模型、未修改历史运行制品。
+- 边界：plan-only 仍必须通过统一 human-delivery validator 的 render-v3、5–10 真实文献和“尚未执行预实验”门。API 单方向 `if_supported` 若没有 adapter 且没有人类计划仍会被 validator 拒绝；完整的无预实验交付由 Science125 batch 的显式 fallback 负责。该 fallback 沿用既有单次计划作者设计，尚未接独立科学评审；若“最终计划一次独立评审”也覆盖无 adapter 的其余问题，这是后续科学质量缺口而非本次两阶段兼容问题，不能把 Q1 主链已有评审误算到它。后续还可把当前同包私有 `_load_completed_two_stage_literature` 抽成公共 strict loader，但二者均不应被隐瞒为已完成。
+
+### P-20260813-153 - 同题异 DOI 及 DOI/仓储 DOI 跨命名空间碰撞会误合并不同工作
+
+- 状态：Resolved in code；这是文献身份与元数据真实性修复，不改变检索、选题、Skill、假设或计划的科学内容。
+- 严重性：High。阶段内 `deduplicate_papers` 原先在两条记录都存在且规范化后不相等的正式 DOI 时，仍可能用高相似题名回退去重；跨阶段 merged identity 又曾把正式 DOI 与仓储 DOI 放在同一集合比较。两类情况都会把不同工作误当同一工作，使最长摘要、最大被引数和最保守发表状态跨论文串联，进而污染 focus、书目、Skill 与假设证据。
+- 修复：正式 DOI 与 repository DOI 现在是两个严格命名空间。同命名空间相等才可直接判同；任一同命名空间双方 ID 冲突立即判异，不允许题名回退；跨命名空间字符串即使相等也不判同。只有没有这些冲突时，才允许“高相似规范题名 + 至少一位规范作者重叠”回退；无作者或同题异作者记录继续分开。
+- 回归证据：新增同题同作者但正式 DOI 不同、仓储 DOI 不同、正式 DOI 对仓储 DOI 字符串碰撞、同仓储 DOI、无 DOI 同题作者重叠/不重叠反例；另从 `contest_direction_literature` 入口验证不同 DOI 的摘要、被引与 withdrawn/published 状态不会互相混入，并从 broad/targeted merge 验证 `merged_record_count`、`cross_stage_deduplicated_count` 与状态/引用来源不串。
+- 验证：文献模型、阶段检索与 merged 专项 `30 passed`；literature property + focus + merged + Skill router + hypothesis + planning + main loop 联合 `126 passed, 1 skipped`；相关 Ruff、Mypy 与 scoped `git diff --check` 均通过。测试未联网、未调用模型；该缺陷可由确定性反例完整覆盖，不需要外部 API smoke。
+- 后续：fresh live 后仍须做独立科学审计，确认 targeted nearest/method/counter evidence 实际影响 Skill 与假设，而不是只在 merged artifact 中存在；这属于另一个科学接地合同，不能用本 DOI 修复代替。
+
+### P-20260813-154 - adapter 关键词与机器字段相等不能证明科学对象和 runner 语义相容
+
+- 状态：Resolved in code；专项静态检查与 45 个 focus/hypothesis/research-loop 测试通过。真实 Q1 的旧 raw focus 回执应由主任务按新门本地重投影后继续，不能再执行不相容 pilot。
+- 发现时间：2026-08-13，真实 Q1 focus 候选把“素数签名的 ℓ∞ 度量诱导间隙”声明为 `prime-gap-information-theory-v1` 可执行。真实 runner 实际只在冻结整数区间生成连续素数并以 `numpy.diff` 计算普通算术差，完全不构造素数签名、度量空间或诱导间隙。
+- 根因：focus 只检查 `adapter_id` 是否存在；hypothesis/最终 adapter selection 虽检查 `scientific_object/observable/metric/null_models` 的机器字段，但方向门仅凭“素数+间隙+信息/熵”关键词通过。模型可以在 prose 中改变科学对象，同时原样复制机器字段，造成实验结果与研究假设不对应。
+- 最窄修复：新增共享 `contest_adapter_semantics.py`。通用层要求 adapter ID、科学对象、观测量、主指标和全部零模型严格落在 descriptor 合同内；当前 prime runner 的 adapter-specific 层拒绝派生素数签名、ℓ∞/无穷度量、表示/嵌入/映射诱导的距离或间隙，以及明确未支持的替代主指标。focus 错误能力声明确定性降级为 `no_adapter` 并写明 reason code；hypothesis 原始模型回执保持不变，但可信候选投影降级为 `no_adapter`；最终执行选择同时核对完整 focus 与候选语义，因此 focus/假设矛盾时失败关闭。strict artifact validator 重验同一语义合同，不能靠重算外层 hash 恢复错误 adapter 绑定。
+- prompt 边界：focus 与 hypothesis 均明确“逐字机器字段相等仍不充分”，候选只要需要 runner 边界外的表示变换、诱导距离/间隙或未列主指标就必须返回 `no_adapter`。这只是可执行性合同，不评价研究方向本身优劣，也不禁止把签名模型作为不执行的反证/替代解释。
+- 反例验证：普通连续整数素数的相邻算术差 + 注册排列熵/零模型仍兼容；“素数签名 ℓ∞ 诱导间隙”在 focus、hypothesis 和最终 selection 三层均不能取得执行权；普通假设仅在 `strongest_counterevidence_cn` 提及签名模型不会被误拒。验证命令：三专项 `45 passed in 12.20s`；相关 4 个生产模块 Mypy `Success: no issues found`；相关生产/测试 Ruff format/check 全绿。
+- 边界：规则只对已注册 runner 给出 adapter-specific 语义排除；新增 adapter 时必须增加对应能力合同/反例，不能假设任意开放世界科学语义可由关键词完全判定。未修改文献排序、batch validator、真实文献或历史实验数据。
+### P-20260814-001 - Qwen3.7 Max 官方上下文、输出与思考预算契约漂移
+
+- 状态：Resolved in generic architecture；未针对 Q1、素数或任何题目 adapter 做优化，未启动完整 Q1，也未调用付费模型。
+- 发现时间：2026-08-14，在核对当前 Qwen OpenAI-compatible 实际请求链与阿里云官方 `qwen3.7-max` 技术页时。
+- 现象：官方 1,000,000 是总上下文，不是单独输入或 `max_tokens`。旧预算直接采用思考/非思考模式最大输入 983,616/991,808，没有再为请求输出和官方声明的最多 10-token 生成偏差留空间；官方页第三行的 262,144 最大思维链长度未进入 capability；Qwen3.7 请求仍发送已废弃且在思考模式下不覆盖完整 completion 的 `max_tokens`；省略 `thinking_mode` 的请求在上下文预算中被错误记作 disabled，但真实 provider 默认产生 reasoning。campaign 配置还把已验证模型写成陈旧的 `qwen3-max`。
+- 根因：能力页解析器只读取六个数值中的前五个；`ModelContextBudget` 没有 mode input cap、完整 completion reserve、10-token allowance 或 thinking budget 自校验字段；通用 OpenAI-compatible client 没有按 Qwen3.7 的官方字段语义分派；task-context wrapper 计算默认预算后也未保证把默认输出上限写回真实 HTTP 调用。
+- 通用修复：
+  - 从官方页精确冻结 context=1,000,000、非思考 input=991,808、思考 input=983,616、两种 output=131,072、maximum reasoning=262,144，并继续用原始 HTML SHA-256 + replay cache 绑定来源；只允许缺少新 reasoning 字段的旧 cache pointer 重新拉取，篡改 source 仍失败关闭。
+  - hard input 改为 `min(mode maximum input, context window - requested full completion - 10)`；例如思考模式请求 18,000 completion 时为 981,990，请求官方最大 131,072 时为 868,918。预算 artifact 同时冻结 mode cap、10-token allowance、官方 reasoning cap 和显式 thinking budget；enabled 必须有正预算且不超过 262,144，disabled 必须没有预算。
+  - Qwen3.7 Max OpenAI-compatible payload 使用 `max_completion_tokens` 表示 reasoning + visible answer 的完整预算；generic/legacy provider 继续保留原 `max_tokens`。Qwen3.7 省略 mode 时按真实 provider 默认解析为 enabled/4,000，并在请求、上下文 artifact 和回放键中显式传输，不再伪装 disabled；显式 disabled 仍发送 `enable_thinking=false` 且无 budget。
+  - task-context 默认输出预算现在也写回真实 completion kwargs，保证预留值与传输值相同；`configs/campaign/qwen-dashscope.yaml` 改为 `qwen3.7-max`。
+- 验证：test-first 先复现动态 hard cap、262,144 漏解析、`max_completion_tokens` 缺失、默认 mode 漏传、旧 cache schema 和默认输出未写回等失败。最终 Qwen capability/client/task-context 与两个通用 context integration 文件共 `67 passed`；官方页 opt-in live smoke `1 passed`，实网核对上述六个官方数值和 981,990 hard cap；另核对两个 research-loop capability fixture `2 passed`。相关 Ruff 全绿，三个生产模块 Mypy 与 py_compile 全绿，campaign YAML 解析为 `qwen-dashscope/qwen3.7-max`。未输出密钥，未运行完整 Q1。
+
+### P-20260814-002 - 内核缺少可证伪机制研究的通用语义生命周期
+
+- 状态：Local contract resolved；只读外部验证 bridge 与跨域 shadow validation 仍 Open，Task 272.3/272.4 不得提前标记完成。
+- 严重性：High。既有 Control、Harness、Loop、Provenance 和 Evaluation 合同能记录运行与证据，却不能类型化表达 Observation → Problem → competing Hypotheses → discriminating Intervention → Evaluation，也不能阻止调用方把运行成功、自评或写出论文误当成机制成立。
+- 证据边界：自动科研一手与独立评估支持受限工作流串联、客观代码搜索和专家闭环中的局部机制提案，不支持稳定、独立、通用的可发表级自主发现。OPHIS 有团队研究发布与公开结果快照，但没有已查到的同行评审论文、完整搜索空间或独立复现，因此只作为设计启发，不作为验收数字。
+- 通用修复：新增 provider/topic-neutral `scientific_cycle` 合同，要求测量/不确定性、竞争解释、prediction/falsifier、判别性干预、comparator、changed/frozen factors、estimand/metric/decision rule 和逐假设三态评估；snapshot 内容寻址、全局 ID 唯一、正确阶段引用、同 cycle 紧邻 parent，并允许诚实未完成前缀。Knowledge 投影在 bridge 前只发布 `Declared`、`declared_assessment` 和 `external_validation=unverified`，且不混入 Harness、Loop、provenance 或 report 外键。
+- 独立审查修复：首轮复审发现投影未先验 hash、未验证裁决被写成已验证事实、谱系可伪造、平面隔离反例不足 4 个 P1。现已逐项加入失败测试并修复；第二轮复审确认无剩余 P0/P1。
+- 验证：scientific-cycle 专项 `39 passed`；全部 kernel `179 passed`；Qwen/context 契约 `67 passed`；官方模型能力页 live smoke `1 passed`；focused Ruff format/check、Mypy、py_compile、task-wave JSON 和 campaign YAML 解析均通过。新增生产模块、合成测试与架构证据笔记的具体题目术语扫描零命中；未调用付费模型、未运行实验、未迁移旧 workflow、未生成论文或授权发布。
+- 后续：272.3 必须只读解析并重验真实 ProvenanceBundle、Harness/Loop/Episode 和独立 EvaluationReport 后，才允许把声明评估升级为 verified；272.4 必须在至少两个无关 vertical 上做冻结预算 shadow 对照并报告全失败分母。当前不能宣称架构已得到因果验证或系统已达到发表级。
+
+### P-20260814-003 - 方向 A-1 旧运行的定向文献覆盖失衡且没有形成有效最终计划
+
+- 状态：Generic retrieval/coverage defects resolved through source-query-compiler-v2；精确 targeted lineage、五个独立证据锚点、work-family 去重和 context 可行性 DP 已接入并通过对抗复验。第一次 fresh 运行因独立的 Qwen token 字段契约错误失败；第二次 fresh 运行推进到 targeted coverage 后暴露 OpenAlex v1 语义压平缺陷，详见 `P-20260814-006`。两条失败根目录均已保留；第三条全新完整运行、独立评审和 PDF 仍待完成，故当前仍无本轮可提交研究计划。
+- 严重性：High for competition delivery。榜题要求展示“问题理解—知识整合—候选假设—证据梳理—研究计划—反馈修正”的闭环；旧 attempt-002 只完成阶段 1—9，第 10 阶段原始计划响应被数字证据守卫拒绝，阶段 11 渲染与 12 独立评审均未运行。
+- 检索事实：旧 broad 阶段得到 160 raw/128 records；targeted 计划四条查询、两来源，但 OpenAlex 有 3/4 条因直接接收不兼容 Boolean/通配符语法返回 HTTP 400，targeted 只得 31 records。合并后 159 条，最终 10 条中只有少数直接领域工作，多数为跨领域方法迁移。根因不是简单的总量上限，而是源语法未编译、角色被压成词袋、质量元数据可补偿语义相关性、且 planning lock 没有直接/方法/机制或零模型/反证的非补偿覆盖门。
+- 旧 pilot 边界：五个固定区间、约 312,400 个观测得到方向一致但较小的算术条件残差；聚合 raw Monte Carlo `p=.005`、跨四类零模型 Holm `p=.02`，区间级证据混合。它足以驱动参赛计划收窄，不足以证明总体显著、未运行数量级、机制或可发表结论。旧 postpilot 还把实际 residue-path 的 mod30 错写成 mod210，并忽略混合区间结果，不能直接继承到新计划。
+- 通用修复：literature artifact v2 保留模型的源中立逻辑 query，在边界分别编译为 arXiv/OpenAlex 的实际请求，并把 compiler version、executed query、fetch receipt 与逻辑谱系一起哈希绑定；v1 仅按旧字节严格重放。新增题目无关的 planning coverage 合同，要求 `direct_core>=2`、`method_foundation>=1`、`mechanism_or_null>=1`、`counterevidence>=1`，off-topic 不补位、method-transfer 不占多数，引用/DOI/载体只在语义层内排序。coverage receipt 进入 stage 04、planning lock、后续 stage input 和 delivery inventory。
+- 已验证：最终 coverage/loop 对抗矩阵 `186 passed, 1 skipped`；修复了精确 targeted query 谱系、Q1/Q3/Q4 共享模型自产对象组、五个不同 work-family anchor、一稿不多补、撤稿替补 replay、同 family 互补谱系和 Pareto/context 前瞻。加入 Qwen 预算修复后的检索/计划/主 loop/batch/API + LLM/context 联合矩阵为 `252 passed, 1 skipped`，相关 Ruff、Mypy、py_compile 全绿。
+- 下一步：使用第三个新的空 root 重跑 Q1 十二阶段，不复制旧 pilot；验收 coverage、5—10 条真实文献、真实 pilot、反馈修订、独立评审、1—20 页可提取中文 PDF，以及 `formal_experiment_executed=false`、`paper_claimed=false`。旧 attempt-002 与两次 fresh 失败 root 均保持不可变。
+
+### P-20260814-004 - Qwen3.7-Max 短回答预算被错误改译为总完成预算导致首请求 HTTP 400
+
+- 状态：Resolved in generic client and verified live；失败运行保持只读，必须在新空 root 重跑。
+- 发现时间与影响：2026-08-14 方向 A-1 第一次 fresh run 在首个 `broad-literature-query` 调用即失败，目录为 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v2-20260814/`。当时输入估算仅 1,255 tokens，尚未调用文献源或执行预实验；失败不是 1M 上下文溢出，也没有污染后续科学制品。
+- 根因证据：公共 `max_tokens=768` 一直表示最终可见回答上限，但 Qwen3.7 专用分支把同一数值改名为 `max_completion_tokens=768`；后者按官方定义限制“思维链+回答”总量，同时客户端又发送 `thinking_budget=4000`。四次最小实网交叉请求得到明确服务端错误 `max_completion_tokens [768] must be greater than thinking_budget [4000]`；只改用 `max_tokens=768` 时 HTTP 200 且正文/思考均存在，`max_completion_tokens=5000` 时也 HTTP 200。JSON Object/Schema 不是该次 400 的根因。
+- 通用修复：恢复公共参数的既有/官方语义，Qwen 请求继续发送 `max_tokens`，思考用独立 `thinking_budget` 约束；不静默关闭思考、不压低思考预算、不扩大短回答上限。上下文硬上限现在同时预留最终回答、思维链和官方 10-token allowance；18,000 回答 + 4,000 思考时 hard input 为 977,990。新预算写 `model-context-budget-v2`，旧 v1 按原公式严格重放，避免历史回执因验证公式变化失效。官方已将 `max_tokens` 标为待弃用；未来迁移必须新增显式总完成预算，不能再次重载现有字段。
+- 验证：相关 unit `64 passed` 后补入 v1 replay，最终 LLM/context + competition 联合 `252 passed, 1 skipped`；官方能力页 live `1 passed`；Qwen reasoning 极小实网 `2 passed`，其中 256-token 回答 + 默认 4,000 thinking 正常返回；Ruff、Mypy、py_compile 全绿。官方依据为阿里云 Model Studio 的 Qwen Chat Completions、Qwen3.7-Max 能力和结构化输出文档。
+
+### P-20260814-005 - 无作者/无 DOI 文献记录的去重关系非自反，导致 fresh 检索合并崩溃
+
+- 状态：Resolved in generic literature boundary；冻结的第二次 fresh run 回放与跨模块回归已通过，可从同一失败 attempt 继续。
+- 发现时间与影响：2026-08-14，目录 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v2b-20260814/`。首个 Qwen 查询生成已成功；8 个 broad source-query 回执共保存 60 条有效 OpenAlex 记录，arXiv 限流/超时与 1 个 OpenAlex 批次校验失败也已原样留存。在任何 targeted 检索、候选假设或预实验之前，合并阶段报 `max() arg is an empty sequence`。
+- 根因：唯一的无作者、无正式/仓储 DOI 记录与自身进行书目判同时，旧逻辑仍要求作者交集，因而 `_same_paper(canonical, canonical)` 为 false。`_deduplicate_hits` 产生空 `members`，`_merge_papers` 取状态代表时在空序列上失败。同时 OpenAlex 一条空白 `display_name` 会让整个 source-query 的其余合法记录一起被丢弃。
+- 通用修复：书目判同先承认完整 `AcademicPaper` 字段相等，使 metadata-poor 记录与其精确副本可自反去重；同题但 source/URL/日期等任一字段不同的无作者作品仍保持独立。OpenAlex 解析改为逐条跳过空/纯空白标题，并保留同批合法 siblings。两处均不包含题目词、领域阈值或 Q1 例外。
+- 验证：原现场 60 条 checkpoint 离线重放得到 59 个 unique work，每个 canonical 的成员数至少为 1，0 个空成员；定向文献、coverage、checkpoint、research loop 与 Science125 batch 联合 `150 passed`；目标 Ruff、Mypy、py_compile 全绿。只读对抗审查未发现阻断继续的 P0/P1。
+- 恢复边界：使用既有 write-once source checkpoint 从同一 failed attempt `--resume`；已成功的 60 条记录本地重放，已记录的源失败也按原失败重放，不再发网络请求。这是确定性运行时修复，不是选择性重试、文献挑选或历史制品改写。
+- 非阻断 P2：OpenAlex 非法日期/越界年份、Semantic Scholar 其他上游 schema 违约仍可能使单个 source-query 整批失败；失败会被完整记录且不影响其他查询。待竞赛主交付完成后再扩展逐记录 parse diagnostic，不阻断本次冲奖运行。
+
+### P-20260814-006 - OpenAlex v1 把 AND-of-OR 压成全文词串，真实 targeted 检索数量足够但四类计划证据均为零
+
+- 状态：Resolved in generic source-query-compiler-v2 and conservative matcher；第二次 fresh root 保持冻结，策略升级必须从新的空 root 重跑。
+- 发现时间与影响：2026-08-14，恢复 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v2b-20260814/` 后，原去重崩溃已解除，broad、focus 和 targeted 三阶段全部完成；但 planning literature coverage 在候选假设和预实验前正确失败关闭。targeted 的 8 个 source/query 全部成功，得到 38 raw/36 unique；与 broad 合并后 94 unique，83 条具备完整摘要，其中 32 条有精确 targeted 谱系，但四个 required role 的 complete match 全为 0，仅 1 条 method-transfer、82 条 off-topic。因此问题不是检索总量不足，也不是 coverage 门过严或谱系丢失，而是检索语义与可核验内容错位。
+- 根因：旧 OpenAlex v1 compiler 把模型生成的 AND-of-OR 逻辑拍平成最多 12 个词，再交给默认 `search`；布尔分组和同义替代被破坏，默认搜索范围又包含 coverage 看不到的全文，导致大量标题/摘要离题噪声。方法基础查询还把专用研究对象/拟议零模型写成必须项，Q2 两个来源均零召回。另一方面旧 exact-substring matcher 会漏掉常见、保序的英语屈折与极小短语插词，例如单复数或一个修饰词变化；这属于表示层假阴性，不应靠领域同义词或词袋扩张修补。
+- 通用修复：默认 artifact 继续为 v2，但 compiler 升为 `source-query-compiler-v2`。新的题目无关 prompt 固定四个证据角色，第 2 条只要求“方法族 AND 定义/估计/偏差/验证”，第 1/3/4 条继续机械复用模型自产的同一核心对象组；每组仅 2—4 个短常用术语。OpenAlex 边界现在保留受限的 AND-of-OR、括号和引号，并发送官方 `title_and_abstract.search:` filter；不支持的 NOT、通配符、嵌套或超限计划在联网前失败关闭，不静默删组/删候选。旧 compiler-v1 prompt、编译器和无前缀 `search` 路径独立保留，历史 artifact 可按原字节重放。通用 matcher 只增加 ASCII 常见单复数等价和多词短语最多一个内部插词，仍要求固定词序、全部 AND 组、精确 raw targeted query、targeted stage 和五个不同 work-family anchor；不做同义词推测、词袋、子词或题目特化扩张。
+- 真实与回放证据：按官方 OpenAlex Boolean/filter 语法进行只读诊断时，四条运行时查询的 `title_and_abstract.search` 分别返回 11/20/20/20 条，而旧默认路径为低精度或零召回。修复后正式 client 的单条 live smoke 返回 11/11 个非空标题，compiled-query SHA-256 为 `7daaa49d7e165a35b46c23bd63a81fd3f0f311c2794ddb70214a534f87d4c0a3`；结果含对象直接研究与残差/序列结构工作，但这里只证明源语义与传输有效，不预判最终 coverage。四份历史真实 artifact 均在新代码下重验通过：fresh-v2b broad/targeted 仍为 compiler-v1 的 59/36 records，旧 attempt-002 v1 仍为 128/31 records。
+- 验证：compiler/client 专项 `43 passed`；matcher 专项与 loop 回归 `36 passed`；检索、coverage、focus、merged、research-loop 和 Science125 batch 联合 `146 passed`。六个目标测试文件 Ruff/format、三个生产模块 Mypy 和 py_compile 全绿。没有降低 direct 2 + method 1 + mechanism/null 1 + counter 1 的非补偿门，没有写入任何题目词表，没有选择性补文献或修改历史制品。
+- 下一步与边界：用 `source-query-compiler-v2` 和新 prompt 在第三个空 root 运行全部 12 阶段；不得在 fresh-v2b 上 `--resume`，因为其 query plan 和 fetch receipts 已内容寻址绑定 compiler-v1。若新运行仍缺角色，保留失败并优先设计通用的、有界 semantic-yield repair，不手工挑文献、不降低五锚点门。正式交付仍只到带真实预实验反馈的研究计划，不扩展为完整发表级实验或论文。
+
+### P-20260815-001 - 最终书目重排使引用身份漂移，独立复审因此错误通过不受来源支持的命题
+
+- 状态：Resolved in generic contracts；旧 v2d 与其 recovery 目录保持只读且不得交付，仍需由全新 v4 实网运行验证最终 PDF。
+- 严重性：Critical for contest credibility。真实 v2d 的规划锁有 7 条文献，但 postpilot 因 adapter 内置 DOI 提升条目，模型又只选子集并重排为 `[2,1,4,3,7,5]`，renderer 随后重新编号。恢复版 PDF 内部表面自洽，却把正文对 Ebadi 的 `[4]` 归因显示成社科 ARIMA 文献；同时把 Banks 等人“至少 12.5% 的非负实数属于极限点集”的结果写强为“极限点集稠密”，并继续推导未被摘要支持的高阶序列结论。fresh review 只核数字编号并集，没有核编号身份或 claim-to-source entailment，因而给出错误 `pass`。该 PDF 不被接受。
+- 通用修复：锁定目录现在拥有不可变顺序和身份；模型选中的编号仅作为偏好审计，最终 references 必须等于有界 planning lock 的同集合、同顺序。pilot/adapter 引用不能提升、扩充或重排锁。新 direct/revision 工件写 `locked-catalog-exact-order-v2`，plan loop、review recovery 与新独立评审均失败关闭验证 exact order；v4 recovery 还重验 stage 04、coverage receipt、planning catalog/context hash、review catalog 和 plan projection 的同一谱系。旧 v1 投影与旧 review 仍可只读加载，但明确保持 legacy 状态，不能静默晋级。
+- 来源支持门：独立评审 prompt 要求逐个核对计划正文每个 `[N]` 附近的具体命题与同编号题名、摘要和限定条件，不得把主题相邻、较弱定量结果或条件命题当作更强拓扑、因果或普适结论；`references_assessment` 必须逐项给出 supported/partial/unsupported，程序要求其覆盖正文实际使用的全部编号。关键命题仅部分支持或不支持时不得 `pass`。原始响应与作者回执仍只调用一次并在失败时保留。
+- CLI 可靠性：已完成的旧 recovery 首次因 Windows GBK 无法打印 Unicode 减号而在最后一行退出 1，尽管报告/PDF 已完整写入；CLI 现在以 ASCII-safe JSON 输出，避免“成功后打印失败”。只读实物审计中一次误用不存在的 revision loader 与一次未设置 UTF-8 的 Unicode 打印也已记录为诊断脚本错误，不影响任何制品字节或科学结论。
+- 已验证：reference/direct/revision/scientific-review/recovery 专项 `84 passed`，新增 v4 recovery/console 测试后 recovery 专项 `15 passed`；Ruff/Mypy 定向检查通过。旧 v2d revision/review 仍按原哈希加载为 `locked-ranked-catalog-model-preference-then-backfill-v1` / `legacy-unverified-subset-v1`，证明兼容读取未改写历史。下一步必须在全新空 root 完成 v4 broad→targeted→lock→pilot→revision→fresh review→PDF，并再次做逐页与逐引文审计；不得复用旧 recovery 的 `pass`。
+- 2026-08-15 联合上线检查补充：250 项动态回归全绿后，Mypy 发现 `_verify_plan_references` 对仅承诺 `plan` 的历史兼容视图先用 `getattr` 探测、随后却直接访问新版 `reference_projection`，产生 `attr-defined` 静态失败。已将投影视图保存为局部可选值并始终通过安全读取判定 exact-order 策略；既有“无该字段的旧视图”运行反例继续覆盖，修复后须随联合静态门复验。
+
+### P-20260815-002 - 文献 v3 将仓储 DOI 当发表锚点、权威性压过角色特异度并接受弱反证
+
+- 状态：Resolved in generic literature protocol v4；历史 v2/v3 工件继续按冻结 schema、哈希和选择算法只读重放，不会被静默迁移。旧 v2d 目录不得作为 v4 交付物，仍需从全新空 root 实网重跑。
+- 影响与根因：旧质量边界把 `10.5281/zenodo.*` 误归为 publication DOI，使只有仓储身份的记录即使没有同行评审证据也可占 required anchor；v3 required-role 排序又先看 authority，再看完整角色语义特异度和题名覆盖，导致高权威但泛化的方法记录压过更直接的角色证据。旧 Q4 还允许仅由 anomalies/deviations/counterexamples/irregularities 组成的弱概念组，并把 `no/zero/without/not counterexample` 一类否定命中误作反证。规划 context 同时继承全库旧 `[N]`，锁定子集再加局部编号后会形成双编号身份歧义。
+- 通用修复：Zenodo DOI 明确分类为 `repository_doi`；只有 arXiv `preprint` 仓储身份可继续参与 required anchor，其他 repository-only 记录只能作为符合其余质量门的补充，不能补偿必需角色。v4 required-role 先比较当前角色的完整 must-group 命中特异度和题名组覆盖，再比较 authority 与封顶 citation band；补充项仍保留质量优先。Q4 prompt/validator 必须含 limitations、failure modes、artifacts、null explanations、negative results、bias 或 confounding 等可证伪概念，弱概念组和否定命中在检索前或 coverage 层失败关闭。锁定 planning context 按实际锁定顺序统一重编号为 `[1..k]`，其哈希、lock 和最终 catalog 均绑定该投影，重复投影保持幂等。
+- 验证：文献 client、质量、coverage、query compiler、research loop、Science125 batch 与 API 联合为 `165 passed`；14 个目标文件 Ruff check/format-check 全绿，7 个生产模块 Mypy 与 py_compile 通过。真实 v2d 冻结候选的只读 v4 重投影仍满足五角色 coverage：method 不再选择泛化 ARIMA 记录，Zenodo required anchor 数为 0，arXiv preprint 仍可保留；新 receipt hash 为 `9788b72ed124d0103928dbd079239ed2b4ea108e67a8331dccda174c99e3e422`。旧 v3 coverage 实物仍以原 hash `2791e025adf1e5d6b534bf8f632c1245937b7587f2acae776184817f68d81363` 精确加载。
+- 边界与下一步：旧 v2d 的 Q4 本身属于 v4 会拒绝的弱反证组，因此上述只读重投影只验证排序、仓储身份与历史兼容，不宣称旧检索计划整体通过 v4。必须由新的 compiler-v3/v4 protocol fresh run 重新生成四类检索、锁定目录和研究计划；不得修改旧工件或手工挑选文献。
+
+### P-20260815-003 - 查询提示上限未与运行前编译门闭合，导致部分外部检索后才失败
+
+- 状态：Resolved in generic `source-query-compiler-v4`；旧 v1/v2/v3 prompt、validator、artifact 和已执行 query 按原版本重放，失败的 fresh-v4 根保持只读。
+- 现场与影响：`runs/manual-live/science125-q001-a1-prize-sprint-fresh-v4-20260815/` 的唯一 Qwen 响应在推理中自检为每组 4 项，但 visible JSON 的 Q4 第二组实际给出 6 个不同术语。旧 v3 prompt 虽写“2至4个”，同句又列出 7 个反证示例；plan validator 没有复用 OpenAlex 每组最多 4 项的精确边界。运行因此已写入 4 个 arXiv 和 3 个 OpenAlex 检索 checkpoint，第 8 个 source/query 才报 `source-query-compiler-v2 group has too many alternatives`。这不是文献源故障，而是生成合同与执行边界错位。
+- 通用修复：新默认 compiler-v4 的 prompt 将 Q4 示例缩到 4 项，并在机器可读 `query_shape` 中固定 4 条 query、每条 2 个 must-group、每组 2–4 个术语及“整份拒绝，不截断/放宽/重试”。程序在任何 searcher 调用前解析和验证整个计划，再确定性预编译全部 `query × source` 矩阵；任一后位编译失败时 searcher 调用数为 0。v4 arXiv 改用 strict/non-lossy 编译，不再调用 v1 的均匀抽取截断；OpenAlex 误差文案绑定实际 compiler version。
+- 兼容边界：`source-query-compiler-v3` 的原 prompt 已独立冻结，artifact loader 仍用其原字节和原 validator；compiler-v4 由 artifact 的 `query_compiler_version`/messages/hash 独立内容寻址。顶层 `two_stage_literature_v4` 无需为这一个子工件版本再升级，旧 literature-v4/compiler-v3 工件不会被静默改写。
+- 验证：专项 `28 passed`；compiler/quality/coverage/client/research-loop/batch/API 联合 `172 passed`。反例覆盖 3/5 条 query、1/5 个组内术语、Q4 超限、后位 source/query 总长超限且零外部调用、合法 4 项在 arXiv/OpenAlex 两路完整保留，以及 v1/v2/v3 提示与 artifact 重放。三个变更文件 Ruff check/format-check 全绿，生产模块 Mypy 与 py_compile 通过。未联网、未调用模型、未执行实验。
+- 下一步：必须在新的空 output root 使用 compiler-v4 重跑；不得 resume 失败根或复用其 7 份部分检索结果。
+
+### P-20260815-004 - 旧 merged-v1 单测夹具未随 compiler-v4 的四角色查询合同更新
+
+- 状态：Resolved as test-fixture compatibility repair；生产 `contest-direction-merged-literature-v1` schema、哈希和实现未修改，稀疏 R2 与 layered 工件不依赖这些夹具。
+- 现象与证据：运行 `tests/unit/competition/test_contest_direction_merged_literature.py` 时共 11 项失败，均在进入 merged 构建前由 compiler-v4 的 `_validate_v4_query_plan` 拒绝；旧夹具仍生成 1--3 条查询，而当前冻结的新运行合同要求恰好四个角色查询。失败不涉及新增 repair/layered 代码路径，也没有外部检索或模型调用。
+- 原影响（修复前）：该旧测试文件不能单独充当 merged-v1 后向兼容门；继续使用会把上游 fixture 构造漂移误报为 merged-v1 回放失败。旧 merged-v1 生产模型与哈希边界保持不变。
+- 原下一步（现已完成）：在独立、明确授权的兼容性修复中更新旧夹具，使其构造合法的四角色 compiler-v4 targeted artifact，或为纯 merged-v1 测试提供冻结 legacy targeted fixture；不得借此改写旧 merged-v1 schema、哈希算法或历史工件。
+- 解决记录（2026-08-15）：两个相关测试文件新增最小 v4 查询计划 helper，把原 1--3 条模型回包显式投影为恰好四个角色、每条恰好两个 2 项 OR 组；Q1/Q3/Q4 复用同一对象组，Q4 使用强反证概念。假搜索器、论文元数据、merge/去重/身份判断逻辑和生产代码均未改变。focus targeted-retrieval 测试的真实 source 调用期望随冻结四角色合同从 3 更新为 4，其“一次 query 模型调用、串行检索、完成态零 provider 重放”语义保持不变。
+- 解决验证：先分别复现 merged `11 failed` 与 focus `11 failed`，修复后两文件联合 `22 passed in 2.23s`；两文件 Ruff check、format-check 与 py_compile 全绿。未联网、未调用 Qwen、未执行实验或写入历史运行工件。
+
+### P-20260815-005 - coverage v4 的方法角色 OR 命中数可奖励不相干方法族
+
+- 状态：Resolved in topic-neutral planning-literature coverage v5；v2/v3/v4 回执继续按各自冻结分类、排序、选择、哈希和 schema 精确重放。
+- 现场与根因：fresh-v4b 的方法查询包含多个备选方法族。v4 在候选已完成全部 must-group 后仍以命中的 OR 备选项数量作为优先级，因而一个高质量但属于另一方法族的记录可压过与直接问题焦点相连的方法记录；这不会突破五锚点、权威性、family 或 context 门，却会造成高分语义假阳性。问题是通用的“方法—研究焦点未绑定”，不是该科学题目的专用词表缺失。
+- 通用修复：v5 从不可变的初始四角色查询推导可审计桥接合同：直接查询首组为对象项、其余组为直接焦点，方法查询首组为方法候选；方法锚点及方法补充必须在标题或摘要中精确命中“直接焦点与方法候选交集”或直接对象项。每个候选固化 bridge kind、命中词及字段，回执同时固化完整 basis、桥接合同和各必需角色的 authority/bridge 合格 family 数；多命中 OR 项不再提供排序奖励。R2 可显式传入 R1 的 `method_focus_basis_queries`，避免修复后的直接查询使初始检索意图漂移。
+- 验证：test-first 新增的无 term trace 却声称 bridge eligible 的独立回执反例先失败、修复后通过；coverage 专项 `46 passed`，coverage + gap-repair 专项 `59 passed`，coverage/gap/layered/runner/quality 联合 `75 passed`。旧 v4 合成回执仍可选中 v5 会拒绝的未桥接方法记录并按 v4 loader 原样重放，v2/v3 既有重放测试继续通过。未联网、未调用模型、未写题目词、未降低五锚点/权威性/family/context 门。
+- 集成边界：fresh R1 可省略 basis 参数；任何 R2 必须把 R1 回执的 `method_focus_basis_queries` 原样传给 selector，并把 v5 schema/receipt hash 纳入外层 planning lock。历史 v4 工件只读加载，不原地升级。
+
+### P-20260815-006 - coverage 失败后缺少有界、证据可追溯的角色级补检合同
+
+- 状态：Resolved as an isolated, topic-neutral contract；provider 单次响应、稀疏补检与 layered merge 由独立模块消费，本合同本身不联网、不接主链、不执行自动重试。
+- 现场与风险：旧 coverage 失败回执只能给出汇总 failure reason，无法区分“目标角色语义记录根本没检到”“已有记录但没有权威锚点资格”“方法记录未通过不可变 focus bridge”与记录数/上下文预算等结构性失败。若直接让模型重写整套查询，可能改动无缺口角色、漂移 Q1/Q3/Q4 对象组、用未见于证据的同义词扩张，或把同一次失败变成不可审计的反复试错。
+- 通用修复：新增纯 `contest_planning_literature_gap_repair` 合同，内嵌并重放 hash-valid 的失败 v4/v5 coverage。四个角色分别固化 semantic、authority 与最终 selection-eligible work-family ID/数量、缺口类型、缺失锚点数和可补检判定；记录数、context 等结构性失败保守判为不可补检。R2 始终输出完整四查询，非缺口 raw query/query ID 原字节不变，缺口角色只替换第二 must-group；改写 query ID 确定性派生为 parent 的 `-r2` 后继，首组保持不变，Q1/Q3/Q4 对象组继续相等。
+- 证据与失败关闭：每个 replacement group 恰好 2--4 项；每个 term 必须逐词存在于绑定的 focus/broad title 或 abstract，并绑定 source artifact、record、field 与 evidence hash。最终计划复用 compiler-v4 的四查询结构、强反证和 arXiv/OpenAlex 无损编译门；弱 Q4、否定反证、超限或非缺口修订均失败。诊断、证据目录、R2 query plan 和完整 projection 各自内容寻址，JSON 加载会重算诊断、投影与所有 parent hash，字段/来源/查询/hash 篡改均拒绝。
+- 验证与兼容：纯合同专项 `13 passed`；coverage、纯投影、单次响应回执、稀疏补检和 layered merge 联合 `76 passed`；再加 direction compiler 与质量门的相邻回归 `110 passed`。目标 Ruff check/format-check、Mypy 与 py_compile 全绿。冻结 v4 失败回执继续按原 schema/hash 可诊断，新 v5 的 method-focus bridge 缺口会只开放 method 角色第二组。联合门第一次在 coverage v5 并发中间态遇到 helper `NameError`，完成 v5 后消失；随后 runner 旧夹具未桥接 method 导致 3 项预期合同失败，夹具对齐 v5 后同一 76 项全绿，未放宽 projector。
+- 边界与下一步：本模块没有题目词、模型调用、检索调用或历史工件写入，也不宣称补检一定成功。主链集成必须只允许一次 R2、绑定 R1 coverage/projection hash，R2 仍失败即保留失败终止；真实 fresh run 才能验证外部源的增量记录与最终 coverage。
+
+### P-20260815-007 - review recovery v5 曾把完整查询谱系降为 query ID 比较
+
+- 状态：Resolved in generic v5 recovery verifier；主链、题目和历史工件未修改。
+- 严重性：P1。`_replay_v5_gap_chain` 已重放 diagnosis、projection、sparse retrieval、layered artifact 与 coverage hash，但对 R2/final `role_queries` 以及 R2/final `method_focus_basis_queries` 只抽取 `query_id` 比较。若一个自洽篡改链保留相同 ID、同时改变 `raw_query`、must-groups 或 prefix terms，这个额外的跨工件一致性门不会发现结构漂移；不能把“ID 相同”当成“完整 PlanningLiteratureRoleQuery 相同”。
+- 修复：四处比较均改为规范化模型对象元组的完整等值：R2 与 final 的 `role_queries` 必须逐对象等于 projection 的完整 `r2_role_queries`；R2 与 final 的 `method_focus_basis_queries` 必须逐对象等于 R1 冻结 basis。没有放宽或改写查询，也没有新增恢复重试。
+- 验证：先加入同 ID、不同 raw query 的 R2/final role 反例和同 ID、不同 raw basis 的 R2/final 反例，旧实现按预期未抛错而使专项失败；修复后四个反例均失败关闭。recovery + research-loop + Science125 batch 相邻联合 `69 passed`；目标 Ruff check/format-check、Mypy 与 py_compile 全绿。未联网、未调用模型或学术源。
+
+### P-20260815-008 - layered 文献固定复制 R1 代表记录会丢失 R2 正式发表元数据
+
+- 状态：Resolved in topic-neutral layered metadata derivation；immutable R1、旧 merged-v1 schema/hash、同作品判定和全部 base/repair origins/retrievals 未修改。
+- 严重性与根因：P1。R1 只有仓储 DOI/预印本元数据，而 R2 检得同题名、同作者的正式发表版时，`_same_work` 会正确把二者归为同一作品；但旧 `_build_layered_record` 无条件采用 `base_records[0]` 的题名、DOI、venue、status、日期、URL 和引用元数据。结果是 R2 的 publication DOI 与正式 `published` 元数据在派生 catalog 中消失，quality gate 继续把该作品视为 repository-only，合法 authority repair 无法成为 required anchor；origins 虽仍在，但有效元数据没有进入规划视图。
+- 通用修复：layered 派生字段现逐项复用冻结 merged-v1 的既有合并语义：publication DOI 与 repository DOI 分字段做规范化一致性检查；venue/URL 优先正式 published 且带 publication DOI 的记录；状态按原安全优先级、来源和日期选择；摘要取最长、作者取最完整、发表日期取最新、citation 优先有来源和截至日期的候选。R1 对象不改写，base/R2 原始 metadata 继续完整保存在各自 origin；不同 publication DOI 的记录仍不合并，若仓储记录形成传递桥而将两个冲突 publication DOI 拉入同组则整个构建失败关闭。
+- 验证：红队反例先得到 `shared.doi is None`，修复后同一 layered record 同时保留 R2 `10.1000/formal` 与 R1 `10.5281/zenodo.12345`，venue/status 采用正式发表记录，quality assessment 晋级为 `publication_doi` 且 `required_anchor_eligible=true`。新增直接 DOI 冲突分离与传递冲突失败关闭反例。layered/gap-repair/merged/quality/coverage 相邻联合 `82 passed`；目标 Ruff check/format-check、Mypy 与 py_compile 全绿。未联网、未调用模型/学术源、未修改题目或主链。
+
+### P-20260815-009 - v5 gap-repair 终态、断点恢复与批失败回执漏记真实调用和 R2 制品
+
+- 状态：Resolved in code；通用合成回归与相邻 231 项回归通过，尚待主 Agent 在全新 v5 实网运行中验证真实来源效果。
+- 发现时间与影响：2026-08-15 对 bounded gap-repair 接入后的终态和失败路径做对抗审计时发现：`_finish_without_adapter` 只累计 broad/focus/targeted，漏掉已经发生的一次 gap provider 调用；其两种终态以及 completed/plan-only 报告也未逐文件绑定 R2 pre-status coverage、layered effective artifact 和完整 diagnosis/response/projection/retrieval 链。partial resume 仅按旧三段制品是否预存划分 current/historical，可能把本次新发生的 gap 调用归入历史。Science125 在 provider escrow 已落盘后失败时，failure receipt 只有异常文本，没有可验证的模型调用、文献来源成功/失败分母或 research-loop 文件清单。plan-only 还把合法的相关性互补路由子集误要求为 planning catalog 前缀。
+- 根因：v5 将 gap stage 插入旧终态/恢复/批处理记账后，外围报告仍沿用 v4 的三段文献假设；`_TwoStageLiteratureState` 没有保留 R2 receipt/path，planning lock 中只有 R2 hash，不能代替文件绑定。失败回执没有复用本地 checkpoint 的结构验证器。plan-only 重复实现了错误的前缀关系，而 routing artifact 自身已 hash-bind 精确子集顺序。
+- 最窄修复：state 现在保留 R1、R2、final coverage；one-round 必须成套绑定 base/effective/layered、R1/R2/final 和四个 gap 制品，zero-round 明确拒绝残余 R2。fresh/no-adapter/completed/plan-only 总调用均含 gap；partial resume 以 hash-valid gap escrow 的运行前后差判定本次真实 provider 调用，已有 escrow 的本地重放计 0，新 escrow 计 1。新增 literature checkpoint accounting 逐文件重验路径身份、request/payload/checkpoint hash、状态及 `AcademicPaper` payload，再同时统计 completed 和 failed 请求；batch 失败回执还绑定 attempt-relative `research-loop` 文件清单及清单 hash，校验失败时不猜计数。plan-only 只要求路由 IDs 非空、唯一、全部属于 planning lock，并与 routing 内 hash-bound evidence context 精确相等；保留其相关性顺序，不要求前缀或单调顺序。
+- 验证：两种 no-adapter 终态的 one-repair 合成测试验证 gap 调用总数为 1、总 provenance 分母为 9、R2 与完整制品链存在；completed-no-adapter 直接 resume 在禁止构造模型 runtime 的条件下零调用返回，required-no-adapter 直接 resume 在同一条件下本地复验并稳定重放 blocked，二者记账不变。plan-only 使用非单调互补子集并验证 historical/current/total 为 9/1/10；batch 在 gap escrow、一个成功来源与一个失败来源落盘后故意抛错，failure receipt 精确给出 outer escrow=1、literature denominator=2（1 completed/1 failed）和可重算 inventory hash。专项三文件 `63 passed`；包含 literature/focus/merged/quality/coverage/gap runner/sparse/layered/router/research-loop/recovery/batch 的相邻联合 `231 passed in 12.17s`。六个变更目标 Ruff check、format-check 全绿，三个生产模块 Mypy 全绿，生产与测试 py_compile 通过。未联网、未调用 Qwen/学术源、未执行实验、未改变题目、检索门槛或历史运行制品。
+
+### P-20260815-010 - coverage 失败后主链没有一次有界补检，恢复零轮查询谱系也可漂移
+
+- 状态：Resolved in generic v5 integration；全新实网运行仍待执行，任何 R2 再失败都必须终止而不是继续试错。
+- 现场与影响：fresh-v4b 已取得 258 条合并记录，却因直接证据角色只有两个仓储作品家族、权威合格锚点为 0 而正确失败。旧主链在 R1 coverage 后立即 `require_pass`，没有把“角色缺口→证据约束查询修订→只补搜缺口角色→重新覆盖评估”作为显式竞赛闭环；反复 fresh 会丢失反馈谱系并形成隐性 best-of-N。独立红队还证明 v5 review recovery 的零轮分支只要求 R1 passed，未逐对象核对 final coverage 与 R1 的完整 role query/method-focus basis，同 ID 不同 raw query 可被接受。
+- 通用修复：research loop 现在始终先持久化 R1 coverage；仅语义、权威或独立 family 缺口可触发一次 R2。模型只返回绑定 focus/broad 原文证据哈希的替换词，非缺口角色与 Q1/Q3/Q4 对象组不变；稀疏检索只执行缺口角色乘真实来源，分层工件保留 immutable R1 与 R2 的 logical/executed query、fetch、raw paper 和 DOI/状态谱系。R2 继续使用 R1 冻结 method-focus basis，失败即保留终止。planning lock、Skill router、终态报告、batch 与 one-shot review recovery 均绑定零轮或一轮完整链。零轮恢复现在也要求 final role queries 与 R1 queries、final method basis 与 R1 basis 完整对象相等。
+- 调用与质量边界：query 模型 R1 一次、repair 最多一次；R2 最多四个缺口角色、每源各一次，无 R3、隐藏格式重试、截断、降 authority/五锚点/context 门或人工挑文献。仓储版本不会压住 R2 正式发表元数据，冲突 publication DOI 失败关闭。所有成功、无适配器、plan-only、blocked、resume 与 batch failure 终态报告真实模型/来源分母和 R1/R2/final 文件绑定。
+- 验证：红队最终无 P0，唯一 no-adapter resume P1 随 `P-20260815-009` 闭合。主 Agent 在最终稳定快照运行检索/compiler/quality/coverage/gap/layer/router/context/research-loop/recovery/batch/Qwen 契约联合 `325 passed`；18 个生产模块 Ruff check、Mypy、py_compile 全绿，format-check 在机械格式化 merged 模块后全绿。Qwen/PDF/TeX/磁盘只读 preflight 给出 GO；真实运行必须使用不存在的新 output root，首次不得 `--resume`。
+
+### P-20260815-011 - Science125 失败回执把已完成的分层文献检索静默计为零
+
+- 状态：Resolved in generic research-loop checkpoint accounting；真实 fresh-v5 现场已只读重放为 `8 requested / 8 completed / 0 failed`。
+- 严重性：P0（参赛审计完整性）。它不改写检索结果，但把真实外部请求分母伪报为 0，会直接破坏失败回执的可信性。
+- 现场与根因：`science125-q001-a1-prize-sprint-fresh-v5-20260815` 已在 `literature/broad/checkpoints/literature-searches/{arxiv,openalex}` 写入 8 个逐请求回执，并生成 4 条查询、8 个成功 fetch、160 raw hits 和 157 条去重记录的 hash-valid broad artifact。batch 却把 `research-loop` 根直接交给只检查 `<stage-root>/checkpoints/literature-searches` 的局部计数器；该目录不存在时合法返回零，因此 broad/refinement/gap-repair 的真实分层目录被静默忽略，不是 checkpoint 验证失败。
+- 通用修复：新增 research-loop 聚合计数器，显式枚举题目无关的三个生产阶段根 `literature/broad`、`literature/refinement`、`literature/gap-repair`，每根继续使用原有严格的 request/path/checkpoint/papers hash、status 和 `AcademicPaper` 验证，只在全部验证成功后聚合 source 分母。未登记 checkpoint 根、重复解析根、路径别名、symlink 文件和路径逃逸均失败关闭。Science125 failure receipt 已改用该聚合器。
+- 验证：新测试在生产布局下先因聚合 API 缺失于 collection 阶段失败；实现后 stage-checkpoint + batch 为 `28 passed`，文献/compiler/quality/coverage/gap/layer/router/research-loop/recovery/batch 相邻联合 `236 passed`。same-root 合成 resume 确认 source 只调用一次，第二份 failure receipt 仍保留 `request_count=1`而不重复或清零。真实现场只读新聚合结果为 arXiv `4/4`、OpenAlex `4/4`；旧 state receipt hash、inventory hash 和 22 个逐文件绑定仍全部有效。
+- 恢复边界：旧 `failed-receipt-001.json` 是 write-once 历史工件，其内的错误零分母不在原地篡改；same-root resume 会重用现有 8 个 source checkpoint，不重发 broad 检索，并在新状态或后续 failure receipt 中使用修复后的真实分母。两个外层模型调用也已由 broad 与 focus 的两份 hash-valid provider escrow 独立确认；该计数只表示已持久化的 provider response，不推测未留下回执的传输层重试。
+
+### P-20260815-012 - 不受信学术摘要中的公开联系标识在模型响应后才触发原始记忆拒绝
+
+- 状态：Resolved in generic scholarly-metadata privacy boundary；代码与历史兼容回归已通过，仍须在全新空 root 实网运行。旧 fresh-v5 失败根只作取证回放，不允许同根续跑或原地清洗。
+- 严重性：P0（隐私边界与真实运行可用性）。现场唯一命中是 OpenAlex 摘要中公开的作者联系邮箱；focus 请求、响应与 reasoning 中未发现 Bearer、API key 或私钥。该命中是真实直接标识而不是正则假阳性，但它不是用户凭据泄漏。旧链把未清洗摘要送入 focus 请求，付费响应已落外层 escrow 后，完成对话写入 `RawMemoryStore` 才由既有 fail-closed detector 拒绝，导致有效科研步骤无法形成完成态。
+- 通用修复：新增题目无关的 `scholarly-metadata-privacy-v1`，在任何新 source checkpoint、聚合文献制品或模型 prompt 之前递归归一化论文自由文本字段，仅替换与既有 raw-memory detector 同边界的 email、Bearer、API-key-like 与私钥材料。`scholarly-metadata-privacy-receipt-v1` 只保存 policy version、字段/类别计数、总数和整体 receipt hash，不保存原值或可枚举的逐值哈希；归一化后仍调用未放宽的 `validate_persistable_content`。TaskContext 在上下文制品、摘要 provider 与主 provider 之前再次 fail-close，错误不回显命中文字节。
+- 协议与历史边界：新 source checkpoint 只写 `contest-direction-literature-search-checkpoint-v2`，新 finalist verification 只写 `contest-direction-paper-verification-checkpoint-v2`，两者把隐私回执纳入 checkpoint hash。冻结 v1 仍按原 request 路径、原 request/payload/checkpoint hash 精确只读加载；不会落盘改写、伪称已归一化或调用外部 source/verifier。query compiler 语义未变，因此不升级；聚合制品的内容哈希会自然反映已归一化元数据。旧 v1 若被显式回放仍返回历史原值，随后 provider preflight 会拒绝，而不是静默迁移。
+- 验证：OpenAlex `CONTACT:` 真实形态、arXiv/OpenAlex/Semantic Scholar 三源、四类敏感模式、无命中保持等值、旧 source 与 paper-verification v1 精确回放、篡改拒绝及敏感 active context 零 provider/零 context/raw-memory side effect 均有回归。专项 `27 passed`，文献到 research-loop/batch 相邻联合 `147 passed`；Ruff check/format-check、4 个生产模块 Mypy 与生产/测试 py_compile 全绿。真实旧 root 的 8 个 source checkpoint 只读重验为 `8/8 completed`，state 登记的 22 个文件 `missing=[] / changed=[]`。一次只读核验命令最初从错误模块导入聚合器而失败，改用其定义模块后得到相同 8/8；未联网、未调用模型/学术源、未执行实验。
+- 下一步：只能使用不存在的新 output root 首次运行且不带 `--resume`。任何隐私归一化后的科研质量、来源覆盖或计划效果必须由该 fresh run 证明；本修复不包含题目词、查询改写、证据门槛或实验优化。
+
+### P-20260815-013 - 中央敏感检测与学术归一化规则漂移，且两个可重放边界可在校验前产生外部副作用
+
+- 状态：Resolved in generic central sensitive-text policy and pre-dispatch guards；专项与宽回归已通过，仍须在不存在的新 root 实网验证。旧 fresh-v5 及其 v1/v2 checkpoint 保持只读取证。
+- 严重性：P0/P1。中央 journal 只覆盖少量 ASCII 形态，而 scholarly normalizer 维护另一份正则，导致完整、加密、错配或截断 private-key envelope、GitHub/AWS/Google/Hugging Face 高置信前缀、显式 key/value 赋值及 Unicode/IDNA 邮箱在两层产生不同判定。旧 private-key fallback 还可能只删 BEGIN 而留下正文；若简单吞到 EOF，又会静默删除后续正常证据。原 Bearer 规则把普通 “bearer certificate” 名词短语误判为凭据。公共 text normalizer 允许不受信 `field_path` 原样成为 receipt key。更严重的是 standalone/recovery 可直接调用 provider escrow，literature source escrow 也会先 hash、调用或落盘再遇到下游策略，绕过 TaskContext 的外层 guard。
+- 中央修复：`kernel/journal.py` 现唯一拥有共享 matcher 与 `redact_sensitive_text`。中央 detector 和 scholarly normalizer消费同一规则，覆盖既有 sk/rk/pk、高置信 GitHub PAT、AWS AKIA/ASIA、Google AIza、Hugging Face token、显式 API-key/token/secret 赋值、Authorization Bearer、具数字或标点的长 Bearer credential，以及经 Unicode 本地部分、IDNA 域标签边界校验的邮箱。普通 bearer 名词、无 dotted domain 的 `@` 短语及既有安全科学词保持不变；不做自由高熵猜测。
+- private-key 与证据完整性：任何明确 PRIVATE KEY label（含 encrypted、DSA、OpenSSH、PGP block 等）的完整块可在 begin/end label 相同或不同的情况下整块替换，并保留 END 后的安全文本。只有 BEGIN、没有任何可确认 PRIVATE KEY END 的截断块由中央 detector 拒绝，scholarly normalizer 抛不含原值的结构化错误；source wrapper 只写 `status=failed`、空 papers、count-only privacy receipt 与通用错误，不持久化私钥正文或后续证据，也不伪造 completed paper。
+- 副作用边界：literature request 在 query hash、路径、source 调用前对完整 request fail-close；provider escrow 在 request hash、路径、旧 escrow lookup 与 provider 调用前扫描所有 string leaves。命中时错误不回显原值，source/provider calls、checkpoint 数和可枚举 request hash 均为 0。历史含敏感 request 的 provider escrow 文件仍保持原字节，但安全边界拒绝重放且不调用 provider。`field_path` 与 receipt field keys 只接受 `papers[0].abstract`/`error_message` 一类结构语法并再次通过中央 detector。
+- 版本与兼容：新归一化写 `scholarly-metadata-privacy-v2` / `scholarly-metadata-privacy-receipt-v2`；receipt model 严格接受冻结 v1/v1 或当前 v2/v2 配对并重算 receipt hash。source/paper checkpoint schema 继续为 v2，旧 v2+receipt-v1 可按原字节重放，新写带 receipt-v2；v1 source/paper checkpoint 仍按原 request 路径与原 hash 精确加载、不改写、不伪称已规范化。v2 loader 额外重验 request、failed error、paper payload 与内外 receipt/checkpoint hash。
+- 验证：初始红测收集 123 项并暴露 40 个失败（其中 3 个为新测试漏导入 validator，修正测试后继续保留真实失败）；最终中央 journal、RawMemory、privacy、TaskContext、checkpoint 专项 `132 passed in 12.46s`，文献、focus、merged、layered、context、research-loop 与 batch 宽回归 `252 passed in 20.66s`。11 个目标文件 Ruff check/format-check 全绿，6 个生产模块 Mypy 全绿，生产/测试 py_compile 通过。真实旧 root 仍只读得到 arXiv `4/4` + OpenAlex `4/4`，state 的 22 项 inventory 为 `missing=[] / changed=[]`。未联网、未调用模型/学术源、未执行实验或写题目专用规则。
+- 下一步：只允许从确认不存在的 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v6-20260815/` 首次运行，不带 `--resume`。真实来源质量、R1/R2 coverage、探索性预实验和最终计划必须由新运行自身证明。
+
+### P-20260815-014 - 文献查询生成只要求 JSON Object，不能保证四查询传输结构
+
+- 状态：Resolved in generic query transport；本地与相邻回归已通过，真实 Qwen 行为仍须在全新 root 的下一次单次运行验证。
+- 严重性：P1。宽检索的共用查询生成入口原先只使用普通 JSON Object 模式且没有显式关闭思考；定向检索虽在内层回执处关闭思考，却丢弃了上游查询生成调用的 `response_schema`。因此 provider 可以返回可解析但缺字段/错类型的对象，或者在非思考结构化输出要求未固定时产生无效 JSON；本地 v4 数量、Boolean、角色与 source compiler 门只能在响应已成功解析后拒绝，不能约束传输形状。
+- 通用修复：broad 与 targeted 共用的 `retrieve_contest_direction_literature` 现在显式传递同一最小 strict schema：顶层 `object` 仅含必填 `queries`，其值为 `array[string]`，并设置 `additionalProperties=false`；`response_schema_name=contest_direction_query_list`。两路均固定 `thinking_mode=disabled`、`thinking_budget=None`。targeted 的 write-once response/checkpoint wrapper 原样透传这两个 schema 参数。没有增加 `minItems`、`maxItems`、`maxLength`、`uniqueItems` 或题目词，四条数量、两组 Boolean、每组 2–4 术语、术语/source 长度、共享对象组及反证概念继续由既有本地 compiler-v4 失败关闭；没有 JSON 猜修、隐藏重试、fallback、截断或 best-of-N。
+- Qwen 官方边界：阿里云百炼结构化输出文档列明 JSON Schema 模式、`strict=true`、`required`、`additionalProperties` 以及 `string/array/object` 等支持类型；Qwen3.7-Max 系列列在 JSON Schema 支持范围。本 schema 刻意只用该最小支持子集，未重引入曾被 provider 拒绝的 `uniqueItems`。提示消息和 `_QUERY_COMPILER_VERSION` 均未改变，因此冻结 artifact 的消息/hash 与 compiler replay 不升级；completed artifact fast path 仍不调用 provider。
+- 容量事实：现有 broad `768` 与 targeted `1200` 仍是运营 answer cap，不是“所有合法 JSON 词法形式”的数学上界。当前解析器会折叠查询内部空白，而 JSON 也允许任意词法空白，所以原始合法响应的字节/Token 数理论上无有限上界；不能凭该 cap 把既有无效 JSON 失败归因为截断。Qwen 官方同时建议结构化输出不要设置 `max_tokens` 以避免截断，但本轮按手术式范围不改 CLI/预算，也不把查询调用改为 `None`。若下一次新 root 的持久化失败 escrow 明确记录 `finish_reason=length`，再依据该证据独立调整容量合同。
+- 验证：先新增实际 completion kwargs 捕获测试，初始按预期分别以缺少 `thinking_mode` 和 `response_schema_name` 失败；实现后 literature/focus/checkpoint/context/research-loop/LLM client 联合 `168 passed in 8.27s`。四个变更目标 Ruff check 与 format-check 全绿，生产与测试 `py_compile` 通过。受共享快照中无关 `requests` stubs、既有 imported-module `no-any-return` 和并发 checkpoint `arg-type` 问题影响，严格递归 Mypy 未全绿；对两个目标模块以 `--follow-imports=skip --disable-error-code=no-any-return` 复核为 `Success: no issues found in 2 source files`。未联网调用模型或学术来源，未修改科研题、实验、检索门槛或历史运行工件。
+
+### P-20260815-015 - HTTP 200 后业务 JSON 解析失败没有耐久终态，会在恢复时再次付费且失败分母归零
+
+- 状态：Resolved in generic provider checkpoint contract；安全响应可精确重放原失败，敏感响应和仅有 reservation 的未知结果按保守策略锁死同根自动重付。未增加语法修复、隐藏重试或题目逻辑。
+- 严重性：P0（成本、审计与可恢复性）。生产 `run_llm_json_completion` 已在 HTTP 2xx 后得到 provider envelope、usage、finish reason 和 transport trace，但业务正文不是合法 JSON 或顶层不是 object 时只抛进程内 `LLMClientError`。旧 stage wrapper 仅在成功返回 `LLMJsonCompletionResult` 后写 v1 escrow；因此同一 stage/request 恢复会再次调用 provider，`provider_checkpoint_count` 与 Science125 failure receipt 又把这次真实远端响应记为 0。
+- 最小通用修复：stage wrapper 复用 client 既有 `transport_preflight_hook`，在 opener 前写 credential-free、请求/transport payload 双哈希绑定的 write-once reservation。HTTP 2xx 且业务 JSON 解析失败时，只有通过中央隐私门的 `response_text`、精确 usage、finish reason、完整 `LLMHTTPTransportTrace`、`LLMClientError` 消息和机械 parser diagnostic 才写入内容寻址的 `provider-response-failures` escrow。diagnostic 仅含 `lineno/colno/pos` 或 `top_level_non_object`，恢复时重跑同一确定性 parser 并逐字段比对，不执行修复。reasoning 原文不落该 escrow，只保留 transport trace 已有 hash。
+- 恢复与篡改门：同 request 依次检查冻结 v1 成功 escrow、唯一 parse-failure escrow、reservation-only。parse-failure 必须重验文件名内容地址、request/stage 绑定、内外 checkpoint hash、reservation/trace transport 字段、HTTP 2xx、visible output hash、usage hash、隐私门和 parser diagnostic，然后本地抛回同一 `LLMClientError`；provider 调用为 0。成功与失败双终态、重复失败文件、缺 reservation、usage/diagnostic/trace/路径篡改均失败关闭。reservation-only 表示结果未知，禁止同 root 自动重付。
+- 隐私与兼容边界：malformed visible output 若包含 email、credential 或私钥材料，不持久化原文或 failure escrow；只保留响应前已写的安全 reservation，首次返回通用安全错误，后续稳定报告 `outcome_unknown` 且零 provider。冻结 v1 成功 escrow 路径、schema、payload 和回放保持不变。旧自定义 completion 若不接受 `transport_preflight_hook`，wrapper 不注入新关键字，仍可成功写/读 v1；这类非生产 callable 的失败没有 transport reservation 证明，不能声称未知调用受新门保护。相同 root/stage/input/request 的嵌套 wrapper 复用同一 write-once 文件，只产生一次真实调用和一次记账。
+- 失败分母：新增严格 `provider_checkpoint_accounting`，每个身份只计一次并区分 `completed_count`、`parse_failed_count`、`outcome_unknown_count` 与总 `attempt_count`。Science125 failure receipt 保留旧 completed escrow 字段以兼容，同时新增逐 stage 分类，并用 `attempt_count` 计算 observed provider attempts；parse failure 不再伪报为 0。
+- 验证：红测先因缺少 accounting API 在 collection 阶段失败；实现后 stage checkpoint + Science125 batch `54 passed in 2.56s`，LLM client、TaskContext、ContextRuntime、research loop、review recovery、checkpoint 与 batch 相邻联合 `172 passed in 11.47s`；再加入中央 journal、RawMemory、scholarly privacy、broad/focus/merged/layered 文献链后的宽回归为 `328 passed in 20.61s`。`stop`/`length`、usage/diagnostic 深层篡改、敏感响应零泄漏、transport unknown、严格旧 callable 与嵌套 wrapper 均覆盖。四个目标 Ruff check/format-check 和 py_compile 全绿；checkpoint 模块隔离 Mypy 全绿，batch 在既有 line 783 `no-any-return` 基线下以该单项禁用后全绿。未联网、未调用模型/学术来源、未运行实验、未修改历史运行目录。
+
+### P-20260815-016 - 文献缺口修复调用未使用最小结构化输出合同且仍启用思考
+
+- 状态：Resolved in generic gap-repair transport；本地严格合同、持久化响应精确重放和相邻主链回归已通过，真实 provider 行为仍须由新的 fresh run 单次验证。
+- 严重性：P1。`planning-literature-gap-repair-query` 的本地 Pydantic/投影层已经严格验证缺口角色、每角色 2—4 个证据逐字术语、证据 hash 与查询重建，但 provider 传输层仍只要求普通 JSON Object 且沿用默认思考。这样会把输出形状与思考预算留到响应后才失败关闭，并与已经收紧的 broad/targeted 查询生成边界不一致。fresh-v8 恰在该 stage 留下 transport outcome unknown；这只暴露了边界配置，不足以证明 schema/thinking 是该次 WinError 10060 的因果根源。
+- 最小通用修复：仅在 gap-repair runner 的唯一 live completion 调用中增加稳定 schema name 和最小 JSON Schema：顶层必填 `repairs: array`，元素为仅含必填 `role: string` 与 `replacement_terms: array` 的 object；术语元素仅含必填 `term/evidence_hash/matched_field: string`；各 object 均 `additionalProperties=false`。显式发送 `thinking_mode=disabled`、`thinking_budget=None`。schema 不含 `$defs`、`$ref`、`anyOf`、`minItems` 或 `maxItems`；2—4 项、角色范围、证据 hash/字段/逐字命中和完整查询语义继续由现有本地 Pydantic 与投影器裁决。
+- 不变边界：未修改 prompt、Q1/题目词、R1/R2 coverage 或 authority 门、查询重建语义、`max_tokens=768`、重试/fallback、模型调用次数或任何历史运行工件。若目标 response receipt 已存在，runner 仍先按原 schema/hash/消息/投影完整本地重放，不读取或依赖新增传输 kwargs，也不再次调用 provider。
+- test-first 与验证：新增 completion kwargs 捕获测试，生产修改前按预期失败，随后验证最小 schema 的精确字典、禁用思考、768 cap 及禁用关键字集合。runner 专项 `6 passed`；gap contract、R2 retrieval、layered literature、research-loop 与 Science125 batch 相邻联合 `95 passed in 40.08s`。目标 Ruff check/format-check、生产模块 Mypy、生产/测试 py_compile 均通过。额外包含共享 `stage-checkpoint` 的 137 项宽跑为 `133 passed / 4 failed`；四个失败均是该模块既有/并行的 transport physical-retry 预期，与本次 runner 调用路径和改动文件无关，未越界修补。未联网、未调用 Qwen/学术源、未创建 v9、未运行实验。
+
+### P-20260815-017 - 纯传输失败缺少可证明、至多一次的物理重试合同，嵌套回执又会造成双 owner 与物理计费失真
+
+- 状态：Resolved in the generic canonical-provider-owner and physical-attempt contract；新调用链可在严格证据下执行至多一次物理重试，冻结 v1 成功回执继续精确重放，旧 reservation-only 不会被事后升级。未增加 provider 隐藏重试、JSON 猜修、科研内容选择或题目专用规则。
+- 严重性：P0（成本、恢复、隐私和审计完整性）。旧链只有一次逻辑调用的 reservation/成功/解析失败概念，无法区分“opener 尚未返回任何 HTTP response 的纯传输失败”与 HTTPError、已取得 response 后的 `read()`/UTF-8/envelope/schema 失败；若按异常字符串重试，会把已收到响应或含 `10060` 的普通错误再次付费。实际 focus 又存在 outer `focus-selection` 与 inner `direction-focus-selection` 的不同 root、不同 logical request 双层 wrapper，只共享同一物理 preflight；两层各自重试会产生 3—4 次请求，层间 crash 还会留下一个成功/失败 owner 与一个 reservation-only alias。成功交付报告原先把 logical model calls 命名为 provider attempts，也会漏记一次 transport retry。
+- 严格通用合同：新物理 attempt 使用 write-once v2 reservation，固定 `attempt_index=1→2`、相同 request bytes SHA/size 和新 request ID。只有已持久化、完整重验且证明 `response_text=null`、`failure_stage=transport`、`transport_attempted=true`、`http_response_received=false` 的 attempt-1 failure 才有资格建立 attempt-2；attempt-2 transport failure、reservation-only、旧 v7/v8 reservation、HTTP 429/5xx、业务 parse/schema/scientific failure 均不得产生第三次调用。进程在 attempt-1 failure 后、attempt-2 reservation 前可恢复唯一第二次；attempt-2 reservation 后 outcome unknown 则永久 fail-close。
+- HTTP 与嵌套边界：client 现在把 opener 返回 response 之前的故障和 response 对象已取得后的处理故障分开；完整 HTTP status 或 envelope/UTF-8/顶层响应失败写安全的 nonretry terminal escrow 并零调用重放，`read()`/status/header 中断因正文不完整而保守保留 reservation-only，不伪造空 body。ContextRuntime completion 标记唯一 canonical provider owner；下游 wrapper 检测标记后不再建立第二套新 checkpoint。真实不同 root/不同 request identity 的 focus 链在首次纯 transport failure 时 opener 精确为 2，refinement inner alias 为 0；冻结旧双层工件仍可只读，但 inner-only 成功态不被冒充为可恢复完成态。
+- 完整性、隐私和计账：transport/terminal escrow 只保存固定 failure code、allowlisted trace、请求/响应 hash 与空正文状态，不保存 `str(exc)`；最终 attempt-2 抛出的安全异常使用 `from None`，完整格式化 traceback、JSON 和异常正文均不含底层 URL error reason。terminal failure code 与 trace 种类强绑定，attempt index、request ID、路径、内容地址、payload SHA、成功/失败互斥及物理 attempt 总数均在读取入口重验。`provider_checkpoint_accounting` 以 canonical stage owner 的耐久 reservation 统计 physical attempts，并区分 completed/parse/transport/terminal/outcome-unknown。成功 delivery 新增权威 lifetime physical total/by-stage/semantics；三个旧字段保持原 logical-scientific-call 数值并明确标成 v1 compatibility，避免用逻辑差值伪造历史物理成本。
+- test-first 与验证：初始 transport/HTTP/nested/cross-terminal/read-stage 红队矩阵为 `37 passed / 10 failed`；新增异常链泄密与 terminal code/trace 换型反例又先得到 `2 failed`，实现后为 `2 passed`。最终 stage checkpoint、ContextRuntime、真实 research-loop/focus、Science125 batch、LLM client 与 TaskContext 相邻联合 `186 passed in 14.55s`。10 个目标文件 Ruff check/format-check 全绿；6 个生产模块 Mypy 为 `Success: no issues found`；生产与目标测试 py_compile 通过。全程未联网、未调用模型/学术源、未运行实验或修改历史运行目录。
+- 剩余非阻断边界：同一逻辑请求被真正并发启动时仍缺少跨进程 dispatch 锁，极低概率 request-ID/identity 竞态记为 P2；response 对象已取得但 body 不完整目前只能诚实记为 outcome unknown，详细 partial-body terminal schema 记为 P1。成功态 physical accounting 的 no-adapter/legacy loader、Science125 plan-only fallback 与 review-recovery 表面仍需独立收口；`reasoning_effort` 尚未纳入通用 request identity 的历史 P1 也未在本任务扩展。以上不得通过同根重跑、字段猜测或改写旧回执规避。
+
+### P-20260815-018 - 次级终态仍只报告逻辑调用数，严格 transport retry 的物理成本在交付表面丢失
+
+- 状态：Resolved in the generic secondary-terminal accounting surfaces；no-adapter、Science125 plan-only 与 review-recovery 现在都能从耐久 provider checkpoint 严格复算物理 attempt，旧逻辑字段和值保持兼容，旧报告缺少新字段时仍可只读加载。
+- 严重性：P1（审计与成本归因）。`P-20260815-017` 已为主成功交付增加权威 physical ledger，但三个次级终态仍只暴露 logical model calls/provider responses。一次严格允许的 transport retry 因而会在 no-adapter 或 plan-only 报告中少算一次真实请求；review-recovery 也无法区分 lifetime physical attempts 与本次 resume 新增的物理差量，完成态 resume 虽然零调用却没有对应的物理零增量证明。
+- 通用修复：fresh two-stage no-adapter 报告新增逐 canonical outer stage 的 `physical_provider_attempts_by_stage`、完整 `provider_checkpoint_accounting_by_stage`（completed/parse/transport/terminal/outcome-unknown 分类）、物理总数和口径标记；旧三个 provider-request 字段继续保持 logical-scientific-call v1 数值。loader 对新报告按当前 checkpoint 严格重算并拒绝任一新字段缺失或篡改，同时精确接受完全不含这些字段的冻结 legacy accounting。单阶段旧 schema 未被升级。
+- 其他终态：Science125 plan-only 从同一 source checkpoint root 统计 broad、focus、targeted、gap-repair、skill、hypothesis 与 `plan-only-final-plan` 七阶段物理总数及分类，并保留 historical/current/total 三个逻辑字段原值；物理总数若小于逻辑总数则失败关闭。review-recovery 保留 lifetime/current provider response 字段，另增 `provider_physical_attempts_by_stage`、`provider_physical_attempts_lifetime` 与 `current_invocation_provider_physical_attempts`；已完成报告 resume 的 current physical 为 0，中断于 revision 后恢复只记新完成的 review attempt，lifetime 则包含前次 retry。新 review 报告 loader 重算 by-stage/lifetime 并拒绝部分字段或越界 current，冻结旧报告仍可加载。
+- test-first 与验证：新增 6 个参数化/恢复反例初始全部失败，分别证明三类终态没有新物理字段；partial-recovery 测试夹具最初持久化空 revision JSON，随后只修正夹具为可重放对象，未放宽生产 loader。最小实现后定向 `6 passed`，三份完整业务测试 `77 passed in 42.35s`，stage-checkpoint 与 ContextRuntime 相邻回归 `60 passed in 29.34s`。6 个目标文件 Ruff check/format-check 全绿，3 个生产模块 Mypy 全绿，生产与测试 py_compile 通过。未联网、未调用模型/学术源、未执行实验，未改 prompt、题目、查询、coverage/authority 门或历史 run。
+- 边界：新物理字段只描述 durable canonical-owner reservations，不能把无 checkpoint 的外部 SDK 隐藏重试推断为系统 attempt；完成态 review resume 返回值把本次 delta 归零但不改写磁盘报告。共享 dirty worktree 含用户与并行 Agent 修改，本任务未 staging、未 commit，避免夹带不相关文件。
+
+### P-20260815-019 - finalist 状态回执混用目录身份 URL 与 arXiv 查询 URL，fresh 写后无法回放
+
+- 状态：Resolved in generic bibliographic status/replay contract；只修复题目无关的文献身份边界，fresh-v9 失败制品保持原字节且未续跑。
+- 严重性：P0 for delivery continuity。`_verify_arxiv_finalist` 原先把 `receipt.source_url` 写成 `_arxiv_status_url(record) or catalog URL`，而 `_apply_finalist_status_verification` 把同一字段严格解释为原目录记录的 `source_url/url`。一条合法双标识文献如果目录 URL 是正式 DOI、同时有 `10.48550/arxiv.*` 仓储 DOI，就可能生成不同的 arXiv 状态查询 URL；回执 fresh 落盘后立即被自身回放门拒绝。
+- 现场证据：fresh-v9 的 `merged-direction-paper-5ac04beff2acae98` 在 immutable base/layered 身份中保持 `https://doi.org/10.1017/s0305004118000592`，同时带 `repository_doi=10.48550/arxiv.1709.06168`。该记录仅来自 OpenAlex、状态为 published，因此没有发起状态请求；旧生成端仍把回执 URL 写成 `https://arxiv.org/abs/1709.06168`，随后以 `finalist status receipt source URL mismatch` 终止。R2 layered 没有改写该身份，只是暴露了这个既有双标识冲突。
+- 最小通用修复：新 finalist 回执的 `source_url` 始终保存目录记录的 canonical `source_url/url`；派生的 arXiv URL 只用于构造实际 verifier 请求，不再污染记录身份。为精确兼容冻结 v1，回放端只接受两个可由同一当前记录确定性重导的候选：目录 canonical URL，或该记录自身通过 `_arxiv_status_url` 精确导出的旧 arXiv URL。任何第三 URL、模糊归一化或跨记录 URL 继续失败关闭。
+- test-first 与验证：四个合成反例先得到 `4 failed`，分别覆盖 published/OpenAlex 双标识、真正 preprint 状态请求仍走 arXiv URL、新回执 fresh 写入/加载/立即回放、旧 v1 精确兼容与伪造第三 URL 拒绝；实现后为 `4 passed`。两份完整专项为 `63 passed, 1 skipped`，merged/layered/stage-checkpoint 相邻回归为 `77 passed`，Science125 batch 相邻回归为 `17 passed`。四个目标文件 Ruff check 与 format-check 全绿，两个生产模块正常递归 Mypy（仅禁用既有 `no-any-return`）全绿，生产/测试 py_compile 通过。一次 `--follow-imports=skip` 的隔离 Mypy 因该文件既有运行时 union type alias 被跳过导入后退化为变量而报 42 项；去掉不适用的 skip 后同两模块严格递归检查全绿，不属于生产缺陷。
+- 边界：未修改科研提示词、题目词、查询、coverage/authority 门、adapter、预实验指标、模型参数、网络调用或任何历史 run。该修复只授权后续用新版本/新 precommit/新 root 做一次前向运行，不能把 fresh-v9 原终态改写为成功，也不能据此 same-root 重付。
+
+### P-20260815-020 - 文献检索与论文状态核验只有 logical checkpoint，重试后的真实 source HTTP 分母不可审计
+
+- 状态：Resolved in the generic scholarly-source physical-attempt protocol；本地 test-first、相邻回归和独立对抗复验已通过。旧运行不回填、不改写；新的真实数量只能由未来不存在的新 root 前向产生。
+- 严重性：P0/P1（调用真实性、恢复、隐私与报告完整性）。fresh-v9 的 batch 只报告 `18/18` logical literature searches，另有 7 个 focus 与 1 个 finalist 的 logical paper-status checkpoint；底层内置 client 每个逻辑调用最多三次 HTTP 尝试，却没有逐尝试 trace。因此旧现场的 source HTTP 物理数量只能界定为 26—78，不能证明精确值，更不能把 18 个 search 或 26 个 logical operations 冒充 physical calls。
+- 通用协议：arXiv、OpenAlex、Semantic Scholar 内置 client 在每次实际 `http_get` 前发出 credential-free reservation，返回后写 completed/failed outcome；429 后的 circuit-open、本地解析失败与未进入 transport 的调用不伪造新 attempt。注册、独占 dispatch owner、reservation 与 outcome 均 write-once、内容寻址并绑定 logical identity；并发同 identity 只有 owner 可发起 transport，进程在 reservation 后中断则形成 `outcome_unknown`，同 root 恢复零重发。嵌套 observer 链式 fan-out，避免外层漏账或双计。
+- 身份、隐私与语义绑定：只有精确内置类型和原始方法可声明 tracing support，自定义对象、包装器或子类不能靠公开布尔属性伪造“零物理调用”。search 强制 actor 等于 source；registration 保存经中央隐私门验证的安全 logical request，loader 按各内置 adapter 逐项重验 query、limit、endpoint、固定 fields/select 和 transport public params。paper-status 则绑定完整规范化 `AcademicPaper` 与实际 arXiv URL。异常只落固定 allowlisted error family/code；API key、mailto、S2 header value、response body 和动态异常类名不落账。未注册 stage root、异常 category/actor、孤儿 JSON、跨源换标及同源 q_old/q_new 重绑即使重算整条 hash 也失败关闭。
+- 聚合与报告：logical searches 与 paper-status verifications 独立报告 requested/completed/failed/by-source-or-verifier；physical attempts 另按两类报告 requested/completed/failed/outcome-unknown，并明确 `physical-source-http-attempt-ledger-v1` 口径。真正冻结的旧 checkpoint 返回 `legacy_unavailable`/`None`，不从 logical 数量反推。fresh direction input 的 hash-bound protocol marker 使 success、failure、no-adapter、plan-only 与 Science125 completion 新报告不能删除整块 accounting 后重算普通 report/receipt hash 降级为 legacy；current completion state 还必须与已绑定 delivery report 及本地 research-loop 权威账本一致。
+- test-first 与验证：核心 `dict(request)` 回放缺陷、动态异常隐私泄漏、tracer spoof、同 identity 并发、legacy/current 混合、reservation-only、malformed JSON、未注册 root、actor/source 换标、同源 q_old/q_new 重绑、四类报告降级和 completion `requested=1→999` 重哈希反例均先复现或由独立红队实证，再逐项闭合。最终本专项四文件联合 `155 passed in 11.34s`；独立红队另得相邻 literature `59 passed`，并确认 exact 1→999 与最强同源换绑均拒绝。8 个目标 Ruff check/format-check、4 个生产模块 Mypy 与 py_compile 全绿。
+- 边界：这里的 physical attempt 指内置 scholarly client 对注入 HTTP transport 的一次调用，不声称统计操作系统 TCP 重传或第三方 SDK 内部不可观察行为。custom/no-adapter 必须显示 unavailable，不能由 logical request count 回填。本修复没有题目词、查询优化、文献质量阈值、科研 prompt、预实验规则、模型参数、联网调用或历史 run 修改；fresh-v9 的旧报告继续是不完整历史证据。
+
+### P-20260815-021 - 生产检索未在联网前验证 OpenAlex 当前必需认证，且缺少固定查询的有界来源恢复通道
+
+- 状态：Open / live blocker。fresh-v10 的首个终态继续有效且禁止同根 resume；当前不得直接启动后继 live 运行。下一步必须先由用户通过 `.env` 提供免费的 `OPENALEX_API_KEY`，再以题目无关、版本化、固定输入的 source-recovery 合同本地验证并另立不存在的新 root。
+- 严重性：P1（交付连续性、来源合规与调用预算）。fresh-v10 已完成 broad 查询、broad 产物、focus 选择和 targeted 查询生成，但 targeted 的 arXiv/OpenAlex 8 个逻辑来源请求全部失败，所以 R1 coverage、Skill、hypothesis、pilot、研究计划、独立评审和 PDF 均未启动。模型物理尝试 4/4 完成；来源逻辑请求 16 次中仅 broad OpenAlex 4 次成功，物理 HTTP 精确为 29 次：4 完成、25 失败、0 unknown。arXiv 的 8 个逻辑请求各耗尽 3 次；OpenAlex targeted 首次 HTTP 429 后，同一进程内存断路器让余下 3 个逻辑请求在 HTTP 前短路。
+- 认证根因：v10 冻结与当前 `.env` SHA-256 都是 `b7fbfe6d95a18bcb8f5060b05986a6dcd8d876c29831a7e25ee32360f8831645`，其中不存在 `OPENALEX_API_KEY`。当前 OpenAlex 官方文档要求 API key，且明确旧 `mailto` polite-pool 已废弃；代码虽然支持该环境变量，但竞赛 preflight 没有在任何模型/来源调用前检查所选生产 source 的认证就绪状态。固定等待本地 60 秒断路器不能证明匿名 demo 配额恢复，也不能作为可靠恢复。
+- 恢复缺口：现有 failed logical checkpoint 会精确重放失败而不重新派发，普通 research-loop/batch resume 也会复用原失败 attempt，因此无法只补 v10 未完成的 targeted 来源。合法最小范围只能冻结并恢复 4 个 arXiv + 4 个 OpenAlex targeted source-query 身份，每个最多一个恢复逻辑调用、整轮最多 24 个物理 HTTP attempt；不得补 broad 的历史 arXiv 失败，因为 focus 已绑定原 broad 证据，事后改变 broad 而不重选 focus 会造成语义错配，重选 focus 又会重新采样科学内容。
+- 必需修复：新增独立、版本化的 bounded source-recovery preflight/runner/continuation。无 key 时必须在联网和模型调用前返回 `blocked_missing_required_source_credential`、0 外部调用且不占唯一恢复轮；有 key 时只记录 `authenticated=true` 与被排除的凭证字段名，不保存、散列或回显 secret。父 broad/focus/targeted-query 字节与 hash 必须精确继承，恢复 API 不接受 direction、query、模型 callable 或候选列表；只物化唯一 targeted artifact 后继续原 coverage/authority/实验/评审门。不得加入 Semantic Scholar 或第三来源、修改查询、降低门槛、增加 R3、隐藏重试或跨运行择优。
+- 证据：v10 终态独立封存在 `runs/manual-live/science125-q001-a1-prize-sprint-v10-terminal-evidence.json`，canonical hash=`2be02eee977f7092af455de9704e1c6cc21c450a2d7d1561a4364979a8240199`，文件 SHA-256=`940c7e364b62cd365de661d7759985391383cfaec0c67f2b0c96b0b565fa29f4`。v10 root 为 `146 files / 1,831,590 bytes / 92dfd784c13262bf75820878e71588e47c228f4ed0f72098302fa16642224386`，原 root 未改写。
+- 下一步：用户只需把 key 写入 `E:\AIResearch\.env` 的 `OPENALEX_API_KEY=...`，不要在聊天、日志或仓库中发送 secret。收到“已配置”确认后，先实现并以 fake clock/mock source 做完整 test-first 验证，再做一次不回显凭证的 presence/认证 live smoke；只有新 recovery preflight 与透明 precommit 均通过，才允许创建后继 root。该修复必须完全题目无关，不得包含当前科学问题词、规则或阈值。

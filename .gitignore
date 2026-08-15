@@ -18,6 +18,10 @@ htmlcov/
 autoresearch-vault/.obsidian/
 autoresearch-vault/.trash/
 autoresearch-vault/.versions/
+autoresearch-vault/.backups/
+# Local sovereign raw memory. Derived, reviewed Obsidian projections may be
+# tracked, but original user/source bytes and capture manifests stay private.
+autoresearch-vault/_private/
 autoresearch-vault/exploration/inspiration/
 autoresearch-vault/exploration/topics/literature_refresh_*.md
 autoresearch-vault/exploration/topics/similarity_check_*.md

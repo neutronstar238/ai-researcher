@@ -394,7 +394,7 @@ def run_route_p2_paradigm_audit(
                 for fixture in fixtures:
                     arm_cells.append(
                         ArmCellResult(
-                            arm_id=arm_id,  # type: ignore[arg-type]
+                            arm_id=arm_id,
                             proposal_index=index,
                             sentinel_id=fixture.sentinel_id,
                             data_type=fixture.data_type,
@@ -421,7 +421,7 @@ def run_route_p2_paradigm_audit(
                 for fixture in fixtures:
                     arm_cells.append(
                         ArmCellResult(
-                            arm_id=arm_id,  # type: ignore[arg-type]
+                            arm_id=arm_id,
                             proposal_index=index,
                             sentinel_id=fixture.sentinel_id,
                             data_type=fixture.data_type,
@@ -447,7 +447,7 @@ def run_route_p2_paradigm_audit(
                 failures.extend(codes)
                 arm_cells.append(
                     ArmCellResult(
-                        arm_id=arm_id,  # type: ignore[arg-type]
+                        arm_id=arm_id,
                         proposal_index=index,
                         sentinel_id=str(item.get("sentinel_id")),
                         data_type=str(item.get("data_type")),  # type: ignore[arg-type]
@@ -463,7 +463,7 @@ def run_route_p2_paradigm_audit(
 
         arms.append(
             _select_arm_outcome(
-                arm_id=arm_id,  # type: ignore[arg-type]
+                arm_id=arm_id,
                 cells=tuple(arm_cells),
                 model_call_count=matched_model_call_budget,
                 generations=1

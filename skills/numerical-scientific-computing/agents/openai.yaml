@@ -1,0 +1,5 @@
+interface:
+  display_name: "Numerical Scientific Computing"
+  short_description: "科学计算数值稳定性与误差审查"
+  default_prompt: "使用 $numerical-scientific-computing 审查数值实验的稳定性与误差来源。"
+

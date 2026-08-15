@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sparse Dynamics Identification"
+  short_description: "Evidence-first sparse dynamics methodology"
+  default_prompt: "Use $sparse-dynamics-identification to audit a sparse dynamics research opportunity."

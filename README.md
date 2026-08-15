@@ -374,6 +374,31 @@ recovery as a credible `negative_result`, keeps `gate_b_allowed=false`, and stop
 family without post-unseen tuning. Gate B, Qwen submission evidence, product expansion, and award
 claims remain blocked.
 
+Beyond the official MDBench chain, the competition package contains a broader evidence-first
+direction-loop family, all driven by the same nine-stage checkpoints:
+
+- `contest_direction_*` modules and CLIs implement the resumable direction loop: question input,
+  research-objective stage, layered/focus/merged literature, gap-repair retrieval, hypothesis stage,
+  memory, stage checkpoints, scientific amendment, targeted scientific repair, review recovery, and
+  skill evolution. `contest_human_delivery_validator` gates human-delivery evidence, and
+  `contest_direct_plan*` renders/reviews/revisions the direct evidence-bound plan.
+- `system_plan_*` modules force a result-blind divergent ideation phase over creative lenses, then
+  give a separate model interaction veto over every direction; every scientific sentence stays
+  byte-bound to a model-authorship receipt. Methodology and opportunity mapping remain deterministic.
+- `continual_plan_loop.py` is a persistent competition plan-loop adapter that selects one existing
+  official plan entrypoint from verified on-disk checkpoints and records it through the continual
+  research harness.
+- `science125_batch.py` is a deterministic, serial batch service for a Science 125 plan-only scope:
+  the source PDF defines the questions, each gets an isolated attempt/checkpoint directory, and the
+  default path delivers a Chinese plan-only report. Formal experiments and result papers are outside
+  this batch contract.
+- `publication_signature.py` contains detached Ed25519 human-signature verification only: the
+  process may prepare an immutable authorization request but never possesses or invokes the human
+  signer's private key.
+- `model_authorship.py`, `public_data_profile.py`, `temporary_qwen_pool.py`, and
+  `contest_planning_literature_*` support authorship receipts, public-data profiles, bounded local
+  model pools, and plan-time literature coverage/quality gates respectively.
+
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 
 ```bash
@@ -601,6 +626,58 @@ output and does not claim delivery. Feishu App credentials can send directly whe
 configured. WeChat QR setup writes `.airesearcher/channels/wechat/setup-status.json`; delivery
 still depends on the QR adapter session being active.
 
+## Local Research-Plan API
+
+A local, single-user adapter over the evidence-first direction loop ships under
+`src/autoresearch/api/` (start with `python -m autoresearch.api.app`). It exposes a
+loopback-only REST API and a local Chinese web UI on `127.0.0.1:8765` by default, with
+job metadata and background scheduling only: literature, Skill routing, pilot, memory,
+checkpoint, and plan logic stay in the existing direction loop. Core endpoints cover run
+create/resume/cancel/artifacts, PDF-derived question batches, and frozen
+evidence-to-Skill shadow evolution that never promotes without a separate governed action.
+Provider credentials are never accepted over HTTP; the direction loop reads them from the
+server-side config and env files. See [docs/research-plan-api.md](docs/research-plan-api.md)
+for the endpoint table and execution boundaries.
+
+## Adaptive And Continual Research Machinery
+
+The current engine surface keeps scientific promotion deterministic and fail-closed while
+the exploration order is model-driven:
+
+- `kernel/scientific_cycle.py` and `scientific_cycle_validation.py` define provider- and
+  topic-neutral mechanism-research contracts (hypothesis assessment, content-addressed
+  references, graph planes, validation). They execute no experiments and authorize no
+  promotion themselves.
+- `runtime/continual_research_harness.py` is a persistent coordinator for small continual
+  research-loop steps: durable queueing, leases, idempotent terminal transitions, and the
+  boundary between active and completed task context. It coordinates the existing
+  scheduler, heartbeat, raw-memory, and task-context contracts.
+- `knowledge/raw_memory.py` keeps model-independent raw memory: authorized source bytes are
+  retained once, SHA-256 addressed, and never rewritten; summaries, indexes, and Obsidian
+  projections are derived and rebuildable. `literature/privacy.py` filters secret-like
+  payloads before anything enters raw memory or derived vault notes.
+- `llm/model_capabilities.py` sources the official model context limit from the configured
+  provider's published model page (with a verified local cache) instead of a user-tuned
+  number, and `llm/task_context.py` carries bounded active/completed task context into
+  model calls.
+- `research/adaptive_*` is the adaptive research-loop family: the memory-sovereign loop
+  (`adaptive_sovereign_loop.py`) branches, retrieves, delegates, and criticizes in any
+  model-chosen order while appending every visible response to raw memory before it can
+  change state; `adaptive_skill_router.py` selects project-local `SKILL.md` methodology by
+  compact metadata; `adaptive_transport_gateway*.py` gate remote execution; and the
+  `adaptive_loop_benchmark*` modules implement the frozen cell-runner benchmark harness with
+  receipts, context, and arm adapters. `adaptive_operator_steering.py`,
+  `adaptive_promotion_verifier.py`, and `adaptive_memory_loop_audit.py` keep promotion and
+  memory-evolution under verified controls.
+- `agents/temporary.py` provides fail-closed contracts for bounded, one-shot temporary
+  content agents (content-addressed assignments, terminal archive records, deterministic
+  batch manifests). Temporary-agent output is process metadata and can never authorize
+  delegation, execution, adjudication, or release on its own.
+
+Project-local `SKILL.md` methodology packs live under `skills/` (for example
+`agent-memory-evaluation`, `sparse-dynamics-identification`, `research-novelty-triangulation`)
+and are routed by the adaptive skill router as context, never as literature or evidence.
+
 ## Operator Monitor
 
 ```bash
@@ -741,9 +818,12 @@ Local runtime artifacts are intentionally ignored by git:
 - `artifacts/`
 - `outputs/`
 
-The tracked repository should contain source code, tests, docs, integration manifests, templates,
-license notices, and the safe Obsidian vault scaffold. Generated PDFs and large run bundles stay
-local under `outputs/` unless a release process explicitly publishes them elsewhere.
+The tracked repository contains source code, tests (including `tests/live/` opt-in live smoke
+tests), docs, integration manifests, templates, license notices, project-local `skills/`
+methodology packs, and the safe Obsidian vault scaffold. Working directories such as `tmp/`,
+`audit/`, and `.understand-anything/` hold local debug artifacts and are committed as-is for
+reproducibility; generated PDFs and large run bundles stay local under `outputs/` unless a
+release process explicitly publishes them elsewhere.
 
 ## Obsidian Vault
 
@@ -840,6 +920,7 @@ python -m pytest tests/smoke tests/unit -q
 - [Execution Plan](AutoResearch_System_Execution_Plan.md)
 - [Implementation Tasks](.kiro/specs/auto-research-system/tasks.md)
 - [Release Gate Checklist](docs/release-gate.md)
+- [Research-Plan API](docs/research-plan-api.md)
 - [vNext Compatibility and Migration Guide](docs/vnext-compatibility-migration.md)
 - [Agent Change Log](Agent.md)
 - [Problem Log](Problem.md)

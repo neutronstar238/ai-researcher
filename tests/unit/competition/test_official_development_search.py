@@ -37,9 +37,20 @@ from autoresearch.competition.official_development_search import (
     _median,
     aggregate_paired_effects,
     compute_system_effects,
+    execute_official_stage,
     generate_official_candidates,
+    revise_official_candidates,
     select_official_candidate,
 )
+from autoresearch.competition.plan_execution_contract import (
+    PlanExecutionContractError,
+    audit_candidate_plan_alignment,
+    build_prospective_candidate_execution_declaration,
+    compile_plan_execution_contract,
+)
+from autoresearch.research.plan_confirmation import record_plan_decision
+from autoresearch.schemas import ResearchPlan
+from tests.unit.competition import test_plan_execution_contract as formal_support
 
 
 def _cell(
@@ -749,3 +760,706 @@ def test_a_conformant_first_reply_costs_no_repair_call(tmp_path: Path) -> None:
         clock=lambda: datetime(2026, 8, 4, tzinfo=timezone.utc),
     )
     assert len(calls) == 1
+
+
+# --------------------------------------------------------------------------
+# Formal prospective plan lifecycle (plan-execution-contract-v2)
+# --------------------------------------------------------------------------
+
+
+def _formal_fixture(tmp_path: Path) -> tuple[Any, Any, str]:
+    artifact = formal_support._formal_plan_artifact(tmp_path)
+    contract = formal_support.compile_system_authored_plan_execution_contract(artifact)
+    assert contract.approved_plan == artifact.plan
+    source = formal_support._prospective_source(contract)
+    return artifact, contract, source
+
+
+def _source_completion(source: str, calls: list[list[dict[str, str]]] | None = None) -> Any:
+    def complete(**kwargs: Any) -> Any:
+        if calls is not None:
+            calls.append([dict(item) for item in kwargs["messages"]])
+        return formal_support._completion_result(
+            formal_support._source_response(source)
+        )
+
+    return complete
+
+
+def test_formal_generation_receives_exact_declaration_and_authors_it_itself(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, source = _formal_fixture(tmp_path)
+    output = tmp_path / "generation"
+    calls: list[list[dict[str, str]]] = []
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=output,
+        completion=_source_completion(source, calls),
+        research_plan=artifact,
+        clock=lambda: datetime(2026, 8, 9, tzinfo=timezone.utc),
+    )[0]
+
+    prompt = json.loads(calls[0][-1]["content"])
+    declaration = build_prospective_candidate_execution_declaration(contract)
+    assert prompt["prospective_candidate_execution_declaration"] == (
+        declaration.model_dump(mode="json")
+    )
+    assert declaration.schema_version == "prospective-candidate-execution-declaration-v2"
+    assert (
+        declaration.paired_execution_binding.schema_version
+        == "prospective-paired-execution-binding-v1"
+    )
+    exact_assignment = prompt["prospective_source_contract"]["exact_python_assignment"]
+    assert exact_assignment == (
+        "PROSPECTIVE_EXECUTION_DECLARATION = "
+        f"{declaration.model_dump(mode='python')!r}"
+    )
+    system_prompt = calls[0][0]["content"]
+    source_contract = prompt["prospective_source_contract"]
+    assert source_contract["candidate_alignment_audit_schema_version"] == (
+        "candidate-plan-alignment-audit-v3"
+    )
+    assert source_contract["runtime_binding_payload_key"] == (
+        "prospective_execution_binding"
+    )
+    assert source_contract["identity_guards"] == [
+        {
+            "runtime_path": "prospective_execution_binding.plan_execution_contract_hash",
+            "declaration_path": "plan_execution_contract_hash",
+            "operator": "!=",
+            "on_mismatch": "raise",
+        },
+        {
+            "runtime_path": "prospective_execution_binding.selected_intervention_hash",
+            "declaration_path": "selected_intervention_identity.intervention_hash",
+            "operator": "!=",
+            "on_mismatch": "raise",
+        },
+        {
+            "runtime_path": "prospective_execution_binding.pair_contract_hash",
+            "declaration_path": "paired_control_treatment.pair_hash",
+            "operator": "!=",
+            "on_mismatch": "raise",
+        },
+    ]
+    assert source_contract["identity_guards_must_precede_arm_selection"] is True
+    assert source_contract["runtime_configuration_selector"]["runtime_path"] == (
+        "prospective_execution_binding.configuration["
+        "PROSPECTIVE_EXECUTION_DECLARATION.paired_control_treatment.intervention_key]"
+    )
+    assert source_contract["control_helper"] != source_contract["treatment_helper"]
+    assert source_contract["unknown_arm_action"] == "raise"
+    assert source_contract["public_hooks_must_directly_return_dispatcher"] == list(
+        contract.public_hooks
+    )
+    assert source_contract["orchestrator_may_inject_or_rewrite_source"] is False
+    assert "exactly the two top-level functions" not in system_prompt
+    assert contract.implementation_anchor in system_prompt
+    assert "three identity guards" in system_prompt
+    assert "prospective_execution_binding" in system_prompt
+    assert "distinct control and treatment helpers" in system_prompt
+    assert "raise for every unknown arm" in system_prompt
+    assert "directly return the dispatcher" in system_prompt
+    assert (output / candidate.source_relative_path).read_text(encoding="utf-8") == (
+        "\n".join(source.splitlines())
+    )
+    assert candidate.plan_alignment is None
+    assert candidate.prospective_plan_alignment is not None
+    assert candidate.prospective_plan_alignment.passed is True
+    assert candidate.static_review_approved is True
+
+
+def test_formal_topology_first_failure_is_repaired_without_rewriting_method(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, valid_source = _formal_fixture(tmp_path)
+    invalid_source = valid_source.replace(contract.contract_hash, "0" * 64, 1)
+    assert invalid_source != valid_source
+    calls: list[list[dict[str, str]]] = []
+    responses = [invalid_source, valid_source]
+
+    def completion(**kwargs: Any) -> Any:
+        calls.append([dict(item) for item in kwargs["messages"]])
+        return formal_support._completion_result(
+            formal_support._source_response(responses[len(calls) - 1])
+        )
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "topology-repair",
+        completion=completion,
+        research_plan=artifact,
+    )[0]
+
+    assert len(calls) == 2
+    repair_prompt = calls[1][-1]["content"]
+    assert "topology-only repair" in repair_prompt
+    assert "preserve the scientific method" in repair_prompt
+    assert "implementation-anchor" in repair_prompt
+    assert candidate.interaction_id == "official-generate-01-repair2"
+    assert candidate.static_review_approved is True
+    persisted = (
+        tmp_path / "topology-repair" / candidate.source_relative_path
+    ).read_text(encoding="utf-8")
+    assert persisted == "\n".join(valid_source.splitlines())
+
+
+def test_formal_same_helper_dispatch_is_repaired_without_scientific_drift(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, valid_source = _formal_fixture(tmp_path)
+    invalid_source = formal_support._prospective_source(
+        contract, same_arm_helper=True
+    )
+    calls: list[list[dict[str, str]]] = []
+    responses = [invalid_source, valid_source]
+
+    def completion(**kwargs: Any) -> Any:
+        calls.append([dict(item) for item in kwargs["messages"]])
+        return formal_support._completion_result(
+            formal_support._source_response(responses[len(calls) - 1])
+        )
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "same-helper-repair",
+        completion=completion,
+        research_plan=artifact,
+    )[0]
+
+    assert len(calls) == 2
+    assert candidate.static_review_approved is True
+    assert candidate.prospective_plan_alignment is not None
+    assert candidate.prospective_plan_alignment.schema_version == (
+        "candidate-plan-alignment-audit-v3"
+    )
+    assert candidate.prospective_plan_alignment.distinct_arm_helpers is True
+    repair_prompt = calls[1][-1]["content"]
+    assert "helper bodies" in repair_prompt
+    assert "runtime configuration" in repair_prompt
+    assert "unknown-arm raise" in repair_prompt
+
+
+@pytest.mark.parametrize(
+    "source_mutation",
+    [
+        "dead_selector",
+        "declaration_alias",
+        "same_arm_helper",
+        "hook_bypass",
+        "unknown_arm_fallback",
+    ],
+)
+def test_formal_generation_rejects_restricted_dispatch_bypasses(
+    tmp_path: Path,
+    source_mutation: str,
+) -> None:
+    artifact, contract, valid_source = _formal_fixture(tmp_path)
+    if source_mutation == "dead_selector":
+        invalid_source = formal_support._prospective_source(
+            contract, dead_selector=True
+        )
+    elif source_mutation == "declaration_alias":
+        invalid_source = formal_support._prospective_source(
+            contract, declaration_alias=True
+        )
+    elif source_mutation == "same_arm_helper":
+        invalid_source = formal_support._prospective_source(
+            contract, same_arm_helper=True
+        )
+    elif source_mutation == "hook_bypass":
+        invalid_source = formal_support._prospective_source(
+            contract, bypass_hook=contract.public_hooks[0]
+        )
+    else:
+        control_helper = f"{contract.implementation_anchor}__control"
+        invalid_source = valid_source.replace(
+            "    raise ValueError('unknown prospective arm')",
+            f"    return {control_helper}(payload)",
+            1,
+        )
+    calls: list[int] = []
+
+    def completion(**_kwargs: Any) -> Any:
+        calls.append(1)
+        return formal_support._completion_result(
+            formal_support._source_response(invalid_source)
+        )
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / source_mutation,
+        completion=completion,
+        research_plan=artifact,
+    )[0]
+
+    assert 1 <= len(calls) <= 3
+    assert candidate.static_review_approved is False
+    assert candidate.prospective_plan_alignment is not None
+    assert candidate.prospective_plan_alignment.schema_version == (
+        "candidate-plan-alignment-audit-v3"
+    )
+    assert candidate.prospective_plan_alignment.passed is False
+
+
+def test_formal_generation_rejects_v1_declaration_downgrade(tmp_path: Path) -> None:
+    artifact, _contract, valid_source = _formal_fixture(tmp_path)
+    downgraded = valid_source.replace(
+        "prospective-candidate-execution-declaration-v2",
+        "prospective-candidate-execution-declaration-v1",
+        1,
+    )
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "declaration-v1-downgrade",
+        completion=_source_completion(downgraded),
+        research_plan=artifact,
+    )[0]
+
+    assert candidate.static_review_approved is False
+    assert candidate.prospective_plan_alignment is not None
+    assert candidate.prospective_plan_alignment.declaration_exact is False
+
+
+def test_formal_candidate_record_rejects_retained_v2_audit_downgrade(
+    tmp_path: Path,
+) -> None:
+    artifact, _contract, source = _formal_fixture(tmp_path)
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "audit-v2-downgrade",
+        completion=_source_completion(source),
+        research_plan=artifact,
+    )[0]
+    payload = candidate.model_dump(mode="json")
+    payload["prospective_plan_alignment"]["schema_version"] = (
+        "candidate-plan-alignment-audit-v2"
+    )
+
+    with pytest.raises(ValueError, match="candidate-plan-alignment-audit-v3"):
+        OfficialCandidateRecord.model_validate(payload)
+
+
+def test_topology_repair_cannot_rewrite_scientific_narrative(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, valid_source = _formal_fixture(tmp_path)
+    invalid_source = formal_support._prospective_source(
+        contract, same_arm_helper=True
+    )
+    calls: list[list[dict[str, str]]] = []
+
+    def completion(**kwargs: Any) -> Any:
+        calls.append([dict(item) for item in kwargs["messages"]])
+        source = invalid_source if len(calls) == 1 else valid_source
+        payload = formal_support._source_response(source)
+        if len(calls) > 1:
+            payload["hypothesis"] = "A repair turn silently replaced the hypothesis."
+        return formal_support._completion_result(payload)
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "narrative-drift",
+        completion=completion,
+        research_plan=artifact,
+    )[0]
+
+    assert len(calls) == 3
+    assert candidate.static_review_approved is False
+    assert any(
+        "TOPOLOGY_REPAIR_METHOD_DRIFT" in item
+        for item in candidate.static_review_findings
+    )
+    assert "all six scientific narrative fields" in calls[1][-1]["content"]
+
+
+def test_schema_repair_cannot_rewrite_scientific_narrative(
+    tmp_path: Path,
+) -> None:
+    artifact, _contract, valid_source = _formal_fixture(tmp_path)
+    calls: list[list[dict[str, str]]] = []
+
+    def completion(**kwargs: Any) -> Any:
+        calls.append([dict(item) for item in kwargs["messages"]])
+        payload = formal_support._source_response(valid_source)
+        if len(calls) == 1:
+            payload.pop("response_type")
+        else:
+            payload["hypothesis"] = "Schema repair silently replaced the hypothesis."
+        return formal_support._completion_result(payload)
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "schema-narrative-drift",
+        completion=completion,
+        research_plan=artifact,
+    )[0]
+
+    assert len(calls) == 3
+    assert candidate.static_review_approved is False
+    assert any(
+        "REPAIR_SCIENTIFIC_NARRATIVE_DRIFT" in item
+        for item in candidate.static_review_findings
+    )
+
+
+def test_three_topology_failures_are_retained_as_rejected_not_executable(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, valid_source = _formal_fixture(tmp_path)
+    invalid_source = valid_source.replace(contract.contract_hash, "0" * 64, 1)
+    assert invalid_source != valid_source
+    calls: list[int] = []
+
+    def completion(**_kwargs: Any) -> Any:
+        calls.append(1)
+        return formal_support._completion_result(
+            formal_support._source_response(invalid_source)
+        )
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "topology-three-failures",
+        completion=completion,
+        research_plan=artifact,
+    )[0]
+
+    assert len(calls) == 3
+    assert candidate.interaction_id == "official-generate-01-repair3"
+    assert candidate.static_review_approved is False
+    assert candidate.prospective_plan_alignment is not None
+    assert candidate.prospective_plan_alignment.passed is False
+    assert any(
+        "PROSPECTIVE_PLAN_NOT_IMPLEMENTED" in item
+        for item in candidate.static_review_findings
+    )
+    logical_turns = sorted(
+        (tmp_path / "topology-three-failures" / "interactions").glob(
+            "*.logical-turn.json"
+        )
+    )
+    assert len(logical_turns) == len(calls) == 3
+    assert sorted(
+        json.loads(path.read_text(encoding="utf-8"))["logical_attempt_index"]
+        for path in logical_turns
+    ) == [1, 2, 3]
+
+
+def test_formal_generation_never_injects_a_missing_declaration(
+    tmp_path: Path,
+) -> None:
+    artifact, _contract, _source = _formal_fixture(tmp_path)
+    output = tmp_path / "missing-declaration"
+    source = "\n".join(_source_payload()["source_lines"])
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=output,
+        completion=_source_completion(source),
+        research_plan=artifact,
+    )[0]
+
+    persisted = (output / candidate.source_relative_path).read_text(encoding="utf-8")
+    assert "PROSPECTIVE_EXECUTION_DECLARATION" not in persisted
+    assert candidate.prospective_plan_alignment is not None
+    assert candidate.prospective_plan_alignment.passed is False
+    assert candidate.static_review_approved is False
+    assert any(
+        "PROSPECTIVE_PLAN_NOT_IMPLEMENTED" in item
+        for item in candidate.static_review_findings
+    )
+
+
+def test_formal_static_review_rejects_duplicate_implementation_anchor(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, source = _formal_fixture(tmp_path)
+    anchor = contract.implementation_anchor
+    duplicate_source = (
+        source
+        + "\n"
+        + f"def {anchor}(payload):\n"
+        + "    contract_hash = PROSPECTIVE_EXECUTION_DECLARATION"
+        "['plan_execution_contract_hash']\n"
+        + "    intervention_identity = PROSPECTIVE_EXECUTION_DECLARATION"
+        "['selected_intervention_identity']\n"
+        + "    paired_configuration = PROSPECTIVE_EXECUTION_DECLARATION"
+        "['paired_control_treatment']\n"
+        + "    return payload\n"
+    )
+
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path / "duplicate-anchor",
+        completion=_source_completion(duplicate_source),
+        research_plan=artifact,
+    )[0]
+
+    assert candidate.prospective_plan_alignment is not None
+    assert candidate.prospective_plan_alignment.passed is False
+    assert candidate.static_review_approved is False
+    assert any(
+        "implementation anchor must have exactly one" in item
+        for item in candidate.static_review_findings
+    )
+
+
+def test_candidate_audit_families_are_exclusive_and_legacy_shape_is_unchanged(
+    tmp_path: Path,
+) -> None:
+    _artifact, contract, source = _formal_fixture(tmp_path)
+    prospective = formal_support.audit_prospective_candidate_plan_alignment(
+        candidate_id="c1", source_text=source, contract=contract
+    )
+    legacy_contract = compile_plan_execution_contract(formal_support._plan())
+    legacy = audit_candidate_plan_alignment(
+        candidate_id="c1",
+        source_text=formal_support._ALIGNED_SOURCE,
+        contract=legacy_contract,
+    )
+    with pytest.raises(OfficialDevelopmentSearchError, match="mutually exclusive"):
+        OfficialCandidateRecord(
+            candidate_id="c1",
+            generation=1,
+            interaction_id="formal-c1",
+            source_relative_path="candidates/c1/candidate.py",
+            source_sha256=prospective.source_sha256,
+            static_review_approved=True,
+            implementation_summary="model-authored formal implementation",
+            approved_plan_hash=contract.approved_plan_hash,
+            plan_contract_hash=contract.contract_hash,
+            plan_alignment=legacy,
+            prospective_plan_alignment=prospective,
+        )
+
+    retained = _record("legacy")
+    expected = {
+        "candidate_id": "legacy",
+        "generation": 1,
+        "interaction_id": "gen-legacy",
+        "source_relative_path": "candidates/legacy/candidate.py",
+        "source_sha256": "b" * 64,
+        "static_review_approved": True,
+        "static_review_findings": [],
+        "implementation_summary": "a model-authored equation-discovery method",
+        "authored_by_model": True,
+    }
+    dumped = retained.model_dump(mode="json")
+    assert dumped == expected
+    assert canonical_model_hash(dumped) == canonical_model_hash(expected)
+    assert "prospective_plan_alignment" not in dumped
+
+
+def test_formal_revision_preserves_and_reaudits_identity_with_direct_contract(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, source = _formal_fixture(tmp_path)
+    output = tmp_path / "revision"
+    parent = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=output,
+        completion=_source_completion(source),
+        research_plan=artifact,
+    )[0]
+    calls: list[list[dict[str, str]]] = []
+
+    revised = revise_official_candidates(
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        candidates=[parent],
+        results=[
+            _cell(
+                candidate_id=parent.candidate_id,
+                system="ode-a",
+                nmse=0.4,
+                validation=0.3,
+            )
+        ],
+        output_dir=output,
+        completion=_source_completion(source, calls),
+        research_plan=contract,
+    )[0]
+
+    assert revised.plan_alignment is None
+    assert revised.prospective_plan_alignment is not None
+    assert revised.prospective_plan_alignment.passed is True
+    assert revised.static_review_approved is True
+    assert "Keep the same two top-level functions" not in calls[0][0]["content"]
+    assert contract.implementation_anchor in calls[0][0]["content"]
+    assert "three identity guards" in calls[0][0]["content"]
+    assert "runtime prospective_execution_binding" in calls[0][0]["content"]
+    assert "distinct control and treatment helpers" in calls[0][0]["content"]
+    assert "unknown arm" in calls[0][0]["content"]
+    revision_prompt = json.loads(calls[0][-1]["content"])
+    assert revision_prompt["prospective_source_contract"]["module_constant_name"] == (
+        "PROSPECTIVE_EXECUTION_DECLARATION"
+    )
+    assert revision_prompt["prospective_source_contract"][
+        "candidate_alignment_audit_schema_version"
+    ] == "candidate-plan-alignment-audit-v3"
+
+
+def test_formal_revision_cannot_downgrade_to_a_declaration_free_candidate(
+    tmp_path: Path,
+) -> None:
+    artifact, contract, source = _formal_fixture(tmp_path)
+    output = tmp_path / "revision-downgrade"
+    parent = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=output,
+        completion=_source_completion(source),
+        research_plan=artifact,
+    )[0]
+    downgraded = "\n".join(_source_payload()["source_lines"])
+
+    revised = revise_official_candidates(
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        candidates=[parent],
+        results=[
+            _cell(
+                candidate_id=parent.candidate_id,
+                system="ode-a",
+                nmse=0.4,
+                validation=0.3,
+            )
+        ],
+        output_dir=output,
+        completion=_source_completion(downgraded),
+        research_plan=contract,
+    )[0]
+
+    assert revised.plan_alignment is None
+    assert revised.prospective_plan_alignment is not None
+    assert revised.prospective_plan_alignment.passed is False
+    assert revised.static_review_approved is False
+
+
+def test_formal_execution_reaudits_source_before_starting_any_runner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact, contract, source = _formal_fixture(tmp_path)
+    output = tmp_path / "execution"
+    candidate = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=output,
+        completion=_source_completion(source),
+        research_plan=artifact,
+    )[0]
+    plan = ResearchPlan.model_validate(contract.approved_plan)
+    decision = record_plan_decision(
+        plan=plan,
+        decision="approve",
+        decided_by="operator",
+        notes="formal prospective scope approved",
+        output_dir=tmp_path / "decisions",
+    )
+    source_path = output / candidate.source_relative_path
+    source_path.write_text(source + "\n# post-audit mutation\n", encoding="utf-8")
+    process_calls: list[int] = []
+
+    def forbidden_run(*_args: Any, **_kwargs: Any) -> Any:
+        process_calls.append(1)
+        raise AssertionError("runner must not start before the formal source re-audit")
+
+    monkeypatch.setattr(
+        "autoresearch.competition.official_development_search.subprocess.run",
+        forbidden_run,
+    )
+    spec_payload: dict[str, Any] = {
+        "attempt_id": "pilot-official-01-ode-a-clean-101",
+        "method_kind": "candidate",
+        "candidate_id": candidate.candidate_id,
+        "stage": "pilot",
+        "system_name": "ode-a",
+        "data_type": "ode",
+        "condition": "clean",
+        "seed": 101,
+        "data_relative_path": "ode-a/clean.npz",
+        "data_sha256": "a" * 64,
+        "candidate_source_sha256": candidate.source_sha256,
+    }
+    spec_payload["spec_hash"] = canonical_model_hash(spec_payload)
+
+    with pytest.raises(
+        OfficialDevelopmentSearchError, match="retained prospective audit does not match"
+    ):
+        execute_official_stage(
+            identity=_gen_identity(),
+            specs=[OfficialCellSpec.model_validate(spec_payload)],
+            candidates=[candidate],
+            output_dir=output,
+            research_plan=contract,
+            plan_decision=decision,
+        )
+    assert process_calls == []
+
+
+def test_formal_revision_rejects_a_legacy_contract_downgrade_before_model_call(
+    tmp_path: Path,
+) -> None:
+    artifact, _contract, source = _formal_fixture(tmp_path)
+    output = tmp_path / "revision-contract-downgrade"
+    parent = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=output,
+        completion=_source_completion(source),
+        research_plan=artifact,
+    )[0]
+    calls: list[int] = []
+
+    def completion(**_kwargs: Any) -> Any:
+        calls.append(1)
+        return _stub_result(_source_payload())
+
+    with pytest.raises(PlanExecutionContractError):
+        revise_official_candidates(
+            panel=_gen_panel(),
+            budget=_gen_budget(),
+            candidates=[parent],
+            results=[
+                _cell(
+                    candidate_id=parent.candidate_id,
+                    system="ode-a",
+                    nmse=0.4,
+                    validation=0.3,
+                )
+            ],
+            output_dir=output,
+            completion=completion,
+            research_plan=formal_support._plan(),
+        )
+    assert calls == []

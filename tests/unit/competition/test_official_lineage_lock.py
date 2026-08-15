@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import time
+from json import dumps, loads
 from pathlib import Path
 
 import pytest
@@ -41,10 +42,12 @@ def test_lock_creates_and_removes_the_lock_file(tmp_path: Path) -> None:
 def test_second_concurrent_stage_is_refused(tmp_path: Path) -> None:
     """The exact defect: a second process must not proceed while one holds the lock."""
 
-    with exclusive_lineage_lock(tmp_path, stage="generate"):
-        with pytest.raises(OfficialLineageError) as excinfo:
-            with exclusive_lineage_lock(tmp_path, stage="pilot"):
-                pytest.fail("the second concurrent stage must never enter the body")
+    with (
+        exclusive_lineage_lock(tmp_path, stage="generate"),
+        pytest.raises(OfficialLineageError) as excinfo,
+        exclusive_lineage_lock(tmp_path, stage="pilot"),
+    ):
+        pytest.fail("the second concurrent stage must never enter the body")
     message = str(excinfo.value)
     # The refusal has to be actionable, naming the holder and the budget consequence.
     assert "already running" in message
@@ -55,9 +58,11 @@ def test_second_concurrent_stage_is_refused(tmp_path: Path) -> None:
 def test_lock_is_released_when_the_stage_raises(tmp_path: Path) -> None:
     """A crashed stage must not leave the lineage permanently locked."""
 
-    with pytest.raises(RuntimeError):
-        with exclusive_lineage_lock(tmp_path, stage="generate"):
-            raise RuntimeError("stage blew up")
+    with (
+        pytest.raises(RuntimeError),
+        exclusive_lineage_lock(tmp_path, stage="generate"),
+    ):
+        raise RuntimeError("stage blew up")
     assert not (tmp_path / _LOCK_NAME).exists()
     # And the lineage is usable again.
     with exclusive_lineage_lock(tmp_path, stage="pilot"):
@@ -74,18 +79,20 @@ def test_a_fresh_lock_is_never_treated_as_stale(tmp_path: Path) -> None:
     (tmp_path / _LOCK_NAME).write_text(
         '{"pid": 4242, "stage": "generate", "started_at": "x"}', encoding="utf-8"
     )
-    with pytest.raises(OfficialLineageError):
-        with exclusive_lineage_lock(tmp_path, stage="pilot"):
-            pytest.fail("a fresh lock must not be reclaimed")
+    with (
+        pytest.raises(OfficialLineageError),
+        exclusive_lineage_lock(tmp_path, stage="pilot"),
+    ):
+        pytest.fail("a fresh lock must not be reclaimed")
 
 
-def test_stale_lock_older_than_the_threshold_is_reclaimed(tmp_path: Path) -> None:
+def test_stale_lock_older_than_the_threshold_is_reclaimed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """An abandoned lock must not brick the lineage forever.
 
-    Staleness is decided by the lock file's age, not by probing a PID: a recorded PID
-    can be recycled by the OS, and probing it is not portable. A stage cannot outlive
-    the frozen per-cell wall clock by this margin, so an older lock was abandoned by a
-    crash or a forced kill.
+    Reclamation requires both sufficient age and a process proven dead.  This avoids
+    stealing the lease from a long Qwen call merely because it exceeds five minutes.
     """
 
     lock_path = tmp_path / _LOCK_NAME
@@ -95,6 +102,10 @@ def test_stale_lock_older_than_the_threshold_is_reclaimed(tmp_path: Path) -> Non
     # Age the lock well past the threshold.
     old = time.time() - (_LOCK_STALE_SECONDS + 60)
     os.utime(lock_path, (old, old))
+    monkeypatch.setattr(
+        "autoresearch.competition.official_lineage._lineage_lock_process_is_alive",
+        lambda _pid: False,
+    )
 
     with exclusive_lineage_lock(tmp_path, stage="pilot"):
         payload = lock_path.read_text(encoding="utf-8")
@@ -109,3 +120,53 @@ def test_lock_records_the_holding_stage_and_pid(tmp_path: Path) -> None:
         payload = (tmp_path / _LOCK_NAME).read_text(encoding="utf-8")
     assert "baseline" in payload
     assert str(os.getpid()) in payload
+    assert len(loads(payload)["owner_token"]) == 32
+
+
+def test_old_lock_owned_by_live_process_is_not_reclaimed(tmp_path: Path) -> None:
+    """Age alone must never steal a lease from a live long-running model call."""
+
+    lock_path = tmp_path / _LOCK_NAME
+    with exclusive_lineage_lock(  # noqa: SIM117 -- age must change before contender
+        tmp_path, stage="preregister-plan"
+    ):
+        old = time.time() - (_LOCK_STALE_SECONDS + 60)
+        os.utime(lock_path, (old, old))
+        with (
+            pytest.raises(OfficialLineageError),
+            exclusive_lineage_lock(tmp_path, stage="generate"),
+        ):
+            pytest.fail("a live process's old lease must not be reclaimed")
+
+
+def test_heartbeat_refreshes_long_running_lease(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The lease mtime advances without waiting for the model-backed stage to end."""
+
+    monkeypatch.setattr(
+        "autoresearch.competition.official_lineage._LOCK_HEARTBEAT_SECONDS", 0.01
+    )
+    lock_path = tmp_path / _LOCK_NAME
+    with exclusive_lineage_lock(tmp_path, stage="preregister-plan"):
+        initial = lock_path.stat().st_mtime_ns
+        deadline = time.monotonic() + 1.0
+        while lock_path.stat().st_mtime_ns == initial and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert lock_path.stat().st_mtime_ns > initial
+
+
+def test_owner_cleanup_never_unlinks_a_replacement_lease(tmp_path: Path) -> None:
+    """A finishing owner may remove only the exact nonce it originally acquired."""
+
+    lock_path = tmp_path / _LOCK_NAME
+    replacement = {
+        "pid": 4242,
+        "stage": "replacement",
+        "started_at": "later",
+        "owner_token": "f" * 32,
+    }
+    with exclusive_lineage_lock(tmp_path, stage="generate"):
+        lock_path.write_text(dumps(replacement), encoding="utf-8")
+    assert lock_path.is_file()
+    assert loads(lock_path.read_text(encoding="utf-8")) == replacement

@@ -1,6 +1,7 @@
 import json
 import os
 from collections.abc import Mapping
+from datetime import date
 from io import BytesIO
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -8,6 +9,7 @@ from urllib.error import HTTPError, URLError
 import pytest
 
 from autoresearch.literature import (
+    AcademicPaper,
     ArxivClient,
     CircuitBreakerOpenError,
     OpenAlexClient,
@@ -17,6 +19,11 @@ from autoresearch.literature import (
     SemanticScholarClient,
     SourceCircuitStateLockError,
     SourceRateLimitError,
+)
+from autoresearch.literature.clients import (
+    OPENALEX_TITLE_ABSTRACT_FILTER_PREFIX,
+    SourceHTTPAttemptEvent,
+    bind_source_http_attempt_observer,
 )
 
 
@@ -55,7 +62,158 @@ def test_arxiv_client_parses_mocked_atom_response_with_retry() -> None:
     assert papers[0].title == "Evidence First Research"
     assert papers[0].authors == ["A. Researcher"]
     assert papers[0].doi == "10.1234/example"
+    assert papers[0].repository_doi == "10.48550/arXiv.2606.00001"
+    assert papers[0].citation_count is None
+    assert papers[0].citation_count_source is None
+    assert papers[0].citation_count_as_of is None
+    assert papers[0].publication_status == "preprint"
+    assert papers[0].status_source == "arxiv_atom"
+    assert papers[0].status_as_of == date.today()
     assert papers[0].source == "arxiv"
+
+
+def test_source_http_attempt_observer_sees_each_physical_retry_without_credentials() -> None:
+    events: list[SourceHTTPAttemptEvent] = []
+    calls = 0
+
+    def fake_get(
+        _url: str,
+        params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        nonlocal calls
+        calls += 1
+        assert params["api_key"] == "test-secret-key"
+        if calls == 1:
+            raise URLError("first physical attempt failed")
+        return '{"results": []}'
+
+    client = OpenAlexClient(
+        http_get=fake_get,
+        api_key="test-secret-key",
+        mailto="private@example.org",
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=2, backoff_seconds=0),
+        sleep=lambda _seconds: None,
+    )
+
+    with bind_source_http_attempt_observer(events.append):
+        assert client.search("topic-neutral mechanism", limit=2) == []
+
+    assert calls == 2
+    assert [(item.phase, item.attempt_index) for item in events] == [
+        ("reservation", 1),
+        ("failed", 1),
+        ("reservation", 2),
+        ("completed", 2),
+    ]
+    assert all(item.source == "openalex" for item in events)
+    assert all(item.operation == "literature_search" for item in events)
+    assert all("api_key" not in item.public_params for item in events)
+    assert all("mailto" not in item.public_params for item in events)
+    assert all("test-secret-key" not in repr(item) for item in events)
+    assert all("private@example.org" not in repr(item) for item in events)
+
+
+def test_nested_source_http_attempt_observers_fan_out_once_each() -> None:
+    outer: list[tuple[str, int]] = []
+    inner: list[tuple[str, int]] = []
+    client = OpenAlexClient(
+        http_get=lambda _url, _params, _headers: '{"results": []}',
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    with (
+        bind_source_http_attempt_observer(
+            lambda event: outer.append((event.phase, event.attempt_index))
+        ),
+        bind_source_http_attempt_observer(
+            lambda event: inner.append((event.phase, event.attempt_index))
+        ),
+    ):
+        assert client.search("topic-neutral nested observer", limit=1) == []
+
+    expected = [("reservation", 1), ("completed", 1)]
+    assert outer == expected
+    assert inner == expected
+
+
+def test_arxiv_repository_doi_is_separate_from_publication_doi() -> None:
+    atom = """<?xml version="1.0" encoding="UTF-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+      <entry>
+        <id>https://arxiv.org/abs/hep-th/9901001v2</id>
+        <title>Repository-only preprint</title>
+        <published>1999-01-01T00:00:00Z</published>
+        <arxiv:comment>The analysis is not strong enough to prove the conjecture</arxiv:comment>
+      </entry>
+    </feed>"""
+    client = ArxivClient(
+        http_get=lambda _url, _params, _headers: atom,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    paper = client.search("repository", limit=1)[0]
+
+    assert paper.doi is None
+    assert paper.repository_doi == "10.48550/arXiv.hep-th/9901001"
+    assert paper.publication_status == "preprint"
+
+
+def test_arxiv_status_verification_is_explicit_and_rate_limited() -> None:
+    calls: list[str] = []
+
+    def fake_get(
+        url: str,
+        _params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        calls.append(url)
+        return '<span class="error">This paper has been withdrawn by its author</span>'
+
+    client = ArxivClient(
+        http_get=fake_get,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+    paper = client.verify_status(
+        AcademicPaper(
+            title="A withdrawn preprint",
+            url="https://arxiv.org/abs/2110.15271v2",
+            publication_status="preprint",
+            source="arxiv",
+        )
+    )
+
+    assert calls == ["https://arxiv.org/abs/2110.15271v2"]
+    assert paper.publication_status == "withdrawn"
+    assert paper.status_source == "arxiv_abs"
+    assert paper.status_as_of == date.today()
+
+
+def test_arxiv_status_verification_ignores_generic_withdrawal_policy_text() -> None:
+    client = ArxivClient(
+        http_get=lambda _url, _params, _headers: (
+            "<main>Active preprint</main><footer>Read our withdrawal policy</footer>"
+        ),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+    original = AcademicPaper(
+        title="Active preprint",
+        url="https://arxiv.org/abs/2606.00001",
+        publication_status="preprint",
+        status_source="arxiv_atom",
+        source="arxiv",
+    )
+
+    verified = client.verify_status(original)
+
+    assert verified is original
+    assert verified.publication_status == "preprint"
+    assert verified.status_source == "arxiv_atom"
 
 
 def test_semantic_scholar_client_parses_mocked_response() -> None:
@@ -86,7 +244,66 @@ def test_semantic_scholar_client_parses_mocked_response() -> None:
     assert papers[0].authors == ["B. Reviewer"]
     assert papers[0].venue == "ExampleConf"
     assert papers[0].citation_count == 7
+    assert papers[0].citation_count_source == "semantic_scholar"
+    assert papers[0].citation_count_as_of == date.today()
     assert papers[0].source == "semantic_scholar"
+
+
+def test_semantic_scholar_missing_citation_count_remains_unknown() -> None:
+    payload = {"data": [{"title": "Uncounted paper"}]}
+    client = SemanticScholarClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    paper = client.search("uncounted", limit=1)[0]
+
+    assert paper.citation_count is None
+    assert paper.citation_count_source is None
+    assert paper.citation_count_as_of is None
+
+
+def test_semantic_scholar_separates_arxiv_repository_doi() -> None:
+    payload = {
+        "data": [
+            {
+                "title": "Repository-only preprint",
+                "externalIds": {"DOI": "10.48550/ArXiV.2110.15271"},
+            }
+        ]
+    }
+    client = SemanticScholarClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    paper = client.search("repository", limit=1)[0]
+
+    assert paper.doi is None
+    assert paper.repository_doi == "10.48550/arxiv.2110.15271"
+
+
+def test_semantic_scholar_separates_zenodo_repository_doi() -> None:
+    payload = {
+        "data": [
+            {
+                "title": "Archived technical record",
+                "externalIds": {"DOI": "https://doi.org/10.5281/ZENODO.1234567"},
+            }
+        ]
+    }
+    client = SemanticScholarClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    paper = client.search("archived record", limit=1)[0]
+
+    assert paper.doi is None
+    assert paper.repository_doi == "10.5281/zenodo.1234567"
 
 
 def test_openalex_client_parses_mocked_works_response() -> None:
@@ -111,6 +328,8 @@ def test_openalex_client_parses_mocked_works_response() -> None:
                     "source": {"display_name": "Example Journal"},
                 },
                 "cited_by_count": 11,
+                "type": "article",
+                "is_retracted": False,
             }
         ]
     }
@@ -130,7 +349,102 @@ def test_openalex_client_parses_mocked_works_response() -> None:
     assert papers[0].doi == "https://doi.org/10.1234/openalex"
     assert papers[0].url == "https://doi.org/10.1234/openalex"
     assert papers[0].citation_count == 11
+    assert papers[0].citation_count_source == "openalex"
+    assert papers[0].citation_count_as_of == date.today()
+    assert papers[0].publication_status == "published"
+    assert papers[0].status_source == "openalex"
+    assert papers[0].status_as_of == date.today()
     assert papers[0].source == "openalex"
+
+
+def test_openalex_skips_blank_titles_without_discarding_valid_siblings() -> None:
+    payload = {
+        "results": [
+            {"id": "https://openalex.org/W1", "display_name": "First valid work"},
+            {"id": "https://openalex.org/W2", "display_name": ""},
+            {"id": "https://openalex.org/W3", "display_name": " \t\n "},
+            {"id": "https://openalex.org/W4", "display_name": "  Second valid work  "},
+        ]
+    }
+    client = OpenAlexClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    papers = client.search("valid works", limit=4)
+
+    assert [paper.title for paper in papers] == ["First valid work", "Second valid work"]
+
+
+def test_openalex_reported_zero_is_distinct_from_missing_citation_count() -> None:
+    payload = {
+        "results": [
+            {"display_name": "Reported zero", "cited_by_count": 0},
+            {"display_name": "Unknown count", "type": "preprint"},
+        ]
+    }
+    client = OpenAlexClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    reported_zero, unknown = client.search("counts", limit=2)
+
+    assert reported_zero.citation_count == 0
+    assert reported_zero.citation_count_source == "openalex"
+    assert reported_zero.citation_count_as_of == date.today()
+    assert unknown.citation_count is None
+    assert unknown.citation_count_source is None
+    assert unknown.citation_count_as_of is None
+    assert unknown.publication_status == "preprint"
+    assert unknown.status_source == "openalex"
+
+
+def test_openalex_separates_arxiv_repository_doi_from_publication_doi() -> None:
+    payload = {
+        "results": [
+            {
+                "display_name": "An information-theoretic upper bound on prime gaps",
+                "doi": "https://doi.org/10.48550/arXiv.2110.15271",
+                "type": "preprint",
+            }
+        ]
+    }
+    client = OpenAlexClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    paper = client.search("prime gaps", limit=1)[0]
+
+    assert paper.doi is None
+    assert paper.repository_doi == "10.48550/arxiv.2110.15271"
+
+
+def test_openalex_retraction_status_overrides_work_type() -> None:
+    payload = {
+        "results": [
+            {
+                "display_name": "Retracted article",
+                "type": "article",
+                "is_retracted": True,
+            }
+        ]
+    }
+    client = OpenAlexClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    paper = client.search("retracted", limit=1)[0]
+
+    assert paper.publication_status == "retracted"
+    assert paper.status_source == "openalex"
+    assert paper.status_as_of == date.today()
 
 
 def test_openalex_client_sends_optional_api_key_and_mailto_params(
@@ -159,6 +473,34 @@ def test_openalex_client_sends_optional_api_key_and_mailto_params(
     assert seen_params[0]["mailto"] == "researcher@example.com"
     assert seen_params[0]["per_page"] == 100
     assert client.rate_limiter.min_interval_seconds == 2.5
+
+
+def test_openalex_client_converts_versioned_title_abstract_query_to_exact_filter() -> None:
+    seen_params: list[dict[str, str | int]] = []
+    compiled_query = (
+        f"{OPENALEX_TITLE_ABSTRACT_FILTER_PREFIX}"
+        '("aurelia cells" OR "aurelia devices") AND '
+        '("phase drift" OR "state drift")'
+    )
+
+    def fake_get(
+        _url: str,
+        params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        seen_params.append(params)
+        return json.dumps({"results": []})
+
+    client = OpenAlexClient(
+        http_get=fake_get,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    assert client.search(compiled_query, limit=20) == []
+    assert seen_params[0]["filter"] == compiled_query
+    assert "search" not in seen_params[0]
+    assert seen_params[0]["per_page"] == 20
 
 
 def test_semantic_scholar_client_sends_optional_api_key_header() -> None:
@@ -314,10 +656,7 @@ def test_rate_limit_circuit_breaker_keeps_previous_state_when_atomic_replace_fai
     original_replace = Path.replace
 
     def fail_state_replace(self: Path, target: str | Path) -> Path:
-        if (
-            self.name.startswith(f".{state_path.name}.")
-            and Path(target) == state_path
-        ):
+        if self.name.startswith(f".{state_path.name}.") and Path(target) == state_path:
             raise OSError("replace failed")
         return original_replace(self, target)
 
@@ -332,9 +671,7 @@ def test_rate_limit_circuit_breaker_keeps_previous_state_when_atomic_replace_fai
     with pytest.raises(OSError, match="replace failed"):
         breaker.record_rate_limit(retry_after_seconds=5)
 
-    assert json.loads(state_path.read_text(encoding="utf-8")) == {
-        "semantic_scholar": 9999.0
-    }
+    assert json.loads(state_path.read_text(encoding="utf-8")) == {"semantic_scholar": 9999.0}
     assert list(tmp_path.glob(".source-circuit-breakers.json.*.tmp")) == []
 
 

@@ -76,6 +76,22 @@ from .profiles import (
     write_agent_profile_note,
 )
 from .registry import AgentRegistry, AgentRegistryError, AgentStageRoute
+from .temporary import (
+    StageControllerBinding,
+    StageDispatchCapability,
+    TemporaryAgentArchiveCoordinator,
+    TemporaryAgentArchiveRecord,
+    TemporaryAgentAssignment,
+    TemporaryAgentBatchEntry,
+    TemporaryAgentBatchManifest,
+    TemporaryAgentContractError,
+    TemporaryAgentInputRef,
+    TemporaryAgentResultArtifact,
+    TemporaryAgentSkillRef,
+    TemporaryAgentTaskKind,
+    TemporaryAgentTerminalStatus,
+    issue_stage_controller,
+)
 
 if TYPE_CHECKING:
     from .workflow import (
@@ -144,6 +160,19 @@ __all__ = [
     "ResearchWorkflowState",
     "SkillImportPolicy",
     "SkillSourceType",
+    "StageControllerBinding",
+    "StageDispatchCapability",
+    "TemporaryAgentArchiveCoordinator",
+    "TemporaryAgentArchiveRecord",
+    "TemporaryAgentAssignment",
+    "TemporaryAgentBatchEntry",
+    "TemporaryAgentBatchManifest",
+    "TemporaryAgentContractError",
+    "TemporaryAgentInputRef",
+    "TemporaryAgentResultArtifact",
+    "TemporaryAgentSkillRef",
+    "TemporaryAgentTaskKind",
+    "TemporaryAgentTerminalStatus",
     "WorkflowCheckpointStore",
     "append_mcp_invocation_evidence",
     "build_agent_mcp_runtime_contracts",
@@ -160,6 +189,7 @@ __all__ = [
     "load_agent_profile_bundle",
     "load_agent_profile_set_bundle",
     "load_mcp_invocation_evidence",
+    "issue_stage_controller",
     "materialize_agent_skill_contexts",
     "normalize_profile_stage",
     "parse_mcp_approval_policy_specs",

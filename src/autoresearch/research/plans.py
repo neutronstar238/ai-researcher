@@ -109,6 +109,13 @@ CONCRETE_METRIC_TERMS = (
     "项支持",
     "系数误差",
     "模型复杂度",
+    # Equation-identifiability diagnostics are concrete metrics too.  They carry
+    # explicit norms, ratios, or matrix quantities even though they are not predictive
+    # losses such as NMSE.
+    "投影残差",
+    "残差范数",
+    "残差比",
+    "条件数",
     "置信区间",
     "自助",
 )

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Memory Evaluation"
+  short_description: "评估长期记忆的可追溯轨迹、污染风险、实际消费与因果收益"
+  default_prompt: "使用 $agent-memory-evaluation 设计长期记忆的可重放评估与配对对照。"

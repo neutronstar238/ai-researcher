@@ -18,7 +18,11 @@ from .harness import (
     build_openai_compatible_characterization_spec,
     build_status_ok_grader,
 )
-from .review_memory import write_llm_review_issue_notes, write_llm_review_note
+from .review_memory import (
+    capture_llm_review_response,
+    write_llm_review_issue_notes,
+    write_llm_review_note,
+)
 
 __all__ = [
     "LLMEvidenceArtifact",
@@ -31,6 +35,7 @@ __all__ = [
     "OpenAICompatibleHarnessAdapter",
     "build_openai_compatible_characterization_spec",
     "build_status_ok_grader",
+    "capture_llm_review_response",
     "evaluate_llm_review_quality",
     "run_llm_evidence_review",
     "run_llm_json_completion",

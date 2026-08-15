@@ -38,7 +38,7 @@ deployment:
   llm:
     provider: qwen-dashscope
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    model_name: qwen3-max
+    model_name: qwen3.7-max
     api_key_env: AUTORESEARCH_LLM_API_KEY
     request_timeout_seconds: 180
     fallback_model_names: []

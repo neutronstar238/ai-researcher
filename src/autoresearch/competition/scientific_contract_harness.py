@@ -2943,10 +2943,14 @@ def _validate_revision_files(root: Path, revision: ScientificContractRevision) -
             )
         parent_revision_path = _inside(
             root,
-            Path("revisions") / derivation.parent_revision_id.replace(
-                "scientific-contract-r",
-                "revision-",
-            ) / "revision.json",
+            (
+                Path("revisions")
+                / derivation.parent_revision_id.replace(
+                    "scientific-contract-r",
+                    "revision-",
+                )
+                / "revision.json"
+            ).as_posix(),
         )
         if not parent_revision_path.is_file():
             raise ScientificContractHarnessError("scientific patch parent is missing")

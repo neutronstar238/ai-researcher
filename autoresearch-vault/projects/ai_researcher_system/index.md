@@ -16,6 +16,11 @@ validation, review, or paper-build artifacts.
 
 ## Current Architecture Evidence
 
+- [[projects/ai_researcher_system/knowledge/frontier/agent-memory-self-loop-frontier-2026-08-10|大模型原生记忆、Agent主权记忆与自适应科研循环前沿核验]] — 持续核验的一手论文/会议来源、二手论断纠偏、双平面/双环/受控自修改设计与长期记忆确认性基准；记录最新十二轮 Qwen 功能性自循环、Dreaming 零使用负结果及签名 transport 的真实部署阻断，明确未证明因果收益、外部身份、科学正确性、创新或可发表性。
+- [[projects/ai_researcher_system/knowledge/strategies/steerable-memory-dependence-shadow-candidate-2026-08-10|可调记忆依赖与反局部循环策略候选]] — 由十二轮真实负轨迹触发的影子策略：不强制固定 Dreaming 轮次，只把记忆依赖档位、算子多样性债务、污染回退和外部终点评价做成可审计候选；未授权生产、改协议或发表。
+- [[projects/ai_researcher_system/knowledge/dreaming/dream_f3460b5aa8bfab5b5b8960ca310c1c9c88d93561c295c39130962d1841b9f6b7|大模型原生记忆与 Agent 原始记忆主权：论文级核验与 OB 候选设计]] — 同时绑定用户截图与论文 PDF 原始字节，按“原文支持／原文相反／外推观点／尚未核实”分级；旧投影仍以不可改写历史保留。
+- [[projects/ai_researcher_system/knowledge/dreaming/dream_92d411384253d225b6ad83ae6156552a343135f74b8d8ce15b6ea3a8afcbe8b4|主权记忆双平面与自适应科研双环：前沿调研后的候选架构]] — 绑定官方 ArXiv 原始元数据与《Memory for Large Language Models》PDF，区分原文支持、反证、工程外推和未验证架构假设；提出开放探索、严格晋级、极严执行/发表的局部门禁，并明确尚待预算匹配实验。
+- [[projects/ai_researcher_system/knowledge/dreaming/assets/sovereign-memory-adaptive-research-dual-loop.png|主权记忆双平面 × 自适应科研双环架构图]] — AI 生成的非证据设计图；紫色为主权记忆、青色为开放探索、琥珀色为晋级门、红色为权限阻断。
 - [[exploration/ophis-autonomous-research-mechanism-audit-2026|OPHIS and autonomous-research mechanism evidence audit]] — separates the five-stage mechanism loop from unsupported mechanism claims, audits the public Grokking/NanoGPT evidence and LLM inconsistency, and freezes a hybrid telemetry–LLM–Harness–sealed-confirmation design for tasks 265.3–265.5.
 - [[exploration/task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]] — task 263.7.0 immutable-parent audit, 21-source 2025—2026 field review, task-level inference, pre-submission findings, seven-stage repair route, and publication-blocking human/external-evidence boundaries.
 - [[projects/ai_researcher_system/progress/task-263-7-0-systems-paper-currency-audit|Task 263.7.0 systems-paper publication-currency audit]] — content-addressed source snapshots, exact task/seed/family reconstruction, two-clean-interpreter statistical replay, language scan, repair classifications, and fail-closed publication verdict.

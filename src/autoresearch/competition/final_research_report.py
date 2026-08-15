@@ -38,10 +38,10 @@ from autoresearch.competition.official_development_search import (
     OfficialDevelopmentSearchPackage,
 )
 from autoresearch.competition.plan_execution_contract import (
-    PlanExecutionContract,
-    compile_plan_execution_contract,
-    load_plan_execution_contract,
-    require_candidate_plan_alignment,
+    ProspectivePlanExecutionContract,
+    compile_system_authored_plan_execution_contract,
+    load_prospective_plan_execution_contract,
+    require_prospective_candidate_plan_alignment,
 )
 from autoresearch.competition.research_plan_latex import (
     _PREAMBLE,
@@ -222,9 +222,10 @@ class FinalObservedMetrics(StrictFrozenModel):
 class FinalResearchReport(StrictFrozenModel):
     """The immutable plan and observed outcome joined only after all gates pass."""
 
-    schema_version: Literal["final-research-report-v1"] = "final-research-report-v1"
+    schema_version: Literal["final-research-report-v2"] = "final-research-report-v2"
     lineage_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
+    system_authored_plan_artifact: SystemAuthoredPlanArtifact
     preregistered_plan: dict[str, Any]
     preregistered_plan_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     plan_artifact_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -232,6 +233,7 @@ class FinalResearchReport(StrictFrozenModel):
     approved_plan_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     approved_plan_file_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     plan_guard_report_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    prospective_plan_execution_contract: ProspectivePlanExecutionContract
     plan_execution_contract_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     selected_candidate_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     package_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -253,8 +255,25 @@ class FinalResearchReport(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate(self) -> FinalResearchReport:
+        artifact = self.system_authored_plan_artifact
+        if artifact.schema_version != "system-authored-research-plan-v2":
+            raise FinalResearchReportError(
+                "final report requires a formal SystemAuthoredPlanArtifact v2"
+            )
+        if artifact.lineage_id != self.lineage_id:
+            raise FinalResearchReportError(
+                "final report embeds a plan artifact from another lineage"
+            )
+        if artifact.artifact_hash != self.plan_artifact_hash:
+            raise FinalResearchReportError("final report plan-artifact hash mismatch")
+        if artifact.plan != self.preregistered_plan:
+            raise FinalResearchReportError(
+                "final report plan differs from its embedded formal plan artifact"
+            )
         if canonical_model_hash(self.preregistered_plan) != self.preregistered_plan_hash:
             raise FinalResearchReportError("final report carries altered plan content")
+        if artifact.plan_hash != self.preregistered_plan_hash:
+            raise FinalResearchReportError("final report preregistration hash mismatch")
         plan = ResearchPlan.model_validate(self.preregistered_plan)
         plan_language_failures = authored_plan_non_chinese_fields(plan)
         outcome_language_failures = authored_interpretation_non_chinese_fields(
@@ -266,11 +285,26 @@ class FinalResearchReport(StrictFrozenModel):
                 f"plan={list(plan_language_failures)}, "
                 f"outcome={list(outcome_language_failures)}"
             )
-        contract = compile_plan_execution_contract(plan)
+        contract = compile_system_authored_plan_execution_contract(artifact)
+        if self.prospective_plan_execution_contract != contract:
+            raise FinalResearchReportError(
+                "final report does not carry the exact recompiled prospective contract"
+            )
         if contract.approved_plan_hash != self.approved_plan_hash:
             raise FinalResearchReportError("final report approved-plan hash mismatch")
         if contract.contract_hash != self.plan_execution_contract_hash:
             raise FinalResearchReportError("final report plan-contract hash mismatch")
+        retained_contract = self.prospective_plan_execution_contract
+        if (
+            retained_contract.selected_intervention_identity
+            != contract.selected_intervention_identity
+            or retained_contract.implementation_anchor != contract.implementation_anchor
+            or retained_contract.paired_control_treatment
+            != contract.paired_control_treatment
+        ):
+            raise FinalResearchReportError(
+                "final report prospective identity or paired control/treatment drifted"
+            )
         if (
             self.interpretation.claims_frozen_gate_passed
             != self.metrics.frozen_gate_passed
@@ -344,7 +378,7 @@ def audit_final_report_inputs(
     artifact: SystemAuthoredPlanArtifact | None = None
     plan: ResearchPlan | None = None
     decision: ResearchPlanDecisionRecord | None = None
-    contract: PlanExecutionContract | None = None
+    contract: ProspectivePlanExecutionContract | None = None
     package: OfficialDevelopmentSearchPackage | None = None
     outcome: SystemAuthoredOutcome | None = None
     selected: OfficialCandidateRecord | None = None
@@ -353,11 +387,14 @@ def audit_final_report_inputs(
         artifact = SystemAuthoredPlanArtifact.model_validate_json(
             (root / _PLAN_ARTIFACT_NAME).read_text(encoding="utf-8")
         )
-        checks["system_authored_plan_integrity"] = artifact.lineage_id == lineage_id
+        checks["system_authored_plan_integrity"] = bool(
+            artifact.schema_version == "system-authored-research-plan-v2"
+            and artifact.lineage_id == lineage_id
+        )
         if not checks["system_authored_plan_integrity"]:
             fail(
                 "system_authored_plan_integrity",
-                "plan artifact belongs to a different lineage",
+                "formal plan artifact is not v2 or belongs to a different lineage",
             )
         checks["plan_guard_accepted"] = artifact.guard_report.accepted
         if not checks["plan_guard_accepted"]:
@@ -397,10 +434,16 @@ def audit_final_report_inputs(
         fail("human_approval_bound_to_plan", str(exc))
 
     try:
-        if plan is None:
-            raise FinalResearchReportError("approved research plan is unavailable")
-        expected_contract = compile_plan_execution_contract(plan)
-        contract = load_plan_execution_contract(root)
+        if artifact is None:
+            raise FinalResearchReportError(
+                "formal system-authored plan artifact v2 is unavailable"
+            )
+        if artifact.schema_version != "system-authored-research-plan-v2":
+            raise FinalResearchReportError(
+                "formal reporting refuses historical plan artifact v1"
+            )
+        expected_contract = compile_system_authored_plan_execution_contract(artifact)
+        contract = load_prospective_plan_execution_contract(root)
         checks["plan_execution_contract_matches"] = contract == expected_contract
         if not checks["plan_execution_contract_matches"]:
             fail(
@@ -463,7 +506,9 @@ def audit_final_report_inputs(
                 "no matching plan contract exists for the selected candidate",
             )
         else:
-            require_candidate_plan_alignment(candidates=[selected], contract=contract)
+            require_prospective_candidate_plan_alignment(
+                candidates=[selected], contract=contract
+            )
             checks["selected_candidate_plan_aligned"] = selected.static_review_approved
             if not selected.static_review_approved:
                 fail(
@@ -651,8 +696,17 @@ def materialize_final_research_report(
     artifact = SystemAuthoredPlanArtifact.model_validate_json(
         artifact_path.read_text(encoding="utf-8")
     )
+    if artifact.schema_version != "system-authored-research-plan-v2":
+        raise FinalResearchReportError(
+            "formal final-report materialization requires plan artifact v2"
+        )
     plan = ResearchPlan.model_validate_json(approved_plan_path.read_text(encoding="utf-8"))
-    contract = load_plan_execution_contract(root)
+    expected_contract = compile_system_authored_plan_execution_contract(artifact)
+    contract = load_prospective_plan_execution_contract(root)
+    if contract != expected_contract:
+        raise FinalResearchReportError(
+            "retained prospective contract differs from the recompiled plan artifact"
+        )
     package = OfficialDevelopmentSearchPackage.model_validate_json(
         (root / _PACKAGE_NAME).read_text(encoding="utf-8")
     )
@@ -664,6 +718,9 @@ def materialize_final_research_report(
         for item in package.candidates
         if item.candidate_id == package.selected_candidate_id
     )
+    require_prospective_candidate_plan_alignment(
+        candidates=[selected], contract=contract
+    )
     source_path = _candidate_source_path(root=root, candidate=selected)
 
     metrics = _observed_metrics(package)
@@ -672,9 +729,10 @@ def materialize_final_research_report(
     destination.mkdir(parents=True, exist_ok=True)
     report_path = destination / _REPORT_NAME
     payload: dict[str, Any] = {
-        "schema_version": "final-research-report-v1",
+        "schema_version": "final-research-report-v2",
         "lineage_id": root.name,
         "title": plan.title,
+        "system_authored_plan_artifact": artifact.model_dump(mode="json"),
         "preregistered_plan": plan.model_dump(mode="json"),
         "preregistered_plan_hash": artifact.plan_hash,
         "plan_artifact_hash": artifact.artifact_hash,
@@ -682,6 +740,7 @@ def materialize_final_research_report(
         "approved_plan_hash": contract.approved_plan_hash,
         "approved_plan_file_sha256": approved_before,
         "plan_guard_report_hash": artifact.guard_report.report_hash,
+        "prospective_plan_execution_contract": contract.model_dump(mode="json"),
         "plan_execution_contract_hash": contract.contract_hash,
         "selected_candidate_source_sha256": file_hash(source_path),
         "package_hash": package.package_hash,

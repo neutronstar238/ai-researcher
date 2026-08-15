@@ -28,14 +28,19 @@ from autoresearch.competition.official_development_search import (
     OfficialCandidateRecord,
     OfficialCellResult,
     OfficialDevelopmentIdentity,
+    OfficialDevelopmentSearchPackage,
     SystemEffect,
 )
 from autoresearch.competition.official_lineage import (
     write_official_development_search_package,
 )
 from autoresearch.competition.plan_execution_contract import (
+    ProspectivePlanExecutionContract,
     audit_candidate_plan_alignment,
+    audit_prospective_candidate_plan_alignment,
+    build_prospective_candidate_execution_declaration,
     compile_plan_execution_contract,
+    compile_system_authored_plan_execution_contract,
     write_plan_execution_contract,
 )
 from autoresearch.competition.system_authored_outcome import (
@@ -47,11 +52,14 @@ from autoresearch.competition.system_authored_outcome import (
 )
 from autoresearch.competition.system_authored_plan import (
     AuthoredPlanGuardReport,
+    PlanScientificLineageBindingV2,
     SystemAuthoredPlanArtifact,
+    _build_plan_scientific_lineage_binding,
 )
 from autoresearch.llm.client import LLMJsonCompletionResult
 from autoresearch.research.plan_confirmation import record_plan_decision
 from autoresearch.schemas import ResearchPlan, ResearchPlanStatus, file_hash
+from tests.unit.competition import test_system_authored_plan as plan_v2_support
 
 _NOW = datetime(2026, 8, 8, 12, 0, tzinfo=timezone.utc)
 
@@ -74,76 +82,55 @@ def _completion(parsed: dict[str, Any]) -> LLMJsonCompletionResult:
 def _research_plan(root: Path) -> ResearchPlan:
     evidence = root / "prior-evidence.json"
     evidence.write_text("{}", encoding="utf-8")
-    return ResearchPlan(
-        id="plan-final-report",
-        project_id=root.name,
-        candidate_id="candidate-final-report",
-        title="基于证据绑定的积分贝叶斯方程发现",
-        abstract=(
-            "本研究在冻结的无噪声与含噪声开发面板上检验预注册的积分贝叶斯稀疏恢复机制，"
-            "并以完全相同单元上的固定基线作为对照。"
-        ),
-        problem_statement=(
-            "导数估计会放大观测噪声并破坏稀疏方程发现的稳定性，因此研究检验积分形式能否"
-            "提高时间隔离留出数据上的结构恢复能力。"
-        ),
-        rationale=(
-            "积分约束可能削弱数值微分噪声，而贝叶斯项支持选择可能阻止不稳定项进入冻结"
-            "方程；二者结合形成可由配对效果直接反驳的机制假设。"
-        ),
-        technical_details=(
-            "候选方法仅在训练切分上拟合，随后冻结并哈希绑定数值方程制品，再在时间隔离的"
-            "目标切分上直接预测，禁止重新拟合或读取目标标签。"
-        ),
-        datasets={
-            "source": "冻结的无噪声与 SNR-20 MDBench 开发轨迹",
-            "target": "按时间隔离的留出导数字段",
-        },
-        methods=(
-            "在单次拟合、冻结、预测接口下，先使用积分贝叶斯项支持选择，再进行受约束的"
-            "稀疏系数估计，并保留可复算的数值方程。"
-        ),
-        experiments=[
-            "在每个冻结实验单元上运行入选候选方法与固定基线，并完整保留失败状态。",
-            "先在系统内聚合配对对数效果，再跨系统聚合并计算固定种子的自助区间。",
-        ],
-        baselines=["在完全相同实验单元上运行固定且已调优的符号回归基线"],
-        metrics=[
-            "每个实验单元的导数 NMSE",
-            "配对对数效果中位数及固定种子的自助置信区间",
-        ],
-        expected_results=(
-            "预注册预期为总体对数效果中位数不低于 0.05，且自助区间下界高于 0.0；若任一"
-            "条件未达到，则机制假设被反驳，负结果同样是有效结果并必须报告。"
-        ),
-        code_agent_brief=(
-            "实现冻结的拟合与预测接口，保留可复算的数值方程并运行既定测试。"
-            "required_method_tokens=[integral, bayesian]"
-        ),
-        risks_and_alternatives=[
-            "积分窗口可能过度平滑短轨迹，因此失败时应检查窗口尺度与有效样本长度。",
-            "贝叶斯项支持选择在强噪声下可能不稳定，因此应完整保留后验与失败案例。",
-        ],
-        references=["Retrieved literature survey entry 1"],
-        literature_references=[
-            {
-                "title": "Sparse identification of nonlinear dynamics with control",
-                "authors": ["Brunton", "Proctor", "Kutz"],
-                "venue": "IFAC-PapersOnLine",
-                "publication_date": "2016",
-                "doi": "10.1016/j.ifacol.2016.10.249",
-                "url": "https://doi.org/10.1016/j.ifacol.2016.10.249",
-                "retrieved_from": "openalex",
-            }
-        ],
-        evidence_refs=[evidence.as_posix()],
-        status=ResearchPlanStatus.READY_FOR_APPROVAL,
-        created_at=_NOW,
-        updated_at=_NOW,
+    binding = _build_plan_scientific_lineage_binding(plan_v2_support._v2_context())
+    assert isinstance(binding, PlanScientificLineageBindingV2)
+    base = plan_v2_support._v2_plan(binding)
+    literature = [
+        {
+            "title": f"Prospective intervention evidence {index}",
+            "authors": ["Author"],
+            "venue": "Archive",
+            "publication_date": "2026",
+            "doi": f"10.0000/prospective.{index}",
+            "url": f"https://doi.org/10.0000/prospective.{index}",
+            "retrieved_from": "openalex",
+        }
+        for index in range(1, 4)
+    ]
+    payload = base.model_dump(mode="json", warnings=False)
+    chinese_execution_contract = (
+        "候选代码必须逐字读取正式前瞻干预身份，只改变预注册的单一实现锚点，"
+        "并在全部公开拟合与预测接口中到达该锚点；所有冻结维度、目标系统、资源预算、"
+        "负对照、敏感性对照和结果盲判据均不得改写，任何合同不一致都必须在执行前拒绝。"
     )
+    payload.update(
+        {
+            "id": "plan-final-report",
+            "project_id": root.name,
+            "candidate_id": "candidate-final-report",
+            "metrics": (
+                "每个冻结实验单元的导数归一化均方误差",
+                "系统内与跨系统聚合的配对对数效果中位数",
+            ),
+            "code_agent_brief": chinese_execution_contract * 8 + base.code_agent_brief,
+            "references": tuple(
+                f"Retrieved literature survey entry {index}"
+                for index in range(1, 4)
+            ),
+            "literature_references": literature,
+            "evidence_refs": [evidence.as_posix()],
+            "status": ResearchPlanStatus.READY_FOR_APPROVAL,
+            "created_at": _NOW,
+            "updated_at": _NOW,
+        }
+    )
+    return ResearchPlan.model_validate(payload)
 
 
 def _write_plan_artifacts(root: Path, plan: ResearchPlan) -> None:
+    binding = _build_plan_scientific_lineage_binding(plan_v2_support._v2_context())
+    assert isinstance(binding, PlanScientificLineageBindingV2)
+    attestation = plan_v2_support._v2_attestation(binding)
     guard_payload: dict[str, Any] = {
         "schema_version": "authored-plan-guard-report-v1",
         "quality_gate_passed": True,
@@ -177,7 +164,7 @@ def _write_plan_artifacts(root: Path, plan: ResearchPlan) -> None:
         clock=_NOW,
     )
     artifact_payload: dict[str, Any] = {
-        "schema_version": "system-authored-research-plan-v1",
+        "schema_version": "system-authored-research-plan-v2",
         "lineage_id": root.name,
         "plan": plan_payload,
         "plan_hash": canonical_model_hash(plan_payload),
@@ -189,6 +176,8 @@ def _write_plan_artifacts(root: Path, plan: ResearchPlan) -> None:
         .relative_to(root)
         .as_posix(),
         "authorship_receipt_hash": receipt.receipt_hash,
+        "scientific_lineage_binding": binding.model_dump(mode="json"),
+        "scientific_lineage_attestation": attestation.model_dump(mode="json"),
         "authored_by_model": True,
         "hand_written_prose_field_count": 0,
         "execution_authorized": False,
@@ -259,21 +248,37 @@ def _cell(
     return OfficialCellResult.model_validate(payload)
 
 
-def _write_package(root: Path, plan: ResearchPlan) -> Any:
-    contract = compile_plan_execution_contract(plan)
+def _prospective_source(contract: ProspectivePlanExecutionContract) -> str:
+    declaration = build_prospective_candidate_execution_declaration(contract)
+    anchor = contract.implementation_anchor
+    hooks = "".join(
+        f"def {hook}(payload):\n    return {anchor}(payload)\n\n"
+        for hook in contract.public_hooks
+    )
+    return (
+        "PROSPECTIVE_EXECUTION_DECLARATION = "
+        f"{declaration.model_dump(mode='python')!r}\n\n"
+        f"def {anchor}(payload):\n"
+        "    contract_hash = "
+        "PROSPECTIVE_EXECUTION_DECLARATION['plan_execution_contract_hash']\n"
+        "    intervention_identity = "
+        "PROSPECTIVE_EXECUTION_DECLARATION['selected_intervention_identity']\n"
+        "    paired_configuration = "
+        "PROSPECTIVE_EXECUTION_DECLARATION['paired_control_treatment']\n"
+        "    return payload\n\n"
+        f"{hooks}"
+    )
+
+
+def _write_package(root: Path) -> Any:
+    artifact = SystemAuthoredPlanArtifact.model_validate_json(
+        (root / "system-authored-research-plan.json").read_text(encoding="utf-8")
+    )
+    contract = compile_system_authored_plan_execution_contract(artifact)
     write_plan_execution_contract(contract=contract, output_dir=root)
     source_path = root / "candidates" / "official-01" / "candidate.py"
     source_path.parent.mkdir(parents=True)
-    source = """\
-def integral_bayesian_solver(x):
-    return x
-
-def fit_equations(x, y):
-    return integral_bayesian_solver(x)
-
-def predict_derivative(model, x):
-    return integral_bayesian_solver(x)
-"""
+    source = _prospective_source(contract)
     with source_path.open("w", encoding="utf-8", newline="") as handle:
         handle.write(source)
     interaction_payload = {
@@ -283,7 +288,7 @@ def predict_derivative(model, x):
         "hypothesis": "积分贝叶斯筛选可提高支持稳定性。",
         "intervention": "实现积分窗口与贝叶斯支持选择。",
         "expected_effect": "预期降低冻结留出集上的导数误差。",
-        "implementation_summary": "Integral Bayesian support-selection implementation",
+        "implementation_summary": "严格执行前瞻单因子对照—处理合同的候选实现",
         "source_lines": source.split("\n"),
     }
     interaction = AutonomousModelInteraction.create(
@@ -308,7 +313,7 @@ def predict_derivative(model, x):
         created_at=_NOW,
     )
     write_json_model(root / "interactions" / "generation-01.json", interaction)
-    alignment = audit_candidate_plan_alignment(
+    alignment = audit_prospective_candidate_plan_alignment(
         candidate_id="official-01", source_text=source, contract=contract
     )
     candidate = OfficialCandidateRecord(
@@ -319,10 +324,10 @@ def predict_derivative(model, x):
         source_relative_path="candidates/official-01/candidate.py",
         source_sha256=file_hash(source_path),
         static_review_approved=True,
-        implementation_summary="Integral Bayesian support-selection implementation",
+        implementation_summary="严格执行前瞻单因子对照—处理合同的候选实现",
         approved_plan_hash=contract.approved_plan_hash,
         plan_contract_hash=contract.contract_hash,
-        plan_alignment=alignment,
+        prospective_plan_alignment=alignment,
     )
     effects = [
         SystemEffect(
@@ -490,7 +495,7 @@ def _lineage(tmp_path: Path, *, relation_audit: bool = True) -> Path:
     root.mkdir()
     plan = _research_plan(root)
     _write_plan_artifacts(root, plan)
-    package = _write_package(root, plan)
+    package = _write_package(root)
     _write_outcome(root, package, relation_audit=relation_audit)
     return root
 
@@ -567,6 +572,159 @@ def test_final_report_schema_itself_rejects_non_chinese_scientific_prose(
 
     with pytest.raises(FinalResearchReportError, match="non-Chinese"):
         FinalResearchReport.model_validate(payload)
+
+
+def test_historical_plan_artifact_v1_cannot_enter_formal_reporting(
+    tmp_path: Path,
+) -> None:
+    root = _lineage(tmp_path)
+    artifact_path = root / "system-authored-research-plan.json"
+    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    payload["schema_version"] = "system-authored-research-plan-v1"
+    payload.pop("scientific_lineage_binding")
+    payload.pop("scientific_lineage_attestation")
+    payload["artifact_hash"] = canonical_model_hash(
+        {
+            key: value
+            for key, value in payload.items()
+            if key not in {"artifact_hash", "output_path"}
+        }
+    )
+    legacy = SystemAuthoredPlanArtifact.model_validate(payload)
+    write_json_model(artifact_path, legacy)
+
+    audit = audit_final_report_inputs(lineage_dir=root)
+
+    assert audit.accepted is False
+    assert audit.checks["system_authored_plan_integrity"] is False
+    assert audit.checks["plan_execution_contract_matches"] is False
+
+
+def test_formal_artifact_cannot_fall_back_to_a_v1_execution_contract(
+    tmp_path: Path,
+) -> None:
+    root = _lineage(tmp_path)
+    formal_plan = ResearchPlan.model_validate_json(
+        (root / "plan" / "research-plan.json").read_text(encoding="utf-8")
+    )
+    legacy_plan = formal_plan.model_copy(
+        update={
+            "code_agent_brief": (
+                "仅用于构造历史合同反例。"
+                "required_method_tokens=[prospective, component]"
+            )
+        }
+    )
+    legacy_contract = compile_plan_execution_contract(legacy_plan)
+    write_json_model(root / "plan-execution-contract.json", legacy_contract)
+
+    audit = audit_final_report_inputs(lineage_dir=root)
+
+    assert audit.accepted is False
+    assert audit.checks["plan_execution_contract_matches"] is False
+
+
+@pytest.mark.parametrize("field_name", ("paired_control_treatment", "identity"))
+def test_tampered_prospective_identity_or_pair_blocks_the_report(
+    tmp_path: Path,
+    field_name: str,
+) -> None:
+    root = _lineage(tmp_path)
+    contract_path = root / "plan-execution-contract.json"
+    payload = json.loads(contract_path.read_text(encoding="utf-8"))
+    if field_name == "paired_control_treatment":
+        pair = payload["paired_control_treatment"]
+        anchor = pair["intervention_key"]
+        pair["treatment_configuration"][anchor] = "篡改后的处理水平不得进入报告"
+        pair["pair_hash"] = canonical_model_hash(
+            {key: value for key, value in pair.items() if key != "pair_hash"}
+        )
+    else:
+        payload["selected_intervention_identity"]["implementation_anchor"] = (
+            "tampered_anchor"
+        )
+    payload["contract_hash"] = canonical_model_hash(
+        {key: value for key, value in payload.items() if key != "contract_hash"}
+    )
+    contract_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    audit = audit_final_report_inputs(lineage_dir=root)
+
+    assert audit.accepted is False
+    assert audit.checks["plan_execution_contract_matches"] is False
+
+
+def test_legacy_candidate_alignment_cannot_replace_prospective_alignment(
+    tmp_path: Path,
+) -> None:
+    root = _lineage(tmp_path)
+    package_path = root / "official-development-search-package.json"
+    package_payload = json.loads(package_path.read_text(encoding="utf-8"))
+    plan = ResearchPlan.model_validate_json(
+        (root / "plan" / "research-plan.json").read_text(encoding="utf-8")
+    )
+    legacy_plan = plan.model_copy(
+        update={
+            "code_agent_brief": (
+                "仅用于构造旧式候选对齐反例。"
+                "required_method_tokens=[prospective, component]"
+            )
+        }
+    )
+    legacy_contract = compile_plan_execution_contract(legacy_plan)
+    candidate_payload = package_payload["candidates"][0]
+    source = (root / candidate_payload["source_relative_path"]).read_text(
+        encoding="utf-8"
+    )
+    legacy_alignment = audit_candidate_plan_alignment(
+        candidate_id=candidate_payload["candidate_id"],
+        source_text=source,
+        contract=legacy_contract,
+    )
+    assert legacy_alignment.passed is True
+    candidate_payload["approved_plan_hash"] = legacy_contract.approved_plan_hash
+    candidate_payload["plan_contract_hash"] = legacy_contract.contract_hash
+    candidate_payload["plan_alignment"] = legacy_alignment.model_dump(mode="json")
+    candidate_payload.pop("prospective_plan_alignment")
+    package_payload["package_hash"] = canonical_model_hash(
+        {
+            key: value
+            for key, value in package_payload.items()
+            if key not in {"package_hash", "output_path"}
+        }
+    )
+    package = OfficialDevelopmentSearchPackage.model_validate(package_payload)
+    write_json_model(package_path, package)
+
+    audit = audit_final_report_inputs(lineage_dir=root)
+
+    assert audit.accepted is False
+    assert audit.checks["selected_candidate_plan_aligned"] is False
+
+
+def test_final_report_embeds_exact_v2_artifact_contract_identity_and_pair(
+    tmp_path: Path,
+) -> None:
+    root = _lineage(tmp_path)
+    report = materialize_final_research_report(
+        lineage_dir=root, output_dir=root / "final", compile_pdf=False, clock=_NOW
+    )
+    contract = report.prospective_plan_execution_contract
+
+    assert report.schema_version == "final-research-report-v2"
+    assert report.system_authored_plan_artifact.schema_version == (
+        "system-authored-research-plan-v2"
+    )
+    assert contract.contract_hash == report.plan_execution_contract_hash
+    assert contract.selected_intervention_identity.implementation_anchor == (
+        contract.implementation_anchor
+    )
+    assert contract.paired_control_treatment.changed_keys == (
+        contract.implementation_anchor,
+    )
 
 
 @pytest.mark.skipif(

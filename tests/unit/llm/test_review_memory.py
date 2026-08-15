@@ -1,9 +1,17 @@
+import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+from pydantic import ValidationError
+
 from autoresearch.knowledge import KnowledgeEntry, KnowledgeEntryType, KnowledgeZone
 from autoresearch.llm import LLMEvidenceArtifact, LLMReviewQuality, LLMReviewResult
-from autoresearch.llm.review_memory import write_llm_review_issue_notes, write_llm_review_note
+from autoresearch.llm.review_memory import (
+    capture_llm_review_response,
+    write_llm_review_issue_notes,
+    write_llm_review_note,
+)
 
 
 def test_write_llm_review_note_creates_project_review_entry(tmp_path: Path) -> None:
@@ -28,6 +36,16 @@ def test_write_llm_review_note_creates_project_review_entry(tmp_path: Path) -> N
     assert "needs_revision" in entry.body
     assert "`evidence_1`" in entry.body
     assert "The model quality claim needs another artifact." in entry.body
+    assert "评审模型原始响应绑定" in entry.body
+    assert "本地私有、只追加的原始记忆层" in entry.body
+    assert "```json" not in entry.body
+    raw_records = list(
+        (vault_root / "_private" / "raw-memory" / "projects" / "project_1").rglob(
+            "rawmem_*.json"
+        )
+    )
+    assert len(raw_records) == 1
+    assert result.response_text not in path.read_text(encoding="utf-8")
 
 
 def test_write_llm_review_issue_notes_creates_actionable_project_issues(
@@ -58,10 +76,13 @@ def test_write_llm_review_issue_notes_creates_actionable_project_issues(
     assert first_issue.project_id == "project_1"
     assert first_issue.related_task_ids == ["46.1"]
     assert "The validation status is supported." in first_issue.body
-    assert "Issue fingerprint:" in first_issue.body
-    assert "[[projects/project_1/review/llm-review-report-aaaaaaaaaaaa|LLM evidence review]]" in first_issue.body
+    assert "问题指纹：" in first_issue.body
+    assert (
+        "[[projects/project_1/review/llm-review-report-aaaaaaaaaaaa|LLM 证据评审]]"
+        in first_issue.body
+    )
     assert "The model quality claim needs another artifact." in second_issue.body
-    assert "`missing`" in second_issue.body
+    assert "`缺失`" in second_issue.body
 
 
 def test_write_llm_review_issue_notes_uses_stable_issue_fingerprints(
@@ -164,10 +185,44 @@ def _review_result(parsed_output: dict[str, Any] | None = None) -> LLMReviewResu
                 excerpt='{"status":"passed"}',
             )
         ],
-        response_text='{"verdict":"needs_revision"}',
+        response_text=json.dumps(structured_output),
         quality=LLMReviewQuality(
             score=1.0,
-            checks={"finding_refs_present": True, "finding_refs_known": True},
+            checks={
+                "finding_refs_present": True,
+                "finding_refs_known": True,
+                "no_secret_leak": True,
+            },
             parsed_output=structured_output,
         ),
+    )
+
+
+def test_review_result_rejects_parsed_output_that_diverges_from_raw_response() -> None:
+    result = _review_result()
+    payload = result.model_dump(mode="json")
+    payload["response_text"] = '{"verdict":"pass"}'
+
+    with pytest.raises(ValidationError, match="exact raw response_text"):
+        LLMReviewResult.model_validate(payload)
+
+
+def test_below_threshold_review_response_is_captured_before_note_filtering(
+    tmp_path: Path,
+) -> None:
+    result = _review_result().model_copy(
+        update={
+            "quality": _review_result().quality.model_copy(update={"score": 0.4})
+        }
+    )
+
+    binding = capture_llm_review_response(
+        result=result,
+        vault_root=tmp_path / "vault",
+        project_id="project_1",
+    )
+
+    assert binding.payload_sha256
+    assert binding.record_relative_path.startswith(
+        "_private/raw-memory/projects/project_1/records/"
     )

@@ -6903,7 +6903,21 @@ def test_llm_review_command_writes_local_evidence_report(tmp_path: Path, monkeyp
                     "excerpt": '{"status":"passed"}',
                 }
             ],
-            "response_text": '{"verdict":"pass"}',
+            "response_text": json.dumps(
+                {
+                    "verdict": "pass",
+                    "summary": "The report is grounded in local evidence.",
+                    "findings": [
+                        {
+                            "severity": "info",
+                            "claim": "Validation passed.",
+                            "evidence_refs": ["evidence_1"],
+                        }
+                    ],
+                    "unsupported_claims": [],
+                    "next_steps": ["Keep evidence attached."],
+                }
+            ),
             "usage": {"prompt_tokens": 10, "completion_tokens": 20},
             "quality": {
                 "score": 1.0,

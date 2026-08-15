@@ -24,10 +24,124 @@ from .contracts import (
 )
 
 _EVENT_FILE_PATTERN = re.compile(r"^(?P<sequence>[0-9]{10})\.json$")
-_EMAIL_PATTERN = re.compile(r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-_BEARER_PATTERN = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}", re.IGNORECASE)
-_API_KEY_PATTERN = re.compile(r"\b(?:sk|rk|pk)[-_][A-Za-z0-9_-]{16,}\b")
-_PRIVATE_KEY_PATTERN = re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")
+SensitiveTextCategory = Literal[
+    "api_key_pattern",
+    "bearer_credential",
+    "direct_email_identifier",
+    "private_key_material",
+]
+SENSITIVE_TEXT_CATEGORIES: tuple[SensitiveTextCategory, ...] = (
+    "api_key_pattern",
+    "bearer_credential",
+    "direct_email_identifier",
+    "private_key_material",
+)
+
+_PRIVATE_KEY_LABEL = r"(?:(?:[A-Z0-9]+[ \t]+)+)?PRIVATE[ \t]+KEY(?:[ \t]+BLOCK)?"
+_PRIVATE_KEY_BEGIN = rf"-----BEGIN[ \t]+{_PRIVATE_KEY_LABEL}-----"
+_PRIVATE_KEY_END = rf"-----END[ \t]+{_PRIVATE_KEY_LABEL}-----"
+_PRIVATE_KEY_COMPLETE_PATTERN = re.compile(
+    rf"{_PRIVATE_KEY_BEGIN}.*?{_PRIVATE_KEY_END}",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_PRIVATE_KEY_TRUNCATED_PATTERN = re.compile(
+    rf"{_PRIVATE_KEY_BEGIN}.*\Z",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_AUTHORIZATION_BEARER_PATTERN = re.compile(
+    r"\bAuthorization[ \t]*:[ \t]*Bearer[ \t]+" r"[A-Za-z0-9._~+/=-]{8,}(?![A-Za-z0-9._~+/=-])",
+    flags=re.IGNORECASE,
+)
+_BEARER_CREDENTIAL_PATTERN = re.compile(
+    r"\bBearer[ \t]+"
+    r"(?=[A-Za-z0-9._~+/=-]{16,}(?![A-Za-z0-9._~+/=-]))"
+    r"(?=[A-Za-z0-9._~+/=-]*[0-9._~+/=-])"
+    r"[A-Za-z0-9._~+/=-]{16,}",
+    flags=re.IGNORECASE,
+)
+_PREFIXED_API_KEY_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_])(?:"
+    r"(?:sk|rk|pk)[-_][A-Za-z0-9_-]{16,}"
+    r"|ghp_[A-Za-z0-9]{36}"
+    r"|github_pat_[A-Za-z0-9_]{20,}"
+    r"|(?:AKIA|ASIA)[A-Z0-9]{16}"
+    r"|AIza[A-Za-z0-9_-]{20,64}"
+    r"|hf_[A-Za-z0-9]{20,}"
+    r")(?![A-Za-z0-9_-])"
+)
+_EXPLICIT_API_KEY_ASSIGNMENT_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_-])"
+    r"(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret)"
+    r"[\"']?[ \t]*[:=][ \t]*[\"']?[A-Za-z0-9._~+/=-]{12,}",
+    flags=re.IGNORECASE,
+)
+_EMAIL_PATTERN = re.compile(
+    r"(?<![\w.!#$%&'*+/=?^`{|}~-])"
+    r"[\w.!#$%&'*+/=?^`{|}~-]+@"
+    r"(?:[^\W_](?:[^\W_]|-)*\.)+"
+    r"[^\W_](?:[^\W_]|-)+"
+    r"(?![\w-])",
+    flags=re.UNICODE,
+)
+
+_SensitiveTextRule = tuple[
+    SensitiveTextCategory,
+    re.Pattern[str],
+    str | None,
+    str,
+    Callable[[re.Match[str]], bool] | None,
+]
+_SENSITIVE_TEXT_RULES: tuple[_SensitiveTextRule, ...] = (
+    (
+        "private_key_material",
+        _PRIVATE_KEY_COMPLETE_PATTERN,
+        "[REDACTED_PRIVATE_KEY_MATERIAL]",
+        "private key",
+        None,
+    ),
+    (
+        "private_key_material",
+        _PRIVATE_KEY_TRUNCATED_PATTERN,
+        None,
+        "private key",
+        None,
+    ),
+    (
+        "bearer_credential",
+        _AUTHORIZATION_BEARER_PATTERN,
+        "[REDACTED_BEARER_CREDENTIAL]",
+        "bearer credential",
+        None,
+    ),
+    (
+        "bearer_credential",
+        _BEARER_CREDENTIAL_PATTERN,
+        "[REDACTED_BEARER_CREDENTIAL]",
+        "bearer credential",
+        None,
+    ),
+    (
+        "api_key_pattern",
+        _PREFIXED_API_KEY_PATTERN,
+        "[REDACTED_API_KEY_PATTERN]",
+        "API-key-like credential",
+        None,
+    ),
+    (
+        "api_key_pattern",
+        _EXPLICIT_API_KEY_ASSIGNMENT_PATTERN,
+        "[REDACTED_API_KEY_PATTERN]",
+        "API-key-like credential",
+        None,
+    ),
+    (
+        "direct_email_identifier",
+        _EMAIL_PATTERN,
+        "[REDACTED_DIRECT_EMAIL_IDENTIFIER]",
+        "direct email identifier",
+        lambda match: _is_valid_email_candidate(match.group(0)),
+    ),
+)
 _SENSITIVE_KEYS = {
     "address",
     "api_key",
@@ -112,6 +226,19 @@ class ForkPolicyError(JournalError):
 
 class SensitiveContentError(JournalError):
     """Raised when an event attempts to persist a secret or direct identifier."""
+
+
+class SensitiveTextRedactionError(ValueError):
+    """Raised when sensitive text cannot be safely normalized without evidence loss."""
+
+    def __init__(
+        self,
+        category: SensitiveTextCategory,
+        redaction_counts: dict[SensitiveTextCategory, int],
+    ) -> None:
+        super().__init__("sensitive text cannot be safely normalized")
+        self.category = category
+        self.redaction_counts = dict(redaction_counts)
 
 
 class ForkAnchor(KernelContract):
@@ -280,9 +407,7 @@ class JournalSnapshot(KernelContract):
         """Whether a committed terminal event still needs its deterministic seal."""
 
         return bool(
-            self.events
-            and self.events[-1].status in TERMINAL_EVENT_STATUSES
-            and self.seal is None
+            self.events and self.events[-1].status in TERMINAL_EVENT_STATUSES and self.seal is None
         )
 
     @property
@@ -424,9 +549,7 @@ class EventJournal:
             raise ForkPolicyError("child run_id must differ from the parent run_id")
         checkpoint = parent.checkpoint(checkpoint_sequence)
         if not checkpoint.terminal and not allow_non_terminal:
-            raise ForkPolicyError(
-                "non-terminal checkpoints require allow_non_terminal=True"
-            )
+            raise ForkPolicyError("non-terminal checkpoints require allow_non_terminal=True")
         anchor = ForkAnchor(
             parent_run_id=checkpoint.run_id,
             checkpoint_sequence=checkpoint.sequence,
@@ -484,13 +607,10 @@ class EventJournal:
                 expected_lineage_hash != snapshot.lineage_hash
             ):
                 raise StaleWriterError(
-                    f"expected lineage {expected_lineage_hash}, "
-                    f"found {snapshot.lineage_hash}"
+                    f"expected lineage {expected_lineage_hash}, " f"found {snapshot.lineage_hash}"
                 )
             if snapshot.is_terminal:
-                raise TerminalJournalError(
-                    f"run {self.metadata.run_id} is already terminal"
-                )
+                raise TerminalJournalError(f"run {self.metadata.run_id} is already terminal")
 
             self._validate_append(event=event, snapshot=snapshot)
             pending_path = self.pending_dir / f"{event.sequence:010d}-{uuid4().hex}.tmp"
@@ -636,9 +756,7 @@ class EventJournal:
             raise JournalCorruptionError("journal metadata changed after open")
         events = self._read_events()
         seal = (
-            _read_canonical_model(self.seal_path, JournalSeal)
-            if self.seal_path.exists()
-            else None
+            _read_canonical_model(self.seal_path, JournalSeal) if self.seal_path.exists() else None
         )
         try:
             snapshot = JournalSnapshot(
@@ -775,9 +893,7 @@ class EventJournal:
         try:
             descriptor = os.open(self.lock_path, flags)
         except FileExistsError as exc:
-            raise ConcurrentWriteError(
-                f"journal writer lease is active: {self.lock_path}"
-            ) from exc
+            raise ConcurrentWriteError(f"journal writer lease is active: {self.lock_path}") from exc
 
         try:
             with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
@@ -826,9 +942,7 @@ def _validate_event_chain(*, metadata: JournalMetadata, events: list[RunEvent]) 
                 f"does not match journal run {metadata.run_id}"
             )
         if event.sequence != index:
-            raise ValueError(
-                f"event {event.event_id} sequence {event.sequence}, expected {index}"
-            )
+            raise ValueError(f"event {event.event_id} sequence {event.sequence}, expected {index}")
         if event.event_id in event_ids:
             raise ValueError(f"duplicate event_id: {event.event_id}")
         if event.idempotency_key in idempotency_keys:
@@ -846,8 +960,7 @@ def _validate_event_chain(*, metadata: JournalMetadata, events: list[RunEvent]) 
                 )
             if event.parent_event_hash != previous.event_hash:
                 raise ValueError(
-                    f"event {event.event_id} parent hash does not match "
-                    f"{previous.event_hash}"
+                    f"event {event.event_id} parent hash does not match " f"{previous.event_hash}"
                 )
         if event.status in TERMINAL_EVENT_STATUSES and index != len(events):
             raise ValueError(f"terminal event {event.event_id} is not the final event")
@@ -911,18 +1024,36 @@ def validate_persistable_content(value: object) -> None:
     _scan_sensitive_value(value, path="$")
 
 
+def redact_sensitive_text(
+    value: str,
+) -> tuple[str, dict[SensitiveTextCategory, int]]:
+    """Redact exactly the text forms rejected by the central persistence policy."""
+
+    normalized = value
+    counts = {category: 0 for category in SENSITIVE_TEXT_CATEGORIES}
+    for category, pattern, replacement, _message, predicate in _SENSITIVE_TEXT_RULES:
+        if replacement is None:
+            if _first_valid_match(normalized, pattern=pattern, predicate=predicate) is not None:
+                counts[category] += 1
+                raise SensitiveTextRedactionError(category, counts)
+            continue
+        normalized, count = _sub_valid_matches(
+            normalized,
+            pattern=pattern,
+            replacement=replacement,
+            predicate=predicate,
+        )
+        counts[category] += count
+    return normalized, counts
+
+
 def _scan_sensitive_value(value: object, *, path: str) -> None:
     if value is None or isinstance(value, bool | int | float):
         return
     if isinstance(value, str):
-        if _EMAIL_PATTERN.search(value):
-            raise SensitiveContentError(f"{path} contains a direct email identifier")
-        if _BEARER_PATTERN.search(value):
-            raise SensitiveContentError(f"{path} contains a bearer credential")
-        if _API_KEY_PATTERN.search(value):
-            raise SensitiveContentError(f"{path} contains an API-key-like credential")
-        if _PRIVATE_KEY_PATTERN.search(value):
-            raise SensitiveContentError(f"{path} contains a private key")
+        for _category, pattern, _replacement, message, predicate in _SENSITIVE_TEXT_RULES:
+            if _first_valid_match(value, pattern=pattern, predicate=predicate) is not None:
+                raise SensitiveContentError(f"{path} contains a {message}")
         return
     if isinstance(value, list):
         for index, item in enumerate(value):
@@ -936,6 +1067,64 @@ def _scan_sensitive_value(value: object, *, path: str) -> None:
             _scan_sensitive_value(item, path=f"{path}.{key}")
         return
     raise SensitiveContentError(f"{path} contains unsupported sensitive-scan content")
+
+
+def _first_valid_match(
+    value: str,
+    *,
+    pattern: re.Pattern[str],
+    predicate: Callable[[re.Match[str]], bool] | None,
+) -> re.Match[str] | None:
+    for match in pattern.finditer(value):
+        if predicate is None or predicate(match):
+            return match
+    return None
+
+
+def _sub_valid_matches(
+    value: str,
+    *,
+    pattern: re.Pattern[str],
+    replacement: str,
+    predicate: Callable[[re.Match[str]], bool] | None,
+) -> tuple[str, int]:
+    if predicate is None:
+        return pattern.subn(replacement, value)
+    pieces: list[str] = []
+    cursor = 0
+    count = 0
+    for match in pattern.finditer(value):
+        if not predicate(match):
+            continue
+        pieces.extend((value[cursor : match.start()], replacement))
+        cursor = match.end()
+        count += 1
+    if not count:
+        return value, 0
+    pieces.append(value[cursor:])
+    return "".join(pieces), count
+
+
+def _is_valid_email_candidate(value: str) -> bool:
+    local, separator, domain = value.rpartition("@")
+    if not separator or not local or not domain or local.startswith(".") or local.endswith("."):
+        return False
+    if ".." in local or len(local.encode("utf-8")) > 64:
+        return False
+    labels = domain.split(".")
+    if len(labels) < 2:
+        return False
+    try:
+        encoded_labels = tuple(label.encode("idna") for label in labels)
+        encoded_domain = domain.encode("idna")
+    except UnicodeError:
+        return False
+    if any(
+        not label or label.startswith("-") or label.endswith("-") or len(encoded_label) > 63
+        for label, encoded_label in zip(labels, encoded_labels, strict=True)
+    ):
+        return False
+    return len(encoded_domain) <= 253
 
 
 def _read_canonical_model(path: Path, model_type: type[ModelT]) -> ModelT:

@@ -61,6 +61,21 @@ def test_markdown_store_creates_backups_only_when_due(tmp_path: Path) -> None:
     assert second_backup.exists()
 
 
+def test_public_backup_excludes_private_raw_memory(tmp_path: Path) -> None:
+    store = MarkdownKnowledgeStore(tmp_path)
+    private_path = tmp_path / "_private" / "raw-memory" / "secret-source.bin"
+    private_path.parent.mkdir(parents=True)
+    private_path.write_bytes(b"private source bytes")
+
+    backup = store.backup_if_due(
+        1,
+        now=datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+
+    assert backup is not None
+    assert not (backup / "_private").exists()
+
+
 @pytest.mark.parametrize("interval_hours", [0, 27])
 def test_markdown_store_rejects_backup_interval_outside_allowed_range(
     tmp_path: Path, interval_hours: int

@@ -124,6 +124,7 @@ from autoresearch.literature import (
 )
 from autoresearch.llm import (
     LLMClientError,
+    capture_llm_review_response,
     run_llm_evidence_review,
     run_llm_smoke_test,
     write_llm_review_issue_notes,
@@ -145,6 +146,7 @@ from autoresearch.reports import (
     validate_reproducibility_package,
 )
 from autoresearch.research import (
+    AdaptiveResearchLoopError,
     BrainstormConfig,
     BrainstormEvidenceReviewConfig,
     SimilarityCheckConfig,
@@ -156,6 +158,8 @@ from autoresearch.research import (
     link_similarity_report_to_project,
     load_plan_decision,
     record_plan_decision,
+    run_capability_adaptive_exploration,
+    run_conceptual_adaptive_exploration,
     run_inspiration_brainstorm,
     run_project_similarity_check,
     write_novelty_search_breadth_artifact,
@@ -5193,6 +5197,14 @@ def llm_review(
         typer.echo(f"[FAIL] LLM review request failed: {exc}", err=True)
         raise typer.Exit(1) from exc
 
+    raw_binding = None
+    if project_id:
+        raw_binding = capture_llm_review_response(
+            result=result,
+            vault_root=vault,
+            project_id=project_id,
+        )
+
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(result.model_dump_json(indent=2), encoding="utf-8")
     typer.echo(f"[OK] provider: {result.provider}")
@@ -5221,6 +5233,7 @@ def llm_review(
             vault_root=vault,
             project_id=project_id,
             source_task_id=source_task_id,
+            raw_binding=raw_binding,
         )
         typer.echo(f"[OK] vault_review: {review_note}")
         if write_issues:
@@ -5547,6 +5560,257 @@ def publication_stability(
     if fail_on_unstable and not report.stable:
         typer.echo("[FAIL] publication stability matrix blocked stable output claims", err=True)
         raise typer.Exit(1)
+
+
+@app.command("adaptive-explore")
+def adaptive_explore(
+    loop_id: Annotated[
+        str,
+        typer.Option("--loop-id", help="Unique ID for this immutable adaptive loop."),
+    ],
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID used by private raw memory."),
+    ],
+    objective_cn: Annotated[
+        str,
+        typer.Option(
+            "--objective",
+            help="Chinese research objective; do not supply a hypothesis or method answer.",
+        ),
+    ],
+    scope_cn: Annotated[
+        str,
+        typer.Option(
+            "--scope",
+            help="Chinese scope, safety, and resource boundary for exploration.",
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="New directory for immutable loop artifacts."),
+    ] = Path("runs/adaptive-exploration/latest"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault containing private raw memory."),
+    ] = Path("autoresearch-vault"),
+    skill_root: Annotated[
+        Path,
+        typer.Option("--skill-root", help="Repository-local SKILL.md catalog root."),
+    ] = Path("skills"),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Provider-neutral model configuration."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local credential environment file."),
+    ] = Path(".env"),
+    max_steps: Annotated[
+        int,
+        typer.Option(
+            "--max-steps",
+            min=1,
+            max=100,
+            help="Maximum autonomous conceptual turns; each turn also routes skills.",
+        ),
+    ] = 4,
+    maximum_selected_skills: Annotated[
+        int,
+        typer.Option(
+            "--maximum-selected-skills",
+            min=0,
+            max=12,
+            help="Maximum separately injected methodology skills per turn.",
+        ),
+    ] = 4,
+    thinking_budget: Annotated[
+        int,
+        typer.Option(
+            "--thinking-budget",
+            min=256,
+            max=32000,
+            help="Bounded Qwen reasoning budget for each routing/action call.",
+        ),
+    ] = 2_000,
+) -> None:
+    """Run model-selected open exploration from one Chinese objective and scope."""
+
+    try:
+        result = run_conceptual_adaptive_exploration(
+            loop_id=loop_id,
+            project_id=project_id,
+            objective_cn=objective_cn,
+            scope_cn=scope_cn,
+            output_dir=output_dir,
+            vault_root=vault,
+            skill_root=skill_root,
+            config_path=config_path,
+            env_path=env_path,
+            max_steps=max_steps,
+            maximum_selected_skills=maximum_selected_skills,
+            thinking_budget=thinking_budget,
+        )
+    except (AdaptiveResearchLoopError, OSError, ValueError) as exc:
+        typer.echo(f"[FAIL] adaptive_explore: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    operators = [event.interaction.proposal.operator.value for event in result.events]
+    typer.echo(f"[OK] adaptive_explore_status: {result.status.value}")
+    typer.echo(f"[OK] autonomous_turns: {len(result.events)}")
+    typer.echo(f"[OK] model_calls_including_skill_routing: {result.model_call_count}")
+    typer.echo(f"[OK] selected_operators: {json.dumps(operators, ensure_ascii=False)}")
+    typer.echo(f"[OK] output_dir: {output_dir.resolve()}")
+    typer.echo("[BLOCKED] formal_execution_authorized: false")
+    typer.echo("[BLOCKED] publication_authorized: false")
+
+
+@app.command("adaptive-research")
+def adaptive_research(
+    loop_id: Annotated[
+        str,
+        typer.Option("--loop-id", help="Unique ID for this immutable adaptive loop."),
+    ],
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID used by private raw memory."),
+    ],
+    objective_cn: Annotated[
+        str,
+        typer.Option(
+            "--objective",
+            help="Chinese research objective; do not provide a hypothesis, method, or plan.",
+        ),
+    ],
+    scope_cn: Annotated[
+        str,
+        typer.Option(
+            "--scope",
+            help="Chinese research scope, resource boundary, and safety boundary.",
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="New directory for immutable loop artifacts."),
+    ] = Path("runs/adaptive-research/latest"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault containing private raw memory."),
+    ] = Path("autoresearch-vault"),
+    skill_root: Annotated[
+        Path,
+        typer.Option("--skill-root", help="Repository-local SKILL.md catalog root."),
+    ] = Path("skills"),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Provider-neutral model configuration."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local credential environment file."),
+    ] = Path(".env"),
+    max_steps: Annotated[
+        int,
+        typer.Option(
+            "--max-steps",
+            min=1,
+            max=100,
+            help="Maximum model-selected main-agent turns.",
+        ),
+    ] = 8,
+    max_external_actions: Annotated[
+        int,
+        typer.Option(
+            "--max-external-actions",
+            min=0,
+            max=100,
+            help="Maximum retrieval, Dreaming, temporary-batch, or verification actions.",
+        ),
+    ] = 4,
+    max_temporary_agents: Annotated[
+        int,
+        typer.Option(
+            "--max-temporary-agents",
+            min=0,
+            max=49,
+            help="Total content-only temporary Qwen workers the main agent may dispatch.",
+        ),
+    ] = 7,
+    temporary_max_workers: Annotated[
+        int,
+        typer.Option(
+            "--temporary-max-workers",
+            min=1,
+            max=7,
+            help="Maximum temporary workers in one parallel batch.",
+        ),
+    ] = 4,
+    maximum_selected_skills: Annotated[
+        int,
+        typer.Option(
+            "--maximum-selected-skills",
+            min=0,
+            max=12,
+            help="Maximum separately injected methodology skills per main-agent turn.",
+        ),
+    ] = 4,
+    max_results_per_source: Annotated[
+        int,
+        typer.Option(
+            "--max-results-per-source",
+            min=1,
+            max=12,
+            help="Maximum normalized literature records retained from each live source.",
+        ),
+    ] = 6,
+    thinking_budget: Annotated[
+        int,
+        typer.Option(
+            "--thinking-budget",
+            min=256,
+            max=32000,
+            help="Bounded Qwen reasoning budget for routing, actions, and temporary work.",
+        ),
+    ] = 2_000,
+) -> None:
+    """Run a real capability-backed loop from one Chinese objective and scope."""
+
+    try:
+        result = run_capability_adaptive_exploration(
+            loop_id=loop_id,
+            project_id=project_id,
+            objective_cn=objective_cn,
+            scope_cn=scope_cn,
+            output_dir=output_dir,
+            vault_root=vault,
+            skill_root=skill_root,
+            config_path=config_path,
+            env_path=env_path,
+            max_steps=max_steps,
+            max_external_actions=max_external_actions,
+            max_temporary_agents=max_temporary_agents,
+            maximum_selected_skills=maximum_selected_skills,
+            max_results_per_source=max_results_per_source,
+            temporary_max_workers=temporary_max_workers,
+            thinking_budget=thinking_budget,
+        )
+    except (AdaptiveResearchLoopError, OSError, ValueError) as exc:
+        typer.echo(f"[FAIL] adaptive_research: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    operators = [event.interaction.proposal.operator.value for event in result.events]
+    typer.echo(f"[OK] adaptive_research_status: {result.status.value}")
+    typer.echo(f"[OK] autonomous_turns: {len(result.events)}")
+    typer.echo(f"[OK] main_and_skill_model_calls: {result.model_call_count}")
+    typer.echo(f"[OK] temporary_agents_used: {result.temporary_agent_count}")
+    typer.echo(f"[OK] external_actions_used: {result.external_action_count}")
+    typer.echo(f"[OK] selected_operators: {json.dumps(operators, ensure_ascii=False)}")
+    typer.echo(f"[OK] output_dir: {output_dir.resolve()}")
+    typer.echo("[AVAILABLE] live_literature_retrieval: true")
+    typer.echo("[AVAILABLE] append_only_raw_memory_and_dreaming: true")
+    typer.echo("[AVAILABLE] main_agent_temporary_dispatch: true")
+    typer.echo("[BLOCKED] generic_sandbox_execution: false")
+    typer.echo("[AVAILABLE] independent_promotion_verifier: true")
+    typer.echo("[BLOCKED] formal_execution_authorized: false")
+    typer.echo("[BLOCKED] publication_authorized: false")
 
 
 @app.command("autopilot")
@@ -8942,6 +9206,12 @@ def _run_autopilot_review(
     except LLMClientError as exc:
         return {"status": "failed", "error": str(exc)}
 
+    raw_binding = capture_llm_review_response(
+        result=result,
+        vault_root=vault,
+        project_id=project_id,
+    )
+
     review_output = cycle_dir / "llm-review.json"
     review_output.write_text(result.model_dump_json(indent=2), encoding="utf-8")
     review_info: dict[str, Any] = {
@@ -8960,6 +9230,7 @@ def _run_autopilot_review(
         vault_root=vault,
         project_id=project_id,
         source_task_id=source_task_id,
+        raw_binding=raw_binding,
     )
     issue_notes = write_llm_review_issue_notes(
         result=result,

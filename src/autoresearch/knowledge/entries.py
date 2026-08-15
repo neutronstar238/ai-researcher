@@ -195,7 +195,7 @@ class MarkdownKnowledgeStore:
         self.backup_root = self.root / ".backups"
 
     def write_entry(self, relative_path: Path | str, entry: KnowledgeEntry) -> Path:
-        path = self.root / relative_path
+        path = self._public_path(relative_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists():
             self._preserve_version(relative_path, path.read_text(encoding="utf-8"))
@@ -205,7 +205,7 @@ class MarkdownKnowledgeStore:
         return path
 
     def read_entry(self, relative_path: Path | str) -> KnowledgeEntry:
-        path = self.root / relative_path
+        path = self._public_path(relative_path)
         return KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
 
     def find_by_keyword(self, keyword: str) -> list[KnowledgeEntry]:
@@ -284,7 +284,7 @@ class MarkdownKnowledgeStore:
 
     def list_versions(self, relative_path: Path | str) -> list[VersionSnapshot]:
         snapshots = self._saved_versions(relative_path)
-        current_path = self.root / relative_path
+        current_path = self._public_path(relative_path)
         if current_path.exists():
             snapshots.append(
                 VersionSnapshot(
@@ -303,7 +303,7 @@ class MarkdownKnowledgeStore:
             msg = f"version {version} does not exist for {Path(relative_path).as_posix()}"
             raise ValueError(msg)
 
-        target = self.root / relative_path
+        target = self._public_path(relative_path)
         if target.exists() and target != selected.path:
             self._preserve_version(relative_path, target.read_text(encoding="utf-8"))
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -328,7 +328,9 @@ class MarkdownKnowledgeStore:
         shutil.copytree(
             self.root,
             backup_path,
-            ignore=shutil.ignore_patterns(".backups"),
+            # Public Markdown backups must never become a second, less protected
+            # copy of the sovereign raw-memory layer.
+            ignore=shutil.ignore_patterns(".backups", "_private"),
             dirs_exist_ok=False,
         )
         return backup_path
@@ -367,7 +369,7 @@ class MarkdownKnowledgeStore:
         return snapshots
 
     def _version_dir(self, relative_path: Path | str) -> Path:
-        source = Path(relative_path)
+        source = self._public_relative_path(relative_path)
         return self.version_root.joinpath(*source.with_suffix("").parts)
 
     def _read_version_file(self, path: Path) -> tuple[dict[str, Any], str]:
@@ -402,5 +404,33 @@ class MarkdownKnowledgeStore:
         return max(timestamps) if timestamps else None
 
     def _is_internal_path(self, path: Path) -> bool:
-        relative = path.relative_to(self.root)
-        return any(part.startswith(".") or part == "_system" for part in relative.parts)
+        root = self.root.resolve()
+        resolved = path.resolve()
+        if not resolved.is_relative_to(root):
+            return True
+        relative = resolved.relative_to(root)
+        return any(
+            part.startswith(".") or part in {"_system", "_private"}
+            for part in relative.parts
+        )
+
+    def _public_relative_path(self, relative_path: Path | str) -> Path:
+        path = Path(relative_path)
+        if (
+            path.is_absolute()
+            or not path.parts
+            or any(part in {"", ".", ".."} for part in path.parts)
+            or "_private" in path.parts
+        ):
+            raise ValueError(
+                "knowledge entry path must be a safe public-vault relative path"
+            )
+        return path
+
+    def _public_path(self, relative_path: Path | str) -> Path:
+        relative = self._public_relative_path(relative_path)
+        root = self.root.resolve()
+        target = (root / relative).resolve()
+        if not target.is_relative_to(root):
+            raise ValueError("knowledge entry path escapes the public vault")
+        return target

@@ -190,6 +190,28 @@ autoresearch/
 
 系统能够周期性运行，持续产生候选研究方向，并把每一轮运行结果沉淀为知识。
 
+### 6.2.1 自适应而非固定流水线
+
+Phase 3 的运行单元必须区分“外层周期调度”和“内层科研决策”。外层负责预算、暂停恢复、记忆写入
+和人工审批；内层由当前阶段 Qwen 主 Agent 自主选择检索、假设分叉、类比、反方批判、临时 Agent、
+沙箱探针、Dreaming、晋级或放弃。开放探索只保留安全、中文、结构、预算和原始回执门；只有模型
+主动申请晋级后，才启用来源、可证伪性、判别性对照、外部反馈和独立验证的严格门。正式执行与
+发表继续使用最严门禁，不得由模型或工作流变异修改。
+
+项目 Skill 采用两阶段动态注入：模型先只看 `name/description/hash`，可以选择零个；随后才把入选
+`SKILL.md` 的精确字节作为独立消息加入科研动作。本体系统提示不得内嵌某一学科的完整方法流程。
+模型、Skill 路由、工具与临时 Agent 的所有可见响应和有界 reasoning 必须先进入主权原始记忆，
+派生快照只保存可重建的内容寻址引用。
+
+长期记忆实验统一调用独立的 `agent-memory-evaluation` 方法 Skill：保存、召回、显式消费和盲化
+任务收益是四个不同门；`ADD/UPDATE/DELETE` 类智能操作只作用于可重建派生层；记忆策略候选
+先在冻结轨迹或影子流量上比较，不能在线改写主权原始记录、安全、证据或发表边界。
+
+开放探索还应允许模型选择较低的派生记忆依赖，避免既有轨迹把新问题锚定为旧答案；复核、纠错、
+复现和晋级则提高精确原文与来源约束。该“记忆依赖档位”只能作为可审计策略候选，不能改变原始
+记录可见权限。每次宣称记忆起作用时，必须依次闭合原始保存、确定性选择、后续真实请求暴露、
+模型结构化消费和盲化对照收益五个层次；前四层的回执不能代替第五层的因果比较。
+
 ### 6.3 任务清单
 
 | 编号 | 任务 | 产物 | 验收标准 |
@@ -202,6 +224,58 @@ autoresearch/
 | 3.6 | Skill Library | 技能卡 | 成功模式可复用 |
 | 3.7 | Monitoring | 指标面板 | 可看成本、失败率、成功率 |
 | 3.8 | Rollback System | 回滚机制 | 可回滚配置、策略、知识条目 |
+| 3.9 | Adaptive Research Controller | 算子选择、分支档案、阶段局部门禁 | 一个目标可连续运行多轮且无中间人工科研指令 |
+| 3.10 | Dynamic Skill Router | 元数据路由与独立 Skill 消息 | 允许零技能；学科正文不进入本体提示词；选择与回执可重放 |
+| 3.11 | Sovereign Memory Planes | 原始只追加平面与可演化派生平面 | 派生可删重建，原始字节与纠错历史不回写 |
+| 3.12 | Adaptive-loop Evaluation | 预算匹配搜索与记忆消融 | 与固定流水线、线性自循环比较创新多样性、纠错、污染、成本和人工介入 |
+| 3.13 | Autonomy Replay Audit | 控制器选择、反馈暴露、模型/原始回执与人工介入审计 | 证明每轮有多个真实可选动作、无强制动作或中途人工科研散文；明确不把控制自治等同于科学正确 |
+
+截至 2026-08-10，3.9—3.11 已有能力级生产接线。当前控制器已补调用前预算预约、失败保守计费、
+续跑原始字节/消息投影重放、快照成员召回和 Dreaming 确定性重算；外部 Ed25519 gateway、同响应
+正文、A4 实际消费回执和 formal live runner 也已在代码与对抗测试中闭合。真实 signed pilot 因本机
+VPN/TUN 把 provider 解析到 RFC 2544 非全球地址 `198.18.0.35` 而在首事件前正确失败关闭，因此
+通用 autonomy audit 仍不能把普通进程或自报 provider 升级为正式外部身份。
+旧四臂×五模板×三种子的 60-cell 协议因独立任务最多只有五个而只可作工程 pilot。v3 虽改为
+60 个独立场景×四配对臂=240 个盲化 cell，并完成 context adapter、receipt bridge、四臂 adapter 及
+diagnostic/formal single-cell runner，但最新 v12 证明 delayed-relevance 第 3 轮重述第 1 轮值，且该值
+可进入跨窗口持久分支，因而不能把事件窗口过期等同于原始记忆必要。v3 bytes 与 execution hash
+`cfe042f2061f89e3d8a56d1a39fe65a056fd88ab11d7912165a926b67991d6a3` 保留作历史证据，但 240-cell
+确认性资格撤销；必须另起预注册并冻结工作状态容量、非重复终轮键和事实复制审计。最新 v4 非确认性真实 Qwen
+运行从一次目标/范围完成十二轮动作，十二次均一次通过，零中途人工/编排器科研散文；终轮由模型
+自主申请晋级，又因缺可追溯来源与真实外部反馈被确定性门拒绝，证明“探索自由、晋级严格”的功能
+循环成立。该轨迹同时零次选择 Dreaming、零 selection、零结构化记忆消费，故主权记忆实际使用判负。
+禁止根据该结果回改冻结 v3 协议；可调记忆依赖与反局部循环只能先进入影子策略候选，在新开发场景
+中预算匹配验证后另起预注册。完整 240-cell 未运行；3.9 仍缺通用沙箱能力，正式执行链另有单干预
+control/treatment 配对阻断。不得把这些进展写成主权记忆收益已证明、性能领先、创新成立、实验完成
+或可发表。
+
+新的 development v6 在不修改冻结 v3 协议的前提下运行“反局部循环 + 可调记忆依赖”候选。主控制器
+只读取去文本结构投影，两次干预都只移除饱和内省动作并保留 10 个按原顺序的可选动作；Qwen 自行
+选择类比、分支、3 个临时 Agent、晋级、检索、放弃和重建分支，15 轮共计 30 次模型调用后由预算门
+暂停，快照为 `4871ac139be2775c69b066b78922cf47a975d7f7845b73896ed7d5cc5add3167`。晋级拒绝和检索负结果都
+真实进入后续状态，没有中间人工计划。Dreaming 始终可选但未被选择，memory audit hash
+`3949648dff9be950f61d6be252c00e3080bbc2ba8c22df6ea4da3c6204a39b08` 仍为阴性；因此本候选继续
+`shadow_only`，不能为通过 live 判据而强制记忆动作。Skill 路由和检索 Schema 的 Qwen 适配只消除
+冗余否定字段、provider 不支持的关键词和自由散文/机器查询混淆，不改变科研判断或代写答案。
+
+v9/v10 又各完成十五轮、三十次真实模型调用；v9 自主派发三个临时 Qwen，v10 自主检索，但均未
+使用 Dreaming。v12 在修正强类型 public-context provider 后完成十二轮和二十七次总调用，Qwen 第 7
+轮非强制选择 Dreaming、第 12 轮自主停止；选择与下一请求可重放，但窗口外记录和结构化消费均为
+零，audit `7286fb8fb748f99164b075c8037db77f79ad513e5970e0d046cca13f763b4498` 为阴性。调用预约重放已按
+typed index 排序，召回分数改用排序 `math.fsum` 并通过四种 hash seed；这些只修证据确定性，不把
+阴性行为改写成成功。
+
+delayed-memory successor v1 的代码级协议现已建立，但不能接入旧 12-turn runner。协议定义 140 个
+独立合成场景块 × 四个场景内随机臂，共 560 cell；每场景 13 轮，前三轮合计 192 条随机地址—值，
+第四至十一轮不泄题，第十二轮才释放查询地址，第十三轮评分。普通工作状态固定 2048 UTF-8 bytes，
+允许任意模型自选压缩；执行器必须从首轮起投影全部模型可见普通状态，不能只在终轮抽取片段或在
+溢出后截断。public 树只包含加私有 nonce 后的承诺和盲 cell，刺激、oracle、臂分配与两个独立 secret
+seed 只在 runner-private 树。主要分析预注册为场景配对的双侧 exact McNemar A4−A3、alpha 0.05、
+SESOI 风险差 0.25；140 对在 discordance 0.25—1.00 网格的最低精确功效为 0.809086。缺失、失败或
+证据不完整的 cell 计零，不删配对；A4-only 胜例没有 raw→Dreaming→signed request→结构化消费
+谱系时不得解释成主权记忆收益。当前同进程 builder、片段级 working-state audit 和 write-once 多树
+输出都明示不是独立隔离或正式执行证明。下一实现必须是 13-turn public context adapter、全量工作
+状态投影器、外部逐轮释放服务和 successor formal runner；在这些闭合前不得运行 560 cell 或揭盲。
 
 ### 6.4 验收标准
 
@@ -210,6 +284,8 @@ autoresearch/
 3. 每个失败任务都有失败分类；
 4. 至少生成 10 张 Skill Card；
 5. 至少支持一次配置或策略回滚。
+6. 一个中文目标至少连续完成两次模型自主选择的不同科研动作，中间无人工提示；每次 Skill 路由和动作调用都计入同一预算并保留原始回执。
+7. 开放探索、证据晋级、正式执行/发表三类门禁有可执行的独立测试，开放区不因缺少引用而阻断猜想，晋级区不因创造性而放宽证据。
 
 ### 6.5 Online literature refresh constraint
 
@@ -220,6 +296,10 @@ ArXiv access must respect the official legacy API constraint of a single connect
 This online discovery requirement also applies at project start. Before a candidate becomes an approved project, AI-Researcher must run a broad online similarity and novelty cross-check against adjacent directions, competing methods, datasets, baselines, negative evidence, code availability, and contradictory claims. The Obsidian vault stores the evidence-backed summary and query provenance; it is not the only search source.
 
 Summaries written to Obsidian must distinguish verified source metadata, source-backed claims, model interpretation, and unknowns. The system must not fabricate paper results, benchmark scores, citations, venue status, code availability, or experimental outcomes. Missing evidence must stay marked as `unknown` or `pending verification`.
+
+### 6.6 Sovereign raw-memory constraint
+
+Every production path that currently embeds a model response, source excerpt, tool output, or user attachment directly into a mutable Obsidian note must migrate to a two-step write. First, retain the authorized exact bytes in the local Git-ignored append-only raw-memory store and verify byte count plus SHA-256. Second, write only a derived Obsidian projection that binds the raw record and labels its claims as source-backed, interpretation, extrapolation, contradiction, or unknown. Vector indexes and summaries are caches, not authoritative memory. Corrections append a superseding record; no rollback API may mutate raw bytes. Credentials, private keys, and direct identifiers remain forbidden until a separately approved encrypted connector exists.
 
 ---
 
@@ -2370,3 +2450,149 @@ synthetic 反馈和最多六次 score-blind revision 内修复，不能查看或
 审计顺序固定为：验证计划原始模型调用回执与中文门禁；验证人工计划批准仅是范围边界；重新编译计划执行合同并验证入选源码及其已接受模型调用；核对官方身份、预算账本、预注册面板变更和完整实验矩阵；逐个复算 raw spec/result 与汇总；验证系统结果解释的作者回执、数字来源和算术关系；比较配置与计划/代码/结果三类调用的 provider、base URL、model；验证创新性审计、独立重执行、最终四格式报告和质量门；最后才计算发表/提交状态。任一阶段失败仍会写出带具体中文阻断原因的 evidence bundle。
 
 旧格式制品保持可读取以保护历史哈希，但不获得新标准豁免：缺少作者回执哈希或候选 interaction hash 的历史记录只能作为历史过程证据，不能通过提交审计。新生成/修订候选现在绑定真正被接受的 repair 调用；容器超时和未写结果也写入包含 `spec_hash` 的规范结果哈希。Task `270.4` 的验收不是让旧结果变绿，而是证明总审计在 `publication_ready=false`、必需审计缺失、模型身份不一致或质量门红灯时均不可能输出 ready。
+
+## 30. Task 270.5：中文系统预注册的执行顺序与失败边界
+
+正式入口为 `poetry run airesearcher competition mdbench lineage-preregister-plan --lineage-id <fresh-id>`。命令必须在此前不存在的目录中依次执行：冻结 official identity 与零条目 spend ledger；冻结基线政策和子谱系自己的阶段宽度；从签名父证据构建 raw-evidence-only 上下文；模型自产检索式；真实访问 ArXiv/OpenAlex；模型以中文选择文献；五方向作者；五方向独立初审；入选方向独立反方审查；中文完整计划作者；完整计划独立科学审查；写入等待人工计划批准的正式计划。任何前置阶段失败都不得创建后置制品。
+
+每类模型调用使用独立 `artifact_kind` 和 interaction ID，保存精确 messages、provider、base URL、model、endpoint、原始响应、解析载荷、usage、推理传输、规范化信息和内容哈希，且明确 `api_key_value_logged=false`。作者输出的结构或语言修复保留失败回执并新建 repair 回执；科学评审拒绝则把评审器自己的原文送回下一轮作者。编排器仅提供通用科学门、JSON schema 和冻结协议，不得把实现代理提出的假设、题目或方案塞进 prompt。两字符科学缩写（如 `ir`、`tv`）可以作为模型自产方法 token，但后续仍须在 `fit_equations`/`predict_derivative` 可达调用项中逐词出现；单字符、注释、变量名和死代码不能通过。
+
+方向阶段上限为四个科学组合，每组五个方向；结构修复和评审修复各有独立有限次数。五方向初审没有“必须选一个”的规则，任一关键发现都会淘汰对应方向。初审入选后，反方审查还必须同时通过构念可操作性、替代解释可识别、决定性实验有效、统计/执行可行和真实目录新颖性五门，且关键发现与必改项均为空。只有双审方向写入 `system-plan-ideation.json` 后才能运行计划作者；因此一次初审的宽松判断不能再直接消耗八轮完整计划生成。
+
+完整计划作者每次候选先接受确定性中文、控制字符、证据数字语义、真实引用、条件性结果、方法 token 和执行合同检查，再进入独立模型科学审查。模型调用或 JSON 解析失败是可见的有限重试，不产生虚假作者回执。已接受计划必须绑定文献调查、方向、计划作者和最终审查哈希；正式写入后仍记录 `execution_authorized=false`。恢复命令只能复用同一谱系中已接受且哈希完整的文献/方向推理，必须写入新的空输出目录，不能覆盖旧回执或跨谱系拼接。
+
+2026-08-09 的真实验收没有通过。`v12` 和 `v13` 都从全新零消耗目录开始并完成真实检索；`v13` 四轮方向作者和四轮独立初审均有原始回执，但评审拒绝全部 20 个方向，因而没有反方通过制品、没有 `system-plan-ideation.json`、没有 `plan/research-plan.json`、没有人工计划批准，也没有任何执行。Windows GBK 终端曾在输出包含 `∇` 的中文拒绝理由时抛出二次编码异常；CLI 现会按终端编码安全转义、限制诊断长度并指出保留证据目录，完整错误仍在回执中。该工程修复不改变科学判决。
+
+交付时必须按下列状态报告：实现和确定性测试通过；真实检索/模型来源链可运行；失败关闭有效；系统尚未产出通过严格门禁的正式中文计划；自主可发表成果、独立完成科研、执行授权、publication ready 和 submission ready 均未证明。任务 `270.5` 只有在一个新的真实谱系实际写出中文计划、所有科学散文来源计数为零人工、生成在审批前被拒绝、聚焦 pytest/Ruff/Mypy 全绿后才能勾选并作聚焦提交。当前不得提交未完成任务，也不得用 `v11`—`v13` 中任何被拒方向补写参赛计划。
+
+为避免模型只围绕实现代理预设的题目采样，方向阶段前新增两层来源约束。第一层由 `public_data_profile.py` 直接解析公开 NPZ/NPY 数组并生成哈希绑定描述统计，不依赖 NumPy，也不生成科研散文；当前正式上下文覆盖 12 个可研究系统、clean/`snr_20` 共 24 个数组路径。第二层由配置模型生成七格研究机会，逐格绑定至少两个目标、每个目标的 `system_effect` 与 `data_profile`、至少三条真实目录以及可区分的替代解释。独立机会评审可全部拒绝；只有至少一格七门全过，才允许后续五种发散视角围绕合格格提出完整方向。
+
+续跑不再把上一轮被拒的整段科学文本重新展示给作者。系统验证机会图、目录、上下文、模型回执和评审回执哈希，仅传递评审器自产的失败门标签，以及被拒方向的标题、方法 token、核心机制哈希和科学签名；累计摘要沿回执链继承，精确复投或只改标题/措辞会被机器拒绝。正式目标使用白名单，synthetic sentinel 的 20 秒/512 MB 契约不能否决 300 秒/4096 MB 的 official development cell；一次公开 fit 内部的确定性阶段不被误算为多次 fit。所有变换还必须保持动态语义、单位和回映射。上述机制只控制搜索与来源，不替模型写方向。
+
+`task2705-preregister-plan-smoke-v15` 的真实运行保留四条模型检索式、59 条 ArXiv/OpenAlex 目录、10 条中文选择和 12 个公开数据画像。机会审查曾暂留 O04，随后六个 ideation 续跑共 47 次模型交互全部失败，没有方向制品或计划。最终消费审计还发现 O04 作者字段自身误用了 20 秒 synthetic-sentinel 预算；新确定性门已在机会作者阶段封堵，旧 v15 机会 JSON 现在会拒绝加载。故不得把评审中曾出现的 `accepted` 字样解释为有效机会，更不得沿它生成计划。新的合法真实运行必须从无该污染的机会作者回执开始，并依次通过机会图、方向初审、方向反方、完整计划审查和人工计划哈希批准；在此之前所有执行入口继续拒绝。
+
+赛事材料审计仍有独立缺口。榜题原文要求技术方案 PDF 不超过 20 页，必须包含研究问题与方法、多智能体/Skills 架构、真实案例和源代码说明，并要求通过阿里云百炼调用千问 API、提供调用凭证或截图。当前 `config.yaml` 与模型回执能证明 `qwen-dashscope`、百炼兼容地址和 `qwen3.7-max` 的运行来源，但仓库仅有 5 张 README 架构/安装图片，没有百炼凭证截图，也没有任何提交 PDF；现有 `submission-audit` 尚未把这两类赛事材料纳入合取门。更不能在没有合格系统自产计划与真实结果时先制作一个“真实案例”填空。因此提交包状态必须保持 false，后续需先完成科研链，再由人工提供脱敏百炼截图并构建/审查不超过 20 页的技术方案。
+
+## 31. 通用机制科研循环实施计划（Task 272）
+
+### 31.1 范围与先后顺序
+
+本任务只改系统架构，不为任何具体题目增加规则。执行顺序必须是：
+
+```text
+272.1 evidence + architecture freeze
+  -> 272.2 local scientific-cycle contracts + knowledge projection
+  -> 272.3 read-only provenance/harness/loop/evaluation bridge
+  -> 272.4 cross-domain shadow benchmark + ablations
+  -> 272.5 claim-state/Open-Science projection + publication gate
+```
+
+已有 Graph/Harness/Loop/Provenance/Evaluation 继续权威；新层不得成为第二执行器、第二证据库或第五图平面。
+`Speed-up` 只可作为领域 objective 的一种值，不得成为通用终态。合法终态必须保留
+`supported`、`contradicted` 与 `inconclusive`，并与运行成功/失败、promotion 和 publication 分离。
+
+### 31.2 272.1 计划冻结验收
+
+计划必须同时记录支持证据与反证：自动写稿/代码搜索的真实能力、LLM reviewer 高估、失败分母、人工
+best-of-N、独立复现难度、机制相关性不等于因果、主动干预的识别前提、开放科学标准不等于正确性。
+OPHIS 只按团队研究发布和公开快照引用，明确“未公开完整空间、未独立复现、非同行评审”；不得删除它
+与 coding agent 的复杂案例关系，也不得把团队报告数字写成系统验收阈值。
+
+验收：Research Plan、Execution Plan、tasks 与 Obsidian 证据笔记一致；所有 URL 可打开；没有单题对象、
+指标、阈值、查询、adapter 或 prompt 进入新生产接口；Qwen 能力数字来自官方页面而非手填 1M 输出参数。
+
+### 31.3 272.2 最小代码切片
+
+只新增 `autoresearch.kernel.scientific_cycle`、公共导出与纯合成单测。模型最小集合为
+`ContentAddressedRef`、`ScientificCycleParentRef`、`ProvenanceBinding`、`ResearchObservation`、`ResearchProblem`、
+`ResearchHypothesis`、`ScientificIntervention`、`HypothesisAssessmentRecord`、
+`ResearchEvaluation` 和 content-addressed `ScientificCycleSnapshot`。
+
+必须通过的反例：重复/跨类型/悬空/自引用；observation 缺测量/结果/不确定性；hypothesis 缺 prediction、
+falsifier 或竞争解释，或 claim role 重叠；intervention 缺 comparator、protocol、estimand/metric/decision
+rule/Harness/Loop，或 changed/frozen factors 重叠；evaluation 漏评/重复评 hypothesis，或三类 assessment
+缺少各自必需证据；输入列表换序必须产生同一 snapshot hash，任何嵌套篡改必须失败。Knowledge Graph
+只能产生 knowledge nodes 和 `grounds/motivates/tests/assesses` 边，不得混入 control/provenance/policy 数据。
+
+本切片不导入真实 `ProvenanceBundle` 或 `EvaluationReport`，外键 hash 只代表声明绑定；不改旧 workflow，
+不运行模型/实验，不生成论文，不判断新颖性，不授权发布。
+
+实现状态（2026-08-14）：272.2 已增加同 cycle 紧邻 parent 约束、投影前完整性重验和显式
+`external_validation=unverified`；Knowledge 平面不携带 Harness/Loop/report/provenance 外键。独立复审
+提出的 4 个 P1 已全部关闭，复审确认无剩余 P0/P1。由于 272.3 尚未解析真实外部对象，所有 assessment
+仍是 `declared_assessment`，不得由调用方解释为已验证裁决。
+
+### 31.4 272.3 只读验证 bridge
+
+bridge 在零写入下解析真实 bundle/spec/package/snapshot/report，重验 exact hash、ID 类型、author association、
+ClaimTrace、Evidence/Counterevidence/Validation、Harness/Loop 冻结身份和 independent scientific-validity
+verdict。只有全部成立才允许 supported/contradicted；执行无效、证据悬空、grader 不独立或报告非 PASS
+必须降为/拒绝超出 `inconclusive`。bridge 不能修复历史 artifact、重算领域科学结果或把 missing 当 pass。
+
+### 31.5 272.4 跨域 shadow 与因果评测
+
+至少两个互不相关的真实 vertical 在旧路径权威时 shadow-write 同一通用 lifecycle；逐阶段比较终态、证据、
+失败、预算和 artifact，不允许根据某一道题补 kernel 字段。另冻结隐藏任务集和相同模型调用/实验/算力/
+时间预算，比较 execution-only、LLM+互联网、LLM+历史、机制闭环无 LLM、混合闭环，并消融独立 verifier、
+判别干预、完整谱系和 rollback。
+
+promotion 同时要求：all-attempt denominator 完整；valid-run/multi-seed/复制/迁移/峰值后回归被报告；
+假设校准、竞争解释区分、证伪、单位预算有效结论、evidence coverage 和 provenance completeness 不劣化；
+无 holdout 泄漏、reward hacking、cherry-pick、fabrication 或关键回归。单个最佳结果不能补偿任一硬门。
+
+### 31.6 272.5 开放科学与发表边界
+
+validated cycle 作为 Knowledge Graph/Vault 的可重建投影，并通过既有 W3C PROV 与 RO-Crate exporter 引用
+运行、数据、代码、模型、统计、负结果和人工边界。claim 状态只能单向推进
+`idea -> literature_grounded -> executable -> observed -> replicated -> independently_validated -> publication_eligible`；
+任何修订建立新版本和 parent hash，不覆盖已观察前的注册快照。
+
+publication eligibility 至少要求一次独立复现/外部验证、引用与数字/图表/日志一致、统计/多重比较和偏离
+审计、许可/隐私/伦理合格以及人类提交批准。系统自产文章只能读取已验证节点；PDF 编译、LLM 自评、运行
+成功或单次正结果均不能越级。
+
+### 31.7 质量门与回滚
+
+每个切片先跑 focused pytest、Ruff、Mypy、JSON Schema/round-trip/tamper tests，再按风险运行 kernel 回归；
+外部来源、provider 或真实 vertical 另有 opt-in live smoke。272.2 只有纯本地合同，不调用付费模型。
+任一 schema/parity/bridge/shadow/independent-validation 失败，保留旧路径权威并记录 `Problem.md`；不得通过
+增加题目关键词、修改冻结科学门、复用已揭示 holdout 或只展示最佳轨迹来让结果变绿。
+
+## 32. 方向 A-1 冲奖执行计划（Task 273）
+
+### 32.1 交付范围
+
+本任务独立于尚未完成的 272.3—272.5，截止到“研究计划 + 预实验反馈 + 独立评审 + 20 页内 PDF”。
+不执行正式实验，不生成结果论文，不声称发表级显著性或普适机制。用户输入科学问题是唯一题目入口；
+实现层不得写入任何该题专属关键词、文献白名单、指标阈值或结论模板。
+
+### 32.2 实施顺序
+
+```text
+273.1 recover and freeze old evidence
+  -> 273.2 source-specific retrieval + semantic coverage gate
+  -> 273.3 fresh twelve-stage Qwen run with a real pilot
+  -> 273.4 evidence audit, independent review, and <=20-page PDF
+```
+
+`273.1` 只读核验旧 attempt-002 的 1—9 阶段、真实 pilot、失败响应与文献分母，不将第 10 阶段草稿晋升为
+计划。`273.2` 以 v2 查询编译器解决学术源语法差异，并在 planning lock 前产生内容寻址的四角色 coverage
+receipt；直接、机制/零模型和反证查询共享同一模型自产对象组，每个角色必须有相应 targeted query 谱系，
+exact-metadata 重复工作只占一个预算名额。撤回/撤稿 finalist 被替换后必须重新计算覆盖。旧 v1 制品只读
+兼容，不能静默升级。
+
+`273.3` 从不存在的输出目录启动，冻结代码、配置、Skills、题目 PDF 和来源集合。broad、focus、targeted、
+merge、coverage、Skill routing、hypothesis、provisional plan、真实 pilot、postpilot review、final revision、
+render、independent review 全部在同一新谱系中完成；恢复只允许相同冻结字节下的断点续跑。
+
+`273.4` 重新核对文献角色、引用/URL、pilot 数据和图表、数字语义、条件性表述、预实验如何改变下一轮计划、
+独立评审 verdict、调用分母、文件 inventory 与 PDF 页数/文本层。任何 fetch 失败、覆盖缺口、major review、
+数字外推、把预实验写成正式结果或 PDF 超过 20 页均阻断当前交付，不通过手工改正文绕过。
+
+### 32.3 验证命令与完成条件
+
+代码阶段先运行文献客户端、查询 artifact、focus/merged、coverage、计划/渲染、主 loop、Science125 batch 与
+API 的聚焦测试，再运行 Ruff、Mypy 和 py_compile。live 只在这些门全绿后启动。完成报告必须同时给出：
+新输出根、coverage receipt、最终计划 JSON/Markdown/PDF、独立评审、真实 pilot 指标与哈希、十二阶段回执、
+模型/文献调用账本，以及 `formal_experiment_executed=false`、`paper_claimed=false`。若任一项缺失，Task 273
+保持未完成，但保留全部中间证据供恢复。

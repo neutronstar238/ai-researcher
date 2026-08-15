@@ -188,6 +188,21 @@ def test_research_plan_audit_blocks_placeholder_metric_and_target() -> None:
     assert any("concrete evaluation metrics" in issue for issue in audit.issues)
 
 
+def test_research_plan_audit_accepts_equation_identifiability_metrics() -> None:
+    plan = _plan(
+        technical_details="Use a baseline and source dataset for a geometric audit.",
+        methods="Compare the method with a baseline under frozen execution.",
+        metrics=[
+            "投影残差范数比用于衡量目标导数在候选库列空间外的能量占比。",
+            "库矩阵条件数用于衡量数值病态程度。",
+        ],
+    )
+
+    audit = audit_research_plan(plan)
+
+    assert not any("concrete evaluation metrics" in issue for issue in audit.issues)
+
+
 def test_research_plan_tex_uses_breakable_references_for_long_artifacts() -> None:
     plan = _plan(
         references=[

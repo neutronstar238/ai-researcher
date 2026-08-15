@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import pytest
+
 from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
@@ -133,3 +137,49 @@ Paper body.
     assert entry_path.read_text(encoding="utf-8") == entry_text
     assert "## alignment" in topic_index
     assert "template-noise" not in topic_index
+
+
+def test_rebuild_indexes_never_reads_or_rewrites_private_raw_memory(
+    tmp_path: Path,
+) -> None:
+    store = MarkdownKnowledgeStore(tmp_path)
+    private_path = tmp_path / "_private" / "raw-memory" / "blobs" / "raw.md"
+    private_path.parent.mkdir(parents=True)
+    private_entry = KnowledgeEntry(
+        entry_id="private-memory-title",
+        entry_type=KnowledgeEntryType.EVIDENCE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        project_id="project-001",
+        title="绝不能进入公开索引的私有标题",
+        keywords=["private-leak-marker"],
+        body="[[public-note]]",
+    )
+    private_path.write_text(private_entry.to_markdown(), encoding="utf-8")
+    original = private_path.read_bytes()
+
+    store.rebuild_indexes()
+
+    assert private_path.read_bytes() == original
+    index = (tmp_path / "exploration" / "index.md").read_text(encoding="utf-8")
+    assert "private-leak-marker" not in index
+    assert "绝不能进入公开索引的私有标题" not in index
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [Path("_private/raw-memory/item.md"), Path("../outside.md")],
+)
+def test_markdown_store_refuses_private_or_escaping_paths(
+    tmp_path: Path, relative_path: Path
+) -> None:
+    store = MarkdownKnowledgeStore(tmp_path)
+    entry = KnowledgeEntry(
+        entry_type=KnowledgeEntryType.EVIDENCE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        project_id="project-001",
+        title="公开笔记",
+        body="公开内容。",
+    )
+
+    with pytest.raises(ValueError, match="public-vault"):
+        store.write_entry(relative_path, entry)

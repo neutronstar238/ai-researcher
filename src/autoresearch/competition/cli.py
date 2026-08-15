@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
@@ -55,6 +57,8 @@ from autoresearch.competition.official_lineage import (
     LINEAGE_STAGES,
     OfficialLineageConfig,
     OfficialLineageError,
+    preregister_and_author_system_plan,
+    resume_plan_from_retained_routing,
     run_lineage_stage,
 )
 from autoresearch.competition.preregistration import (
@@ -85,6 +89,8 @@ from autoresearch.competition.service import ResearchCycleService, load_capabili
 from autoresearch.competition.submission_evidence_bundle import (
     SubmissionEvidenceError,
     audit_submission_evidence_bundle,
+    prepare_human_publication_authorization_request,
+    record_human_publication_authorization,
 )
 
 competition_app = typer.Typer(
@@ -101,6 +107,32 @@ competition_mdbench_app = typer.Typer(
 )
 competition_app.add_typer(competition_access_app, name="access")
 competition_app.add_typer(competition_mdbench_app, name="mdbench")
+
+
+def _terminal_safe_text(
+    text: str,
+    *,
+    encoding: str | None = None,
+    max_chars: int = 4_000,
+) -> str:
+    """Bound and escape diagnostics that the active Windows console cannot encode."""
+
+    rendered = text
+    if len(rendered) > max_chars:
+        omitted = len(rendered) - max_chars
+        rendered = (
+            rendered[:max_chars]
+            + f"\n...[truncated {omitted} characters; exact evidence remains on disk]"
+        )
+    target_encoding = encoding or getattr(sys.stdout, "encoding", None) or "utf-8"
+    try:
+        rendered.encode(target_encoding)
+    except (LookupError, UnicodeEncodeError):
+        rendered = rendered.encode(
+            target_encoding,
+            errors="backslashreplace",
+        ).decode(target_encoding)
+    return rendered
 
 
 @competition_mdbench_app.command("preflight")
@@ -652,6 +684,206 @@ def competition_mdbench_scientific_contract_harness(
     typer.echo("[BLOCKED] publication_ready: false")
 
 
+@competition_mdbench_app.command("lineage-preregister-plan")
+def competition_mdbench_lineage_preregister_plan(
+    lineage_id: Annotated[
+        str,
+        typer.Option("--lineage-id", help="全新科研谱系标识。"),
+    ],
+    work_dir: Annotated[
+        Path | None,
+        typer.Option("--work-dir", help="谱系目录；默认 runs/manual-live/<id>。"),
+    ] = None,
+    prior_run_dir: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--prior-run-dir",
+            help="提供原始签名证据的既有谱系；可重复，不能用科学语句代替。",
+        ),
+    ] = None,
+    plan: Annotated[
+        Path,
+        typer.Option("--plan", help="不可变父级科学合同计划。"),
+    ] = Path(
+        "runs/manual-live/task2661-scientific-contract-recovery-plan-v1/"
+        "scientific-contract-recovery-plan.json"
+    ),
+    autonomous_plan: Annotated[
+        Path,
+        typer.Option("--autonomous-plan", help="不可变公开开发面板与密封承诺。"),
+    ] = Path(
+        "runs/manual-live/task2651-autonomous-recovery-plan-v1/"
+        "autonomous-research-plan.json"
+    ),
+    data_root: Annotated[
+        Path,
+        typer.Option("--data-root", help="已校验的官方 MDBench 数据根目录。"),
+    ] = Path(
+        "runs/manual-live/task259-mdbench-official-v1/data/prepared/"
+        "processed-9fe483c64ad6"
+    ),
+    baseline_parent_dir: Annotated[
+        Path,
+        typer.Option("--baseline-parent-dir", help="基线机制来源谱系。"),
+    ] = Path("runs/manual-live/task2663-conformant-v1"),
+    authored_decision_package: Annotated[
+        Path,
+        typer.Option("--authored-decision-package", help="系统自产基线处理决定。"),
+    ] = Path(
+        "runs/manual-live/"
+        "task2682-frozen-protocol-self-correction-reasoning-v5/"
+        "frozen-protocol-contradiction-package.json"
+    ),
+    zero_term_evidence_root: Annotated[
+        Path,
+        typer.Option("--zero-term-evidence-root", help="零项失败的既有原始证据。"),
+    ] = Path("runs/manual-live/task2663-term-cap-recheck-v2"),
+    contradiction_package: Annotated[
+        Path,
+        typer.Option("--contradiction-package", help="系统自产试运行宽度决定。"),
+    ] = Path(
+        "runs/manual-live/task2693-unified-lineage-v1/pilot-breadth-v1/"
+        "pilot-breadth-contradiction-package.json"
+    ),
+) -> None:
+    """一键冻结新谱系、真实检索文献并由模型自产中文研究计划。"""
+
+    priors = tuple(
+        prior_run_dir
+        or [
+            Path("runs/manual-live/task2694-promotion-gated-lineage-v1"),
+            Path("runs/manual-live/task2695-pde-repair-lineage-v1"),
+            Path("runs/manual-live/task2696-stratified-gate-lineage-v1"),
+        ]
+    )
+    config = OfficialLineageConfig(
+        lineage_id=lineage_id,
+        work_dir=work_dir or Path("runs/manual-live") / lineage_id,
+        frozen_plan_path=plan,
+        autonomous_plan_path=autonomous_plan,
+        data_root=data_root,
+        prior_run_dirs=priors,
+    )
+    try:
+        report = preregister_and_author_system_plan(
+            config,
+            baseline_parent_dir=baseline_parent_dir,
+            authored_decision_package_path=authored_decision_package,
+            zero_term_evidence_root=zero_term_evidence_root,
+            contradiction_package_path=contradiction_package,
+        )
+    except (OfficialLineageError, RuntimeError, OSError, ValidationError) as exc:
+        typer.echo(
+            _terminal_safe_text(f"[BLOCKED] lineage_preregister_plan: {exc}")
+        )
+        typer.echo(
+            _terminal_safe_text(
+                f"[INFO] retained_evidence: {config.work_dir.resolve()}"
+            )
+        )
+        raise typer.Exit(code=2) from None
+    for line in report.lines:
+        typer.echo(line)
+    typer.echo("[OK] system_authored_chinese_plan: true")
+    typer.echo("[BLOCKED] execution_authorized: false")
+
+
+@competition_mdbench_app.command("lineage-resume-plan")
+def competition_mdbench_lineage_resume_plan(
+    lineage_id: Annotated[
+        str,
+        typer.Option("--lineage-id", help="已有且停在机会路由后的科研谱系标识。"),
+    ],
+    work_dir: Annotated[
+        Path | None,
+        typer.Option("--work-dir", help="谱系目录；默认 runs/manual-live/<id>。"),
+    ] = None,
+    resume_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--resume-dir",
+            help="谱系内独立续跑回执目录；默认 <work-dir>/plan-resume-v1。",
+        ),
+    ] = None,
+    prior_run_dir: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--prior-run-dir",
+            help="原计划使用的签名证据谱系；可重复且必须保持不变。",
+        ),
+    ] = None,
+    plan: Annotated[
+        Path,
+        typer.Option("--plan", help="原计划使用的不可变父级科学合同。"),
+    ] = Path(
+        "runs/manual-live/task2661-scientific-contract-recovery-plan-v1/"
+        "scientific-contract-recovery-plan.json"
+    ),
+    autonomous_plan: Annotated[
+        Path,
+        typer.Option("--autonomous-plan", help="原计划使用的公开面板与密封承诺。"),
+    ] = Path(
+        "runs/manual-live/task2651-autonomous-recovery-plan-v1/"
+        "autonomous-research-plan.json"
+    ),
+    data_root: Annotated[
+        Path,
+        typer.Option("--data-root", help="原计划使用的已校验 MDBench 数据根目录。"),
+    ] = Path(
+        "runs/manual-live/task259-mdbench-official-v1/data/prepared/"
+        "processed-9fe483c64ad6"
+    ),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", help="provider-neutral Qwen 模型配置。"),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env", help="本地模型凭据；不会写入科研制品。"),
+    ] = Path(".env"),
+) -> None:
+    """严格复核既有路由链，再续跑临时 Agent、选题与中文计划。"""
+
+    lineage_root = work_dir or Path("runs/manual-live") / lineage_id
+    priors = tuple(
+        prior_run_dir
+        or [
+            Path("runs/manual-live/task2694-promotion-gated-lineage-v1"),
+            Path("runs/manual-live/task2695-pde-repair-lineage-v1"),
+            Path("runs/manual-live/task2696-stratified-gate-lineage-v1"),
+        ]
+    )
+    config = OfficialLineageConfig(
+        lineage_id=lineage_id,
+        work_dir=lineage_root,
+        frozen_plan_path=plan,
+        autonomous_plan_path=autonomous_plan,
+        data_root=data_root,
+        prior_run_dirs=priors,
+    )
+    receipt_root = resume_dir or lineage_root / "plan-resume-v1"
+    try:
+        report = resume_plan_from_retained_routing(
+            config,
+            output_dir=receipt_root,
+            config_path=config_path,
+            env_path=env_path,
+        )
+    except (OfficialLineageError, RuntimeError, OSError, ValidationError) as exc:
+        typer.echo(_terminal_safe_text(f"[BLOCKED] lineage_resume_plan: {exc}"))
+        typer.echo(
+            _terminal_safe_text(
+                f"[INFO] retained_evidence: {config.work_dir.resolve()}"
+            )
+        )
+        raise typer.Exit(code=2) from None
+    for line in report.lines:
+        typer.echo(line)
+    typer.echo(f"[OK] plan_resume_receipts: {receipt_root.resolve()}")
+    typer.echo("[OK] system_authored_chinese_plan: true")
+    typer.echo("[BLOCKED] execution_authorized: false")
+
+
 @competition_mdbench_app.command("lineage-stage")
 def competition_mdbench_lineage_stage(
     lineage_id: Annotated[
@@ -702,6 +934,20 @@ def competition_mdbench_lineage_stage(
             help="Write the adjudication package here instead of into the lineage.",
         ),
     ] = None,
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            help="Provider-neutral model configuration used only by the outcome stage.",
+        ),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option(
+            "--env",
+            help="Local model credentials used only by outcome; never persisted.",
+        ),
+    ] = Path(".env"),
 ) -> None:
     """Drive one stage of a preregistered official lineage under its frozen budget."""
 
@@ -723,6 +969,8 @@ def competition_mdbench_lineage_stage(
             decided_by=decided_by,
             notes=notes,
             package_output_dir=package_output_dir,
+            outcome_config_path=config_path,
+            outcome_env_path=env_path,
         )
     except (OfficialLineageError, RuntimeError, OSError, ValidationError) as exc:
         typer.echo(f"[BLOCKED] lineage_stage_{stage}: {exc}")
@@ -736,6 +984,14 @@ def competition_mdbench_lineage_stage(
             "[OK] search_freeze_receipt: "
             f"{str(bool(report.search_freeze_receipt_issued)).lower()}"
         )
+    if report.outcome_path is not None:
+        typer.echo(f"[OK] system_authored_chinese_outcome: {report.outcome_path}")
+        typer.echo(f"[OK] outcome_hash: {report.outcome_hash}")
+        typer.echo(
+            "[OK] outcome_accepted: "
+            f"{str(bool(report.outcome_accepted)).lower()}"
+        )
+        typer.echo("[BLOCKED] publication_ready: false")
 
 
 @competition_mdbench_app.command("final-report")
@@ -811,6 +1067,15 @@ def competition_mdbench_submission_audit(
             help="运行严格 pytest、ruff、mypy；复用模式要求已有当前提交回执。",
         ),
     ] = True,
+    trusted_publication_key_sha256: Annotated[
+        str | None,
+        typer.Option(
+            "--trusted-publication-key-sha256",
+            help=(
+                "外部操作员信任库中的 Ed25519 公钥 SHA-256；不得从授权制品中推导。"
+            ),
+        ),
+    ] = None,
 ) -> None:
     """生成单一、缺证即阻断的中文提交证据总审计。"""
 
@@ -821,6 +1086,7 @@ def competition_mdbench_submission_audit(
             output_dir=output_dir,
             repository_root=repository_root,
             run_quality_gates=run_quality_gates,
+            trusted_publication_key_sha256=trusted_publication_key_sha256,
         )
     except (SubmissionEvidenceError, OSError, RuntimeError, ValueError) as exc:
         typer.echo(f"[BLOCKED] submission_evidence_audit: {exc}")
@@ -836,6 +1102,137 @@ def competition_mdbench_submission_audit(
             if not check.passed:
                 typer.echo(f"[BLOCKED] {check.name}: {'; '.join(check.findings)}")
         raise typer.Exit(code=2)
+
+
+@competition_mdbench_app.command("publication-authorization-request")
+def competition_mdbench_publication_authorization_request(
+    lineage_dir: Annotated[
+        Path,
+        typer.Option("--lineage-dir", help="已通过客观门禁的完整科研谱系目录。"),
+    ],
+    authorized_by: Annotated[
+        str,
+        typer.Option("--authorized-by", help="将进行外部签名的人类身份。"),
+    ],
+    notes: Annotated[
+        str,
+        typer.Option("--notes", help="人类审阅范围与授权理由；不能为空。"),
+    ],
+    repository_root: Annotated[
+        Path,
+        typer.Option("--repository-root", help="用于绑定 Git 提交与洁净状态的仓库根。"),
+    ] = Path("."),
+    quality_receipt: Annotated[
+        Path | None,
+        typer.Option("--quality-receipt", help="可选的谱系内冻结质量回执。"),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            help="只写一次的签名请求 JSON；默认位于谱系根目录。",
+        ),
+    ] = None,
+) -> None:
+    """生成必须由仓库外人类私钥签名的客观授权请求。"""
+
+    try:
+        payload = prepare_human_publication_authorization_request(
+            lineage_dir=lineage_dir,
+            authorized_by=authorized_by,
+            notes=notes,
+            repository_root=repository_root,
+            quality_receipt_path=quality_receipt,
+        )
+        destination = output or (
+            lineage_dir / "human-publication-authorization-request.json"
+        )
+        _write_once_json(destination, payload)
+    except (SubmissionEvidenceError, OSError, RuntimeError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] publication_authorization_request: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] publication_authorization_request: {destination.resolve()}")
+    typer.echo(f"[OK] authorization_request_hash: {payload['authorization_request_hash']}")
+    typer.echo("[BLOCKED] publication remains unauthorized until detached signature verification")
+
+
+@competition_mdbench_app.command("publication-authorize")
+def competition_mdbench_publication_authorize(
+    lineage_dir: Annotated[
+        Path,
+        typer.Option("--lineage-dir", help="与签名请求完全相同的科研谱系目录。"),
+    ],
+    authorized_by: Annotated[
+        str,
+        typer.Option("--authorized-by", help="外部签名的人类身份，必须与请求一致。"),
+    ],
+    notes: Annotated[
+        str,
+        typer.Option("--notes", help="人类审阅范围与授权理由，必须与请求一致。"),
+    ],
+    signature_file: Annotated[
+        Path,
+        typer.Option("--signature-file", help="仅含规范 Base64 Ed25519 签名的文件。"),
+    ],
+    signer_public_key: Annotated[
+        Path,
+        typer.Option("--signer-public-key", help="签名者规范 SPKI PEM 公钥文件。"),
+    ],
+    trusted_public_key_sha256: Annotated[
+        str,
+        typer.Option(
+            "--trusted-public-key-sha256",
+            help="从仓库和谱系之外获得的受信任公钥指纹。",
+        ),
+    ],
+    repository_root: Annotated[
+        Path,
+        typer.Option("--repository-root", help="用于重新核验提交与洁净状态的仓库根。"),
+    ] = Path("."),
+    quality_receipt: Annotated[
+        Path | None,
+        typer.Option("--quality-receipt", help="可选的谱系内冻结质量回执。"),
+    ] = None,
+) -> None:
+    """验证仓库外 detached signature，绝不生成私钥或自我授权。"""
+
+    try:
+        authorization = record_human_publication_authorization(
+            lineage_dir=lineage_dir,
+            authorized_by=authorized_by,
+            notes=notes,
+            signature_base64=signature_file.read_text(encoding="ascii").strip(),
+            signer_public_key_pem=signer_public_key.read_text(encoding="ascii"),
+            trusted_public_key_sha256=trusted_public_key_sha256,
+            repository_root=repository_root,
+            quality_receipt_path=quality_receipt,
+        )
+    except (SubmissionEvidenceError, OSError, RuntimeError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] human_publication_authorization: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] human_publication_authorization: {authorization.output_path}")
+    typer.echo(f"[OK] authorization_hash: {authorization.authorization_hash}")
+    typer.echo("[INFO] scientific verdict unchanged; run submission-audit with the external trust fingerprint")
+
+
+def _write_once_json(path: Path, payload: dict[str, object]) -> None:
+    """Persist a canonical human-signature request without overwriting a snapshot."""
+
+    rendered = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ) + "\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(rendered)
+    except FileExistsError:
+        if path.read_text(encoding="utf-8") != rendered:
+            raise SubmissionEvidenceError(
+                f"authorization request snapshot already exists with different bytes: {path}"
+            ) from None
 
 
 @competition_mdbench_app.command("route-p2-paradigm-audit")

@@ -133,6 +133,22 @@ def test_中文的合法预期表述不被误拦() -> None:
     assert report.claims_no_unobserved_result, report.findings
 
 
+def test_若实验结果显示是反驳条件而不是已达成宣称() -> None:
+    plan = _plan(
+        expected_results=(
+            "预期总体中位对数效应超过 0.05129329438755058；"
+            "若实验结果显示其低于该阈值，则假设被反驳，零结果同样是有效结果。"
+        )
+    )
+    report = guard_authored_plan(
+        plan=plan,
+        evidence_numbers=_numbers(),
+        cited_evidence=[],
+        container_entry_points=("/harness/runner.py",),
+    )
+    assert report.claims_no_unobserved_result, report.findings
+
+
 def test_标记表同时含中英条目() -> None:
     """结构性保证：任一语言缺失都会让该语言下的计划无法通过。"""
 

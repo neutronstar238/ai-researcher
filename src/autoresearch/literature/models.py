@@ -5,8 +5,11 @@ from __future__ import annotations
 import re
 from datetime import date
 from difflib import SequenceMatcher
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+PublicationStatus = Literal["unknown", "preprint", "published", "withdrawn", "retracted"]
 
 
 class AcademicPaper(BaseModel):
@@ -20,8 +23,14 @@ class AcademicPaper(BaseModel):
     publication_date: date | None = None
     venue: str | None = None
     doi: str | None = None
+    repository_doi: str | None = None
     url: str | None = None
-    citation_count: int = Field(default=0, ge=0)
+    citation_count: int | None = Field(default=None, ge=0)
+    citation_count_source: str | None = None
+    citation_count_as_of: date | None = None
+    publication_status: PublicationStatus = "unknown"
+    status_source: str | None = None
+    status_as_of: date | None = None
     source: str = Field(min_length=1)
 
 
@@ -49,20 +58,25 @@ def _title_similarity(left: str, right: str) -> float:
 def deduplicate_papers(
     papers: list[AcademicPaper], *, title_similarity_threshold: float = 0.92
 ) -> list[AcademicPaper]:
-    """Deduplicate papers by DOI first, then high-similarity title."""
+    """Deduplicate papers without collapsing conflicting bibliographic identities.
+
+    Publication DOIs and repository DOIs are separate identifier namespaces.  An
+    exact match within either namespace is sufficient, while a conflict within a
+    namespace is conclusive evidence that two records must remain distinct.  Title
+    fallback is used only when there is no such conflict and at least one normalized
+    author overlaps; this prevents same-title homonyms from mixing citation, status,
+    or abstract metadata downstream.
+    """
 
     unique: list[AcademicPaper] = []
-    seen_dois: set[str] = set()
 
     for paper in papers:
-        doi = normalize_doi(paper.doi)
-        if doi is not None:
-            if doi in seen_dois:
-                continue
-            seen_dois.add(doi)
-
         if any(
-            _title_similarity(paper.title, existing.title) >= title_similarity_threshold
+            _same_bibliographic_work(
+                paper,
+                existing,
+                title_similarity_threshold=title_similarity_threshold,
+            )
             for existing in unique
         ):
             continue
@@ -70,3 +84,46 @@ def deduplicate_papers(
         unique.append(paper)
 
     return unique
+
+
+def _same_bibliographic_work(
+    left: AcademicPaper,
+    right: AcademicPaper,
+    *,
+    title_similarity_threshold: float,
+) -> bool:
+    if left == right:
+        return True
+
+    left_doi = normalize_doi(left.doi)
+    right_doi = normalize_doi(right.doi)
+    left_repository_doi = normalize_doi(left.repository_doi)
+    right_repository_doi = normalize_doi(right.repository_doi)
+
+    if left_doi and right_doi and left_doi != right_doi:
+        return False
+    if left_repository_doi and right_repository_doi and left_repository_doi != right_repository_doi:
+        return False
+    if (left_doi and right_repository_doi and left_doi == right_repository_doi) or (
+        left_repository_doi and right_doi and left_repository_doi == right_doi
+    ):
+        return False
+    if left_doi and right_doi and left_doi == right_doi:
+        return True
+    if left_repository_doi and right_repository_doi and left_repository_doi == right_repository_doi:
+        return True
+
+    if _title_similarity(left.title, right.title) < title_similarity_threshold:
+        return False
+    left_authors = {_normalize_author(author) for author in left.authors}
+    right_authors = {_normalize_author(author) for author in right.authors}
+    left_authors.discard("")
+    right_authors.discard("")
+    return bool(left_authors and right_authors and left_authors.intersection(right_authors))
+
+
+def _normalize_author(value: str) -> str:
+    normalized = "".join(
+        character if character.isalnum() else " " for character in value.casefold()
+    )
+    return " ".join(normalized.split())

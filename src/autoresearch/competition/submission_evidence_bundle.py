@@ -4,8 +4,9 @@ This module does not invent scientific prose and does not repair historical evid
 It reads the retained lineage, replays deterministic calculations, verifies raw
 provider/source/cell bytes, compares configured and recorded model identities, and
 writes a Chinese audit report.  Every absent or contradictory proof remains a failed
-check.  In particular, a lineage whose artifacts still say
-``publication_ready=false`` can never be labelled submission-ready.
+check.  Scientific producers permanently refuse to self-authorize publication; a
+separate explicit human authorization must bind every final artifact and the source
+commit before the deterministic audit can label the lineage submission-ready.
 """
 
 from __future__ import annotations
@@ -53,11 +54,16 @@ from autoresearch.competition.official_development_search import (
 )
 from autoresearch.competition.official_spend_ledger import OfficialSpendLedger
 from autoresearch.competition.plan_execution_contract import (
-    compile_plan_execution_contract,
-    load_plan_execution_contract,
-    require_candidate_plan_alignment,
+    ProspectivePlanExecutionContract,
+    compile_system_authored_plan_execution_contract,
+    load_prospective_plan_execution_contract,
+    require_prospective_candidate_plan_alignment,
 )
 from autoresearch.competition.preregistered_stage_breadth import load_stage_breadth
+from autoresearch.competition.publication_signature import (
+    PublicationSignatureError,
+    verify_human_publication_signature,
+)
 from autoresearch.competition.scientific_contract_harness import (
     ScientificContractSourceResponse,
 )
@@ -67,6 +73,8 @@ from autoresearch.competition.system_authored_plan import (
     authored_plan_non_chinese_fields,
 )
 from autoresearch.config import ConfigParser, SystemConfig
+from autoresearch.kernel.contracts import canonical_json
+from autoresearch.knowledge.raw_memory import RawMemoryRecord
 from autoresearch.research.plan_confirmation import (
     load_plan_decision,
     require_approved_plan,
@@ -78,6 +86,24 @@ _MARKDOWN_NAME = "submission-evidence-bundle.md"
 _QUALITY_NAME = "submission-quality-gate-receipt.json"
 _INNOVATION_NAME = "publication-innovation-audit.json"
 _REEXECUTION_NAME = "independent-reexecution-receipt.json"
+_PUBLICATION_AUTHORIZATION_NAME = "human-publication-authorization.json"
+
+_UNTRACKED_OUTPUT_ROOTS = ("runs", "artifacts", "outputs")
+_UNTRACKED_CACHE_DIRS = {
+    ".cache",
+    ".codex-remote-attachments",
+    ".hypothesis",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "htmlcov",
+}
+_UNTRACKED_CACHE_FILES = {".coverage"}
+_CANONICAL_CONFIG_RELATIVE_PATH = "config.yaml"
+_LOCAL_SECRET_ENV_RELATIVE_PATH = ".env"
+_SOVEREIGN_PRIVATE_CONTAINER = Path("autoresearch-vault") / "_private"
+_SOVEREIGN_RAW_MEMORY_ROOT = _SOVEREIGN_PRIVATE_CONTAINER / "raw-memory"
 
 _CHECK_TITLES: dict[str, str] = {
     "plan_model_authorship_provenance": "研究计划模型作者来源",
@@ -97,6 +123,7 @@ _CHECK_TITLES: dict[str, str] = {
     "broad_quality_gates": "广泛代码质量门",
     "required_audits_present": "必需审计齐备性",
     "human_approval_not_scientific_evidence": "人工批准不充当科学证据",
+    "human_publication_authorization": "人工最终发表与提交授权",
     "publication_readiness": "发表与提交就绪状态",
     "secrets_absent": "证据包未记录凭据值",
 }
@@ -190,10 +217,21 @@ class QualityCommandResult(StrictFrozenModel):
     stdout_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     stderr_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     log_relative_path: str
+    log_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    log_byte_count: int = Field(ge=1)
     passed: bool
 
     @model_validator(mode="after")
     def _validate(self) -> QualityCommandResult:
+        expected_command = _canonical_quality_commands()[self.name]
+        if self.command != expected_command:
+            raise SubmissionEvidenceError(
+                f"quality command differs from the frozen production command: {self.name}"
+            )
+        if self.log_relative_path != f"quality-logs/{self.name}.log":
+            raise SubmissionEvidenceError(
+                f"quality log path differs from the frozen contract: {self.name}"
+            )
         expected = (
             self.exit_code == 0
             and self.skipped_count == 0
@@ -209,11 +247,16 @@ class QualityCommandResult(StrictFrozenModel):
 class SubmissionQualityGateReceipt(StrictFrozenModel):
     """Source-commit-bound receipt for the three broad code gates."""
 
-    schema_version: Literal["submission-quality-gate-receipt-v1"] = (
-        "submission-quality-gate-receipt-v1"
+    schema_version: Literal["submission-quality-gate-receipt-v3"] = (
+        "submission-quality-gate-receipt-v3"
     )
     source_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
+    configuration_relative_path: Literal["config.yaml"] = "config.yaml"
+    configuration_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    local_secret_env_excluded: Literal[True] = True
+    sovereign_raw_memory_excluded: Literal[True] = True
     tracked_worktree_clean: bool
+    command_contract_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     commands: tuple[QualityCommandResult, ...]
     all_passed: bool
     created_at: datetime
@@ -222,8 +265,16 @@ class SubmissionQualityGateReceipt(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate(self) -> SubmissionQualityGateReceipt:
-        if {item.name for item in self.commands} != {"pytest", "ruff", "mypy"}:
+        if len(self.commands) != 3 or {item.name for item in self.commands} != {
+            "pytest",
+            "ruff",
+            "mypy",
+        }:
             raise SubmissionEvidenceError("quality receipt omits a required command")
+        if self.command_contract_hash != _quality_command_contract_hash():
+            raise SubmissionEvidenceError(
+                "quality receipt does not use the frozen production command contract"
+            )
         expected_pass = self.tracked_worktree_clean and all(
             item.passed for item in self.commands
         )
@@ -288,16 +339,62 @@ class PublicationInnovationAudit(StrictFrozenModel):
         return self
 
 
+class ReexecutionCellArtifact(StrictFrozenModel):
+    """One independently reexecuted raw cell result retained as a real file."""
+
+    attempt_id: str = Field(min_length=1)
+    relative_path: str = Field(min_length=1)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    byte_count: int = Field(ge=1)
+
+
+class IndependentReexecutionManifest(StrictFrozenModel):
+    """Content-addressed inventory of every independent raw cell result."""
+
+    schema_version: Literal["independent-reexecution-manifest-v1"] = (
+        "independent-reexecution-manifest-v1"
+    )
+    lineage_id: str = Field(min_length=1)
+    package_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
+    cell_artifacts: tuple[ReexecutionCellArtifact, ...] = Field(min_length=1)
+    manifest_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    output_path: str
+
+    @model_validator(mode="after")
+    def _validate(self) -> IndependentReexecutionManifest:
+        attempt_ids = [item.attempt_id for item in self.cell_artifacts]
+        paths = [item.relative_path for item in self.cell_artifacts]
+        if len(set(attempt_ids)) != len(attempt_ids):
+            raise SubmissionEvidenceError(
+                "independent reexecution manifest repeats a cell attempt"
+            )
+        if len(set(paths)) != len(paths):
+            raise SubmissionEvidenceError(
+                "independent reexecution manifest repeats an artifact path"
+            )
+        expected_hash = canonical_model_hash(
+            self.model_dump(mode="json", exclude={"manifest_hash", "output_path"})
+        )
+        if self.manifest_hash != expected_hash:
+            raise SubmissionEvidenceError("independent reexecution manifest hash mismatch")
+        return self
+
+
 class IndependentReexecutionReceipt(StrictFrozenModel):
     """Proof that a clean second run re-executed every scientific cell."""
 
-    schema_version: Literal["independent-reexecution-receipt-v1"] = (
-        "independent-reexecution-receipt-v1"
+    schema_version: Literal["independent-reexecution-receipt-v2"] = (
+        "independent-reexecution-receipt-v2"
     )
     lineage_id: str
     package_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
-    clean_output_directory: str
+    clean_output_directory: str = Field(min_length=1)
+    artifact_manifest_relative_path: str = Field(min_length=1)
+    artifact_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    artifact_manifest_byte_count: int = Field(ge=1)
+    artifact_manifest_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     reexecuted_cell_count: int = Field(ge=1)
     expected_cell_count: int = Field(ge=1)
     all_cells_reexecuted: bool
@@ -334,6 +431,78 @@ class IndependentReexecutionReceipt(StrictFrozenModel):
         return self
 
 
+_HUMAN_PUBLICATION_STATEMENT = (
+    "我已审阅并授权将上述哈希绑定的材料用于本次提交；"
+    "该授权仅是发表与提交决定，不构成科学证据。"
+)
+
+
+class HumanPublicationAuthorization(StrictFrozenModel):
+    """Explicit human release decision bound to every final immutable artifact.
+
+    Upstream scientific artifacts intentionally keep ``publication_ready=false``:
+    neither Qwen nor a deterministic builder may grant itself permission to publish.
+    This record is process authorization only and can never repair a failed scientific
+    gate or become an evidence reference.
+    """
+
+    schema_version: Literal["human-publication-authorization-v2"] = (
+        "human-publication-authorization-v2"
+    )
+    lineage_id: str = Field(min_length=1)
+    decision: Literal["authorize"] = "authorize"
+    authorized_by: str = Field(min_length=1)
+    authorization_statement: Literal[
+        "我已审阅并授权将上述哈希绑定的材料用于本次提交；"
+        "该授权仅是发表与提交决定，不构成科学证据。"
+    ] = (
+        "我已审阅并授权将上述哈希绑定的材料用于本次提交；"
+        "该授权仅是发表与提交决定，不构成科学证据。"
+    )
+    notes: str = Field(min_length=1)
+    plan_artifact_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    plan_decision_file_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    signed_package_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    outcome_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    final_report_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    final_report_build_receipt_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    innovation_audit_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reexecution_receipt_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    quality_gate_receipt_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
+    authorization_request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    signature_base64: str = Field(min_length=1)
+    signer_public_key_pem: str = Field(min_length=1)
+    signer_public_key_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    authorized_at: datetime
+    authored_by_model: Literal[False] = False
+    is_scientific_evidence: Literal[False] = False
+    evidence_refs: tuple[()] = ()
+    changes_scientific_verdict: Literal[False] = False
+    authorization_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    output_path: str
+
+    @model_validator(mode="after")
+    def _validate(self) -> HumanPublicationAuthorization:
+        if self.evidence_refs:
+            raise SubmissionEvidenceError(
+                "human publication authorization must never carry evidence refs"
+            )
+        expected_request_hash = _human_publication_authorization_request_hash(
+            self.model_dump(mode="json")
+        )
+        if self.authorization_request_hash != expected_request_hash:
+            raise SubmissionEvidenceError(
+                "human publication authorization request hash mismatch"
+            )
+        expected_hash = canonical_model_hash(
+            self.model_dump(mode="json", exclude={"authorization_hash", "output_path"})
+        )
+        if self.authorization_hash != expected_hash:
+            raise SubmissionEvidenceError("human publication authorization hash mismatch")
+        return self
+
+
 class SubmissionEvidenceBundle(StrictFrozenModel):
     """Canonical answer to whether one lineage is honestly submission-ready."""
 
@@ -363,7 +532,10 @@ class SubmissionEvidenceBundle(StrictFrozenModel):
             raise SubmissionEvidenceError(
                 "submission bundle does not cover every required check exactly once"
             )
-        expected_publication = by_name["publication_readiness"].passed
+        expected_publication = (
+            by_name["publication_readiness"].passed
+            and by_name["secrets_absent"].passed
+        )
         if self.publication_ready != expected_publication:
             raise SubmissionEvidenceError(
                 "bundle publication flag contradicts publication-readiness check"
@@ -431,6 +603,274 @@ class _CheckLedger:
         return tuple(self._checks[name] for name in _REQUIRED_CHECKS)
 
 
+def _load_formal_prospective_plan_contract(
+    root: Path,
+) -> tuple[
+    SystemAuthoredPlanArtifact,
+    ResearchPlan,
+    ProspectivePlanExecutionContract,
+]:
+    """Load and recompile the only plan/contract shape eligible for submission."""
+
+    artifact = SystemAuthoredPlanArtifact.model_validate_json(
+        (root / _PLAN_ARTIFACT).read_text(encoding="utf-8")
+    )
+    if artifact.schema_version != "system-authored-research-plan-v2":
+        raise SubmissionEvidenceError(
+            "formal submission requires SystemAuthoredPlanArtifact v2"
+        )
+    plan = ResearchPlan.model_validate_json(
+        (root / _APPROVED_PLAN).read_text(encoding="utf-8")
+    )
+    if artifact.lineage_id != root.name:
+        raise SubmissionEvidenceError("plan artifact belongs to another lineage")
+    if artifact.plan != plan.model_dump(mode="json"):
+        raise SubmissionEvidenceError("approved plan differs from system plan artifact")
+    expected_contract = compile_system_authored_plan_execution_contract(artifact)
+    retained_contract = load_prospective_plan_execution_contract(root)
+    if retained_contract != expected_contract:
+        raise SubmissionEvidenceError(
+            "retained prospective contract differs from the exact artifact compilation"
+        )
+    if (
+        retained_contract.selected_intervention_identity
+        != expected_contract.selected_intervention_identity
+        or retained_contract.implementation_anchor
+        != expected_contract.implementation_anchor
+        or retained_contract.paired_control_treatment
+        != expected_contract.paired_control_treatment
+    ):
+        raise SubmissionEvidenceError(
+            "prospective intervention identity or paired control/treatment drifted"
+        )
+    return artifact, plan, retained_contract
+
+
+def prepare_human_publication_authorization_request(
+    *,
+    lineage_dir: Path | str,
+    authorized_by: str,
+    notes: str,
+    repository_root: Path | str = Path("."),
+    quality_receipt_path: Path | str | None = None,
+    clock: datetime | None = None,
+) -> dict[str, Any]:
+    """Build the exact objective request that must be signed outside AutoResearch.
+
+    This function never changes a scientific verdict or writes an authorization. It
+    refuses to produce a request until
+    the already-generated artifacts prove that all frozen gates, numeric audits,
+    innovation/effect review, independent reexecution, renderings, and broad source
+    checks passed. The returned request hash is the only value an external human
+    signer signs; no private key is available to this module.
+    """
+
+    root = Path(lineage_dir).resolve()
+    repo = Path(repository_root).resolve()
+    if not authorized_by.strip() or not notes.strip():
+        raise SubmissionEvidenceError(
+            "human publication authorization requires an identity and non-empty notes"
+        )
+
+    plan_artifact, plan, contract = _load_formal_prospective_plan_contract(root)
+    decision_path = _plan_decision_path(root, plan.project_id)
+    decision = load_plan_decision(project_id=plan.project_id, output_dir=root / "plan")
+    require_approved_plan(plan=plan, decision=decision)
+
+    package = OfficialDevelopmentSearchPackage.model_validate_json(
+        (root / _PACKAGE).read_text(encoding="utf-8")
+    )
+    if not package.gate_checks or not all(package.gate_checks.values()):
+        raise SubmissionEvidenceError(
+            "human authorization cannot override a failed frozen scientific gate"
+        )
+    if not package.search_freeze_receipt_issued:
+        raise SubmissionEvidenceError("signed package has no valid search-freeze receipt")
+    selected = next(
+        (
+            candidate
+            for candidate in package.candidates
+            if candidate.candidate_id == package.selected_candidate_id
+        ),
+        None,
+    )
+    if selected is None:
+        raise SubmissionEvidenceError(
+            "signed package has no selected candidate in its registry"
+        )
+    require_prospective_candidate_plan_alignment(
+        candidates=[selected], contract=contract
+    )
+    selected_source = _inside(root, selected.source_relative_path)
+    if not selected_source.is_file() or file_hash(selected_source) != selected.source_sha256:
+        raise SubmissionEvidenceError(
+            "selected prospective candidate source is missing or hash-mismatched"
+        )
+
+    outcome = SystemAuthoredOutcome.model_validate_json(
+        (root / _OUTCOME).read_text(encoding="utf-8")
+    )
+    if outcome.package_hash != package.package_hash or not outcome.accepted:
+        raise SubmissionEvidenceError(
+            "system-authored outcome is absent, refused, or bound to another package"
+        )
+    if outcome.relation_audit is None or not outcome.relation_audit.passed:
+        raise SubmissionEvidenceError("system-authored outcome lacks a green relation audit")
+
+    report_path = root / _FINAL_DIR / _FINAL_REPORT
+    build_path = root / _FINAL_DIR / _FINAL_BUILD
+    report = FinalResearchReport.model_validate_json(
+        report_path.read_text(encoding="utf-8")
+    )
+    build = FinalReportBuildReceipt.model_validate_json(
+        build_path.read_text(encoding="utf-8")
+    )
+    if (
+        report.lineage_id != root.name
+        or report.plan_artifact_hash != plan_artifact.artifact_hash
+        or report.system_authored_plan_artifact != plan_artifact
+        or report.prospective_plan_execution_contract != contract
+        or report.plan_execution_contract_hash != contract.contract_hash
+        or report.selected_candidate_source_sha256 != selected.source_sha256
+        or report.package_hash != package.package_hash
+        or report.outcome_hash != outcome.outcome_hash
+        or build.report_hash != report.report_hash
+        or not build.pdf_compiled
+        or not build.all_renderings_consistent
+    ):
+        raise SubmissionEvidenceError(
+            "final report or its cross-format build does not bind the green lineage"
+        )
+
+    innovation = PublicationInnovationAudit.model_validate_json(
+        (root / _INNOVATION_NAME).read_text(encoding="utf-8")
+    )
+    if (
+        innovation.lineage_id != root.name
+        or innovation.plan_hash != plan_artifact.plan_hash
+        or not innovation.publication_innovation_ready
+    ):
+        raise SubmissionEvidenceError(
+            "innovation and positive-effect audit is not ready for publication"
+        )
+
+    reexecution = IndependentReexecutionReceipt.model_validate_json(
+        (root / _REEXECUTION_NAME).read_text(encoding="utf-8")
+    )
+    if (
+        reexecution.lineage_id != root.name
+        or reexecution.package_hash != package.package_hash
+        or not reexecution.passed
+    ):
+        raise SubmissionEvidenceError("independent scientific reexecution did not pass")
+
+    quality_path = _contained_quality_receipt_path(root, quality_receipt_path)
+    quality = SubmissionQualityGateReceipt.model_validate_json(
+        quality_path.read_text(encoding="utf-8")
+    )
+    _verify_quality_receipt_artifacts(receipt=quality, receipt_path=quality_path)
+    _verify_quality_runtime_configuration(receipt=quality, repository_root=repo)
+    source_commit = _git_text(repo, "rev-parse", "HEAD")
+    if quality.source_commit != source_commit or not quality.all_passed:
+        raise SubmissionEvidenceError(
+            "broad quality receipt is red or bound to another source commit"
+        )
+    if not _tracked_worktree_clean(
+        repo, expected_config_sha256=quality.configuration_sha256
+    ):
+        raise SubmissionEvidenceError(
+            "source worktree changed after the broad quality receipt"
+        )
+    _verify_reexecution_evidence(
+        root=root,
+        package=package,
+        receipt=reexecution,
+        current_source_commit=source_commit,
+        quality_source_commit=quality.source_commit,
+    )
+
+    now = clock or datetime.now(timezone.utc)
+    payload: dict[str, Any] = {
+        "schema_version": "human-publication-authorization-request-v1",
+        "lineage_id": root.name,
+        "decision": "authorize",
+        "authorized_by": authorized_by.strip(),
+        "authorization_statement": _HUMAN_PUBLICATION_STATEMENT,
+        "notes": notes.strip(),
+        "plan_artifact_hash": plan_artifact.artifact_hash,
+        "plan_decision_file_sha256": file_hash(decision_path),
+        "signed_package_hash": package.package_hash,
+        "outcome_hash": outcome.outcome_hash,
+        "final_report_hash": report.report_hash,
+        "final_report_build_receipt_hash": build.receipt_hash,
+        "innovation_audit_hash": innovation.audit_hash,
+        "reexecution_receipt_hash": reexecution.receipt_hash,
+        "quality_gate_receipt_hash": quality.receipt_hash,
+        "source_commit": source_commit,
+        "authorized_at": now.astimezone(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "authored_by_model": False,
+        "is_scientific_evidence": False,
+        "evidence_refs": (),
+        "changes_scientific_verdict": False,
+    }
+    request_hash = _human_publication_authorization_request_hash(payload)
+    payload["authorization_request_hash"] = request_hash
+    return payload
+
+
+def record_human_publication_authorization(
+    *,
+    lineage_dir: Path | str,
+    authorized_by: str,
+    notes: str,
+    signature_base64: str,
+    signer_public_key_pem: str,
+    trusted_public_key_sha256: str,
+    repository_root: Path | str = Path("."),
+    quality_receipt_path: Path | str | None = None,
+    clock: datetime | None = None,
+) -> HumanPublicationAuthorization:
+    """Verify an external signature and record the exact authorized snapshot."""
+
+    root = Path(lineage_dir).resolve()
+    payload = prepare_human_publication_authorization_request(
+        lineage_dir=root,
+        authorized_by=authorized_by,
+        notes=notes,
+        repository_root=repository_root,
+        quality_receipt_path=quality_receipt_path,
+        clock=clock,
+    )
+    request_hash = str(payload["authorization_request_hash"])
+    try:
+        signer_fingerprint = verify_human_publication_signature(
+            authorization_request_hash=request_hash,
+            signature_base64=signature_base64,
+            public_key_pem=signer_public_key_pem,
+            trusted_public_key_sha256=trusted_public_key_sha256,
+        )
+    except PublicationSignatureError as exc:
+        raise SubmissionEvidenceError(
+            f"human publication signature is not externally trusted: {exc}"
+        ) from exc
+    payload["schema_version"] = "human-publication-authorization-v2"
+    payload.update(
+        {
+            "signature_base64": signature_base64,
+            "signer_public_key_pem": signer_public_key_pem,
+            "signer_public_key_sha256": signer_fingerprint,
+        }
+    )
+    payload["authorization_hash"] = canonical_model_hash(payload)
+    output_path = root / _PUBLICATION_AUTHORIZATION_NAME
+    payload["output_path"] = output_path.as_posix()
+    authorization = HumanPublicationAuthorization.model_validate(payload)
+    write_json_model(output_path, authorization)
+    return authorization
+
+
 def audit_submission_evidence_bundle(
     *,
     lineage_dir: Path | str,
@@ -439,6 +879,7 @@ def audit_submission_evidence_bundle(
     repository_root: Path | str = Path("."),
     run_quality_gates: bool = False,
     quality_commands: Mapping[str, Sequence[str]] | None = None,
+    trusted_publication_key_sha256: str | None = None,
     clock: datetime | None = None,
 ) -> SubmissionEvidenceBundle:
     """Run every submission-critical audit and always persist the truthful verdict."""
@@ -457,6 +898,7 @@ def audit_submission_evidence_bundle(
         resolved = path.resolve()
         if not resolved.is_file() or resolved in artifacts:
             return
+        _require_submission_artifact_is_public(repo=repo, path=resolved)
         artifacts[resolved] = SubmissionArtifactDigest(
             role=role,
             path=_display_path(resolved, root=root),
@@ -488,6 +930,10 @@ def audit_submission_evidence_bundle(
         )
         add_artifact(artifact_path, "系统自主生成的研究计划")
         add_artifact(approved_path, "人工确认时看到的冻结计划")
+        if artifact.schema_version != "system-authored-research-plan-v2":
+            plan_authorship_findings.append(
+                "正式提交只接受含完整前瞻谱系的研究计划制品 v2。"
+            )
         if artifact.lineage_id != root.name:
             plan_authorship_findings.append("研究计划属于另一条谱系。")
         if artifact.plan != plan.model_dump(mode="json"):
@@ -529,13 +975,14 @@ def audit_submission_evidence_bundle(
     # Human scope approval and plan execution contract.
     approval_findings: list[str] = []
     contract_findings: list[str] = []
-    contract = None
+    contract: ProspectivePlanExecutionContract | None = None
     decision = None
-    if plan is None:
+    if plan is None or artifact is None:
         approval_findings.append("批准边界无法核验，因为冻结计划不可用。")
-        contract_findings.append("执行合同无法核验，因为冻结计划不可用。")
+        contract_findings.append("执行合同无法核验，因为正式计划制品不可用。")
     else:
         try:
+            decision_path = _plan_decision_path(root, plan.project_id)
             decision = load_plan_decision(
                 project_id=plan.project_id, output_dir=root / "plan"
             )
@@ -544,21 +991,33 @@ def audit_submission_evidence_bundle(
                 raise SubmissionEvidenceError("计划决定记录缺失")
             if decision.is_evidence or decision.evidence_refs:
                 approval_findings.append("人工计划批准被错误标记为科学证据。")
-            decision_path = (
-                root
-                / "plan"
-                / plan.project_id
-                / "research-plan"
-                / "research-plan-decision.json"
-            )
             add_artifact(decision_path, "人工研究范围批准记录")
         except (OSError, RuntimeError, ValueError, PermissionError) as exc:
             approval_findings.append(f"人工计划批准无效：{exc}")
         try:
-            contract = load_plan_execution_contract(root)
-            expected_contract = compile_plan_execution_contract(plan)
+            if artifact.schema_version != "system-authored-research-plan-v2":
+                raise SubmissionEvidenceError(
+                    "正式提交拒绝历史研究计划制品 v1"
+                )
+            expected_contract = compile_system_authored_plan_execution_contract(
+                artifact
+            )
+            contract = load_prospective_plan_execution_contract(root)
             if contract != expected_contract:
-                contract_findings.append("保留的执行合同不等于批准计划的确定性编译结果。")
+                contract_findings.append(
+                    "保留的前瞻执行合同不等于完整计划制品的确定性编译结果。"
+                )
+            if (
+                contract.selected_intervention_identity
+                != expected_contract.selected_intervention_identity
+                or contract.implementation_anchor
+                != expected_contract.implementation_anchor
+                or contract.paired_control_treatment
+                != expected_contract.paired_control_treatment
+            ):
+                contract_findings.append(
+                    "前瞻干预身份或配对对照—处理合同发生漂移。"
+                )
             add_artifact(
                 root / "plan-execution-contract.json", "批准计划执行合同"
             )
@@ -609,7 +1068,9 @@ def audit_submission_evidence_bundle(
             if contract is None:
                 candidate_findings.append("入选候选没有可比较的批准计划合同。")
             else:
-                require_candidate_plan_alignment(candidates=[selected], contract=contract)
+                require_prospective_candidate_plan_alignment(
+                    candidates=[selected], contract=contract
+                )
             source_path = _inside(root, selected.source_relative_path)
             if file_hash(source_path) != selected.source_sha256:
                 candidate_findings.append("入选候选源文件与签名哈希不同。")
@@ -736,6 +1197,7 @@ def audit_submission_evidence_bundle(
 
     # Configured-vs-recorded identity.
     config_identity: ConfiguredModelIdentity | None = None
+    config_file: Path | None = None
     identity_findings: list[str] = []
     try:
         config_file = Path(config_path).resolve()
@@ -855,11 +1317,6 @@ def audit_submission_evidence_bundle(
             reexecution_findings.append("独立科学重执行没有通过。")
     except (OSError, RuntimeError, ValueError) as exc:
         reexecution_findings.append(f"缺少有效的独立科学重执行回执：{exc}")
-    ledger.record(
-        "independent_scientific_reexecution",
-        findings=reexecution_findings,
-        evidence_paths=_paths_for(artifacts, "独立科学重执行"),
-    )
 
     # Final report and all four synchronized views.
     report_findings: list[str] = []
@@ -903,6 +1360,20 @@ def audit_submission_evidence_bundle(
                 add_artifact(path, f"最终研究报告 {role}")
         if build.report_hash != report.report_hash:
             report_findings.append("构建回执绑定了另一份最终报告。")
+        if artifact is None or contract is None:
+            report_findings.append("最终报告无法绑定有效的正式计划与前瞻执行合同。")
+        elif (
+            report.system_authored_plan_artifact != artifact
+            or report.prospective_plan_execution_contract != contract
+            or report.plan_execution_contract_hash != contract.contract_hash
+            or report.prospective_plan_execution_contract.selected_intervention_identity
+            != contract.selected_intervention_identity
+            or report.prospective_plan_execution_contract.paired_control_treatment
+            != contract.paired_control_treatment
+        ):
+            report_findings.append(
+                "最终报告没有逐字绑定重编译后的干预身份与配对对照—处理合同。"
+            )
         if not build.pdf_compiled or not build.all_renderings_consistent:
             report_findings.append("PDF 未编译或跨格式语义检查未全部通过。")
     except (OSError, RuntimeError, ValueError) as exc:
@@ -917,12 +1388,21 @@ def audit_submission_evidence_bundle(
     # read-only audits do not unexpectedly consume minutes; the CLI defaults to run.
     quality_findings: list[str] = []
     quality: SubmissionQualityGateReceipt | None = None
+    quality_current_commit: str | None = None
     try:
         quality_path = destination / _QUALITY_NAME
-        if run_quality_gates:
+        authorization_freezes_quality = (
+            root / _PUBLICATION_AUTHORIZATION_NAME
+        ).is_file()
+        if run_quality_gates and not authorization_freezes_quality:
+            if config_file is None:
+                raise SubmissionEvidenceError(
+                    "广泛质量门不能绑定缺失或无效的正式配置文件。"
+                )
             quality = run_submission_quality_gates(
                 repository_root=repo,
                 output_dir=destination,
+                config_path=config_file,
                 commands=quality_commands,
                 clock=clock,
             )
@@ -931,11 +1411,29 @@ def audit_submission_evidence_bundle(
                 quality_path.read_text(encoding="utf-8")
             )
         add_artifact(quality_path, "广泛代码质量门回执")
-        current_commit = _git_text(repo, "rev-parse", "HEAD")
-        if quality.source_commit != current_commit:
+        for log_path in _verify_quality_receipt_artifacts(
+            receipt=quality, receipt_path=quality_path
+        ):
+            add_artifact(log_path, f"质量门日志 {log_path.stem}")
+        _verify_quality_runtime_configuration(receipt=quality, repository_root=repo)
+        if (
+            config_identity is None
+            or config_file is None
+            or config_file != (repo / _CANONICAL_CONFIG_RELATIVE_PATH).resolve()
+            or quality.configuration_sha256 != config_identity.config_sha256
+        ):
+            quality_findings.append(
+                "质量门没有绑定本次审计使用的仓库根目录 config.yaml 精确字节。"
+            )
+        quality_current_commit = _git_text(repo, "rev-parse", "HEAD")
+        if quality.source_commit != quality_current_commit:
             quality_findings.append("质量门回执不是针对当前源码提交。")
         if not quality.all_passed:
             quality_findings.append("pytest、ruff、mypy 或源码洁净门仍为红色。")
+        if not _tracked_worktree_clean(
+            repo, expected_config_sha256=quality.configuration_sha256
+        ):
+            quality_findings.append("当前源码工作区在质量回执之后又发生了变化。")
     except (OSError, RuntimeError, ValueError) as exc:
         quality_findings.append(f"缺少当前提交的广泛质量门回执：{exc}")
     ledger.record(
@@ -944,13 +1442,38 @@ def audit_submission_evidence_bundle(
         evidence_paths=_paths_for(artifacts, "质量门"),
     )
 
+    if reexecution is not None and package is not None:
+        try:
+            if quality is None or quality_current_commit is None:
+                raise SubmissionEvidenceError(
+                    "独立重执行无法绑定当前源码提交与质量门回执"
+                )
+            reexecution_paths = _verify_reexecution_evidence(
+                root=root,
+                package=package,
+                receipt=reexecution,
+                current_source_commit=quality_current_commit,
+                quality_source_commit=quality.source_commit,
+            )
+            for path in reexecution_paths:
+                add_artifact(path, "独立科学重执行实物")
+        except (OSError, RuntimeError, ValueError) as exc:
+            reexecution_findings.append(f"独立科学重执行实物不可验证：{exc}")
+    elif reexecution is not None:
+        reexecution_findings.append("独立重执行无法绑定有效签名结果包。")
+    ledger.record(
+        "independent_scientific_reexecution",
+        findings=reexecution_findings,
+        evidence_paths=_paths_for(artifacts, "独立科学重执行"),
+    )
+
     required_findings: list[str] = []
     if final_input is None or not final_input.accepted:
         required_findings.append("最终报告输入审计缺失或未通过。")
     if outcome is None or outcome.relation_audit is None:
         required_findings.append("数值关系审计缺失。")
-    if selected is None or selected.plan_alignment is None:
-        required_findings.append("候选计划对齐审计缺失。")
+    if selected is None or selected.prospective_plan_alignment is None:
+        required_findings.append("候选前瞻计划对齐审计缺失。")
     if not cell_audit.provenance_passed:
         required_findings.append("实验单元来源审计缺失或未通过。")
     if innovation is None:
@@ -978,37 +1501,161 @@ def audit_submission_evidence_bundle(
         evidence_paths=_paths_for(artifacts, "批准", "最终研究报告"),
     )
 
+    authorization_findings: list[str] = []
+    authorization: HumanPublicationAuthorization | None = None
+    try:
+        authorization_path = root / _PUBLICATION_AUTHORIZATION_NAME
+        authorization = HumanPublicationAuthorization.model_validate_json(
+            authorization_path.read_text(encoding="utf-8")
+        )
+        add_artifact(authorization_path, "人工最终发表与提交授权")
+        if authorization.lineage_id != root.name:
+            authorization_findings.append("最终发表授权属于另一条谱系。")
+        if authorization.authored_by_model or authorization.is_scientific_evidence:
+            authorization_findings.append("最终发表授权越界成为模型产物或科学证据。")
+        if trusted_publication_key_sha256 is None:
+            authorization_findings.append("未提供外部可信的人工发表签名公钥指纹。")
+        else:
+            try:
+                verified_fingerprint = verify_human_publication_signature(
+                    authorization_request_hash=authorization.authorization_request_hash,
+                    signature_base64=authorization.signature_base64,
+                    public_key_pem=authorization.signer_public_key_pem,
+                    trusted_public_key_sha256=trusted_publication_key_sha256,
+                )
+                if verified_fingerprint != authorization.signer_public_key_sha256:
+                    authorization_findings.append("最终发表授权记录的签名公钥指纹不符。")
+            except PublicationSignatureError as exc:
+                authorization_findings.append(f"最终发表授权的外部签名无效：{exc}")
+
+        expected_bindings: dict[str, str | None] = {
+            "plan_artifact_hash": (
+                artifact.artifact_hash if artifact is not None else None
+            ),
+            "signed_package_hash": (
+                package.package_hash if package is not None else None
+            ),
+            "outcome_hash": outcome.outcome_hash if outcome is not None else None,
+            "final_report_hash": report.report_hash if report is not None else None,
+            "final_report_build_receipt_hash": (
+                build.receipt_hash if build is not None else None
+            ),
+            "innovation_audit_hash": (
+                innovation.audit_hash if innovation is not None else None
+            ),
+            "reexecution_receipt_hash": (
+                reexecution.receipt_hash if reexecution is not None else None
+            ),
+            "quality_gate_receipt_hash": (
+                quality.receipt_hash if quality is not None else None
+            ),
+        }
+        for field_name, expected_value in expected_bindings.items():
+            if expected_value is None or getattr(authorization, field_name) != expected_value:
+                authorization_findings.append(
+                    f"最终发表授权未绑定当前 {field_name}。"
+                )
+        if plan is None:
+            authorization_findings.append("无法核对最终发表授权绑定的人工计划决定。")
+        else:
+            decision_path = _plan_decision_path(root, plan.project_id)
+            if (
+                not decision_path.is_file()
+                or authorization.plan_decision_file_sha256 != file_hash(decision_path)
+            ):
+                authorization_findings.append("最终发表授权未绑定当前人工计划决定。")
+        current_commit = _git_text(repo, "rev-parse", "HEAD")
+        if authorization.source_commit != current_commit:
+            authorization_findings.append("最终发表授权不是针对当前源码提交。")
+    except (OSError, RuntimeError, ValueError) as exc:
+        authorization_findings.append(f"缺少有效的人工最终发表授权：{exc}")
+    ledger.record(
+        "human_publication_authorization",
+        findings=authorization_findings,
+        evidence_paths=_paths_for(artifacts, "最终发表与提交授权"),
+    )
+
+    secret_findings = _secret_findings(tuple(artifacts))
+    if config_identity is not None and config_identity.api_key_value_logged:
+        secret_findings.append("模型配置记录了 API 密钥值。")
+
     publication_findings: list[str] = []
-    publication_flags = {
+    # Scientific producers must remain unable to self-authorize publication.  Their
+    # permanent false flags are therefore a boundary, not an unreachable readiness
+    # prerequisite.  Readiness is derived only after all objective gates pass and a
+    # human authorization binds their exact hashes.
+    producer_self_authorization = {
         "签名结果包": package.publication_ready if package is not None else False,
         "系统结果解释": outcome.publication_ready if outcome is not None else False,
         "最终研究报告": report.publication_ready if report is not None else False,
         "创新性审计": innovation.publication_ready if innovation is not None else False,
     }
-    false_roles = [name for name, value in publication_flags.items() if not value]
-    if false_roles:
+    self_authorized_roles = [
+        name for name, value in producer_self_authorization.items() if value
+    ]
+    if self_authorized_roles:
         publication_findings.append(
-            "以下权威制品仍明确标记 publication_ready=false："
-            + "、".join(false_roles)
-            + "。"
+            "科学制品不得自行授予发表权限：" + "、".join(self_authorized_roles) + "。"
         )
-    if quality is None or not quality.all_passed:
+    if authorization is None or authorization_findings:
+        publication_findings.append("缺少绑定全部最终制品与源码提交的人工发表授权。")
+    if (
+        package is None
+        or not package.gate_checks
+        or not all(package.gate_checks.values())
+        or not package.search_freeze_receipt_issued
+        or package_findings
+    ):
+        publication_findings.append("签名结果包的冻结科学门禁尚未全绿。")
+    if (
+        outcome is None
+        or not outcome.accepted
+        or outcome.relation_audit is None
+        or not outcome.relation_audit.passed
+        or numeric_findings
+    ):
+        publication_findings.append("系统中文结果解释尚未通过数值与语义审计。")
+    if (
+        report is None
+        or build is None
+        or not build.pdf_compiled
+        or not build.all_renderings_consistent
+        or report_findings
+    ):
+        publication_findings.append("最终中文报告尚未完成一致的 PDF 构建。")
+    if quality is None or not quality.all_passed or quality_findings:
         publication_findings.append("广泛代码质量门尚未全绿。")
-    if innovation is None or not innovation.publication_innovation_ready:
+    if (
+        innovation is None
+        or not innovation.publication_innovation_ready
+        or innovation_findings
+    ):
         publication_findings.append("创新性与正向效果证据尚未同时通过。")
-    if reexecution is None or not reexecution.passed:
+    if reexecution is None or not reexecution.passed or reexecution_findings:
         publication_findings.append("尚无通过的独立科学重执行。")
+    upstream_readiness_findings = (
+        *plan_authorship_findings,
+        *plan_guard_findings,
+        *approval_findings,
+        *candidate_findings,
+        *candidate_authorship_findings,
+        *cell_audit.findings,
+        *cell_audit.reproducibility_findings,
+        *replay_findings,
+        *identity_findings,
+        *required_findings,
+        *human_boundary_findings,
+    )
+    if upstream_readiness_findings:
+        publication_findings.append("仍有上游作者来源、计划、执行、复现或身份门禁未通过。")
+    if secret_findings:
+        publication_findings.append("提交证据仍包含凭据字段或疑似凭据值。")
     ledger.record(
         "publication_readiness",
         findings=publication_findings,
         evidence_paths=tuple(item.path for item in artifacts.values()),
     )
 
-    secret_findings = _secret_findings(
-        [path for path in artifacts if path.suffix.casefold() == ".json"]
-    )
-    if config_identity is not None and config_identity.api_key_value_logged:
-        secret_findings.append("模型配置记录了 API 密钥值。")
     if outcome_authorship_error and "authorship" in outcome_authorship_error.casefold():
         # This is not itself a secret, but keeps the local variable meaningful while
         # avoiding any temptation to expose raw response content in the audit.
@@ -1021,8 +1668,9 @@ def audit_submission_evidence_bundle(
 
     checks = ledger.finish()
     now = clock or datetime.now(timezone.utc)
-    publication_ready = next(
-        item.passed for item in checks if item.name == "publication_readiness"
+    publication_ready = all(
+        next(item.passed for item in checks if item.name == name)
+        for name in ("publication_readiness", "secrets_absent")
     )
     payload: dict[str, Any] = {
         "schema_version": "submission-evidence-bundle-v1",
@@ -1067,6 +1715,7 @@ def run_submission_quality_gates(
     *,
     repository_root: Path | str,
     output_dir: Path | str,
+    config_path: Path | str = Path("config.yaml"),
     commands: Mapping[str, Sequence[str]] | None = None,
     clock: datetime | None = None,
 ) -> SubmissionQualityGateReceipt:
@@ -1076,22 +1725,38 @@ def run_submission_quality_gates(
     destination = Path(output_dir).resolve()
     quality_dir = destination / "quality-logs"
     quality_dir.mkdir(parents=True, exist_ok=True)
-    default_commands: dict[str, Sequence[str]] = {
-        "pytest": (
-            sys.executable,
-            "-m",
-            "pytest",
-            "tests",
-            "-q",
-        ),
-        "ruff": (sys.executable, "-m", "ruff", "check", "src", "tests"),
-        "mypy": (sys.executable, "-m", "mypy", "src/autoresearch"),
+    frozen_commands = _canonical_quality_commands()
+    selected_commands = {
+        name: tuple(str(item) for item in command)
+        for name, command in (commands or frozen_commands).items()
     }
-    selected_commands = dict(commands or default_commands)
-    if set(selected_commands) != {"pytest", "ruff", "mypy"}:
+    if selected_commands != frozen_commands:
         raise SubmissionEvidenceError(
-            "quality command set must contain exactly pytest, ruff, and mypy"
+            "quality commands must exactly match the frozen production contract"
         )
+    supplied_config = Path(config_path)
+    config_file = (
+        supplied_config.resolve()
+        if supplied_config.is_absolute()
+        else (repo / supplied_config).resolve()
+    )
+    canonical_config = (repo / _CANONICAL_CONFIG_RELATIVE_PATH).resolve()
+    if (
+        config_file != canonical_config
+        or not config_file.is_file()
+        or config_file.is_symlink()
+    ):
+        raise SubmissionEvidenceError(
+            "quality gates require the regular repository-root config.yaml"
+        )
+    parsed_config = ConfigParser().parse_file(config_file, model_type=SystemConfig)
+    if not isinstance(parsed_config, SystemConfig):
+        raise SubmissionEvidenceError("quality configuration is not a SystemConfig")
+    if _secret_findings((config_file,)):
+        raise SubmissionEvidenceError(
+            "quality configuration contains a credential field or value"
+        )
+    configuration_sha256 = file_hash(config_file)
     results: list[QualityCommandResult] = []
     for name in ("pytest", "ruff", "mypy"):
         command = tuple(str(item) for item in selected_commands[name])
@@ -1119,10 +1784,24 @@ def run_submission_quality_gates(
         skipped = _summary_count(combined, "skipped")
         deselected = _summary_count(combined, "deselected")
         log_path = quality_dir / f"{name}.log"
-        log_path.write_text(
-            "命令：" + " ".join(command) + "\n\n标准输出：\n" + stdout
-            + "\n\n标准错误：\n" + stderr,
-            encoding="utf-8",
+        log_payload = {
+            "name": name,
+            "command": list(command),
+            "exit_code": exit_code,
+            "stdout": stdout,
+            "stderr": stderr,
+        }
+        log_path.write_bytes(
+            (
+                json.dumps(
+                    log_payload,
+                    allow_nan=False,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+                + "\n"
+            ).encode("utf-8")
         )
         results.append(
             QualityCommandResult(
@@ -1135,17 +1814,26 @@ def run_submission_quality_gates(
                 stdout_sha256=_text_hash(stdout),
                 stderr_sha256=_text_hash(stderr),
                 log_relative_path=log_path.relative_to(destination).as_posix(),
+                log_sha256=file_hash(log_path),
+                log_byte_count=log_path.stat().st_size,
                 passed=exit_code == 0 and skipped == 0 and deselected == 0,
             )
         )
     commit = _git_text(repo, "rev-parse", "HEAD")
-    tracked_clean = _tracked_worktree_clean(repo)
+    tracked_clean = _tracked_worktree_clean(
+        repo, expected_config_sha256=configuration_sha256
+    )
     now = clock or datetime.now(timezone.utc)
     output_path = destination / _QUALITY_NAME
     payload: dict[str, Any] = {
-        "schema_version": "submission-quality-gate-receipt-v1",
+        "schema_version": "submission-quality-gate-receipt-v3",
         "source_commit": commit,
+        "configuration_relative_path": _CANONICAL_CONFIG_RELATIVE_PATH,
+        "configuration_sha256": configuration_sha256,
+        "local_secret_env_excluded": True,
+        "sovereign_raw_memory_excluded": True,
         "tracked_worktree_clean": tracked_clean,
+        "command_contract_hash": _quality_command_contract_hash(),
         "commands": [item.model_dump(mode="json") for item in results],
         "all_passed": tracked_clean and all(item.passed for item in results),
         "created_at": now.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -1803,8 +2491,19 @@ def _secret_findings(paths: Sequence[Path]) -> list[str]:
     for path in paths:
         try:
             text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if any(pattern.search(text) for pattern in value_patterns):
+            findings.append(f"证据文件含疑似凭据值：{path.name}。")
+        if path.suffix.casefold() in {".yaml", ".yml"} and re.search(
+            r"(?im)^\s*(?:api_key|apikey|authorization|password|secret|"
+            r"access_token|refresh_token)\s*:",
+            text,
+        ):
+            findings.append(f"证据配置含疑似凭据字段：{path.name}。")
+        try:
             payload = json.loads(text)
-        except (OSError, UnicodeDecodeError, ValueError):
+        except ValueError:
             continue
         bad_keys: set[str] = set()
 
@@ -1824,8 +2523,6 @@ def _secret_findings(paths: Sequence[Path]) -> list[str]:
             findings.append(
                 f"证据 JSON 含疑似凭据字段 {sorted(bad_keys)}：{path.name}。"
             )
-        if any(pattern.search(text) for pattern in value_patterns):
-            findings.append(f"证据 JSON 含疑似凭据值：{path.name}。")
     return findings
 
 
@@ -1837,6 +2534,295 @@ def _paths_for(
         for item in artifacts.values()
         if any(needle in item.role for needle in needles)
     )
+
+
+def _canonical_quality_commands() -> dict[str, tuple[str, ...]]:
+    return {
+        "pytest": (sys.executable, "-m", "pytest", "tests", "-q"),
+        "ruff": (sys.executable, "-m", "ruff", "check", "src", "tests"),
+        "mypy": (sys.executable, "-m", "mypy", "src/autoresearch"),
+    }
+
+
+def _quality_command_contract_hash() -> str:
+    return canonical_model_hash(
+        {
+            name: list(command)
+            for name, command in _canonical_quality_commands().items()
+        }
+    )
+
+
+_HUMAN_AUTHORIZATION_REQUEST_FIELDS = (
+    "lineage_id",
+    "decision",
+    "authorized_by",
+    "authorization_statement",
+    "notes",
+    "plan_artifact_hash",
+    "plan_decision_file_sha256",
+    "signed_package_hash",
+    "outcome_hash",
+    "final_report_hash",
+    "final_report_build_receipt_hash",
+    "innovation_audit_hash",
+    "reexecution_receipt_hash",
+    "quality_gate_receipt_hash",
+    "source_commit",
+    "authorized_at",
+    "authored_by_model",
+    "is_scientific_evidence",
+    "evidence_refs",
+    "changes_scientific_verdict",
+)
+
+
+def human_publication_authorization_request_hash(
+    payload: Mapping[str, Any],
+) -> str:
+    """Hash the exact objective snapshot and human intent signed out of band."""
+
+    missing = [name for name in _HUMAN_AUTHORIZATION_REQUEST_FIELDS if name not in payload]
+    if missing:
+        raise SubmissionEvidenceError(
+            "human publication authorization request omits fields: "
+            + ", ".join(missing)
+        )
+    request = {
+        "schema_version": "human-publication-authorization-request-v1",
+        **{name: payload[name] for name in _HUMAN_AUTHORIZATION_REQUEST_FIELDS},
+    }
+    return canonical_model_hash(request)
+
+
+def _human_publication_authorization_request_hash(
+    payload: Mapping[str, Any],
+) -> str:
+    return human_publication_authorization_request_hash(payload)
+
+
+def _verify_quality_receipt_artifacts(
+    *, receipt: SubmissionQualityGateReceipt, receipt_path: Path
+) -> tuple[Path, ...]:
+    resolved_receipt = receipt_path.resolve()
+    if not resolved_receipt.is_file():
+        raise SubmissionEvidenceError("quality receipt file is missing")
+    if Path(receipt.output_path).resolve() != resolved_receipt:
+        raise SubmissionEvidenceError("quality receipt output path does not match its file")
+    results = {item.name: item for item in receipt.commands}
+    verified_paths: list[Path] = []
+    for name in ("pytest", "ruff", "mypy"):
+        result = results[name]
+        log_path = _inside(resolved_receipt.parent, result.log_relative_path)
+        if not log_path.is_file():
+            raise SubmissionEvidenceError(f"quality log is missing: {name}")
+        raw = log_path.read_bytes()
+        if len(raw) != result.log_byte_count or file_hash(log_path) != result.log_sha256:
+            raise SubmissionEvidenceError(f"quality log bytes do not match receipt: {name}")
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise SubmissionEvidenceError(
+                f"quality log is not canonical UTF-8 JSON: {name}"
+            ) from exc
+        if not isinstance(payload, Mapping) or set(payload) != {
+            "name",
+            "command",
+            "exit_code",
+            "stdout",
+            "stderr",
+        }:
+            raise SubmissionEvidenceError(f"quality log schema mismatch: {name}")
+        stdout = payload.get("stdout")
+        stderr = payload.get("stderr")
+        logged_command = payload.get("command")
+        if (
+            not isinstance(stdout, str)
+            or not isinstance(stderr, str)
+            or not isinstance(logged_command, list)
+            or not all(isinstance(item, str) for item in logged_command)
+        ):
+            raise SubmissionEvidenceError(f"quality log streams are not text: {name}")
+        if (
+            payload.get("name") != name
+            or tuple(logged_command) != result.command
+            or payload.get("exit_code") != result.exit_code
+            or _text_hash(stdout) != result.stdout_sha256
+            or _text_hash(stderr) != result.stderr_sha256
+            or _summary_count(stdout + "\n" + stderr, "skipped")
+            != result.skipped_count
+            or _summary_count(stdout + "\n" + stderr, "deselected")
+            != result.deselected_count
+        ):
+            raise SubmissionEvidenceError(f"quality log content contradicts receipt: {name}")
+        verified_paths.append(log_path)
+    return tuple(verified_paths)
+
+
+def _verify_reexecution_evidence(
+    *,
+    root: Path,
+    package: OfficialDevelopmentSearchPackage,
+    receipt: IndependentReexecutionReceipt,
+    current_source_commit: str,
+    quality_source_commit: str,
+) -> tuple[Path, ...]:
+    if not (
+        receipt.source_commit == current_source_commit == quality_source_commit
+    ):
+        raise SubmissionEvidenceError(
+            "independent reexecution, quality receipt, and current source commit differ"
+        )
+    output_directory = _inside(root, receipt.clean_output_directory)
+    if output_directory == root.resolve():
+        raise SubmissionEvidenceError(
+            "independent reexecution requires a dedicated clean output directory"
+        )
+    if not output_directory.is_dir():
+        raise SubmissionEvidenceError(
+            "independent reexecution clean output directory is missing"
+        )
+    manifest_path = _inside(
+        output_directory, receipt.artifact_manifest_relative_path
+    )
+    if not manifest_path.is_file():
+        raise SubmissionEvidenceError("independent reexecution manifest is missing")
+    if (
+        manifest_path.stat().st_size != receipt.artifact_manifest_byte_count
+        or file_hash(manifest_path) != receipt.artifact_manifest_sha256
+    ):
+        raise SubmissionEvidenceError(
+            "independent reexecution manifest bytes do not match receipt"
+        )
+    manifest = IndependentReexecutionManifest.model_validate_json(
+        manifest_path.read_text(encoding="utf-8")
+    )
+    if Path(manifest.output_path).resolve() != manifest_path:
+        raise SubmissionEvidenceError(
+            "independent reexecution manifest output path does not match its file"
+        )
+    if (
+        manifest.lineage_id != root.name
+        or manifest.package_hash != package.package_hash
+        or manifest.source_commit != current_source_commit
+        or manifest.manifest_hash != receipt.artifact_manifest_hash
+    ):
+        raise SubmissionEvidenceError(
+            "independent reexecution manifest binds another lineage, package, or commit"
+        )
+
+    expected_results = {item.attempt_id: item for item in package.cell_results}
+    if len(expected_results) != len(package.cell_results):
+        raise SubmissionEvidenceError("signed package repeats an official cell attempt")
+    manifest_entries = {item.attempt_id: item for item in manifest.cell_artifacts}
+    if (
+        set(manifest_entries) != set(expected_results)
+        or len(manifest_entries) != receipt.expected_cell_count
+        or receipt.expected_cell_count != len(expected_results)
+        or receipt.reexecuted_cell_count != len(manifest_entries)
+    ):
+        raise SubmissionEvidenceError(
+            "independent reexecution manifest does not cover every signed package cell"
+        )
+
+    verified_paths: list[Path] = [manifest_path]
+    reexecuted_results: dict[str, OfficialCellResult] = {}
+    for attempt_id, entry in manifest_entries.items():
+        result_path = _inside(output_directory, entry.relative_path)
+        if not result_path.is_file():
+            raise SubmissionEvidenceError(
+                f"independent reexecution cell result is missing: {attempt_id}"
+            )
+        if (
+            result_path.stat().st_size != entry.byte_count
+            or file_hash(result_path) != entry.sha256
+        ):
+            raise SubmissionEvidenceError(
+                f"independent reexecution cell bytes do not match manifest: {attempt_id}"
+            )
+        try:
+            raw_result = json.loads(result_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, ValueError) as exc:
+            raise SubmissionEvidenceError(
+                f"independent reexecution cell is not valid JSON: {attempt_id}"
+            ) from exc
+        if not isinstance(raw_result, dict):
+            raise SubmissionEvidenceError(
+                f"independent reexecution cell is not an object: {attempt_id}"
+            )
+        claimed_result_hash = raw_result.get("result_hash")
+        result_body = dict(raw_result)
+        result_body.pop("result_hash", None)
+        if claimed_result_hash != canonical_model_hash(result_body):
+            raise SubmissionEvidenceError(
+                f"independent reexecution cell result hash mismatch: {attempt_id}"
+            )
+        parsed_result = OfficialCellResult.model_validate(raw_result)
+        if parsed_result.attempt_id != attempt_id:
+            raise SubmissionEvidenceError(
+                f"independent reexecution cell id contradicts manifest: {attempt_id}"
+            )
+        expected_result = expected_results[attempt_id]
+        immutable_identity_fields = (
+            "method_kind",
+            "candidate_id",
+            "stage",
+            "system_name",
+            "data_type",
+            "condition",
+            "seed",
+        )
+        if any(
+            getattr(parsed_result, field_name)
+            != getattr(expected_result, field_name)
+            for field_name in immutable_identity_fields
+        ):
+            raise SubmissionEvidenceError(
+                f"independent reexecution cell identity changed: {attempt_id}"
+            )
+        reexecuted_results[attempt_id] = parsed_result
+        verified_paths.append(result_path)
+
+    replay_package = package.model_copy(
+        update={
+            "cell_results": tuple(
+                reexecuted_results[item.attempt_id] for item in package.cell_results
+            )
+        }
+    )
+    replay_findings = _replay_findings(replay_package)
+    if replay_findings:
+        raise SubmissionEvidenceError(
+            "independent reexecution raw results do not reproduce the signed verdict: "
+            + "；".join(replay_findings)
+        )
+    return tuple(verified_paths)
+
+
+def _plan_decision_path(root: Path, project_id: str) -> Path:
+    return _inside(
+        root,
+        Path("plan")
+        / project_id
+        / "research-plan"
+        / "research-plan-decision.json",
+    )
+
+
+def _contained_quality_receipt_path(
+    root: Path, quality_receipt_path: Path | str | None
+) -> Path:
+    path = _inside(
+        root,
+        quality_receipt_path
+        if quality_receipt_path is not None
+        else Path("submission-evidence") / _QUALITY_NAME,
+    )
+    if path.name != _QUALITY_NAME:
+        raise SubmissionEvidenceError(
+            "quality receipt path must use the canonical receipt filename"
+        )
+    return path
 
 
 def _inside(root: Path, relative: str | Path) -> Path:
@@ -1894,9 +2880,273 @@ def _git_text(repo: Path, *args: str) -> str:
     return value
 
 
-def _tracked_worktree_clean(repo: Path) -> bool:
-    unstaged = subprocess.run(("git", "diff", "--quiet"), cwd=repo, check=False)
-    staged = subprocess.run(
-        ("git", "diff", "--cached", "--quiet"), cwd=repo, check=False
+def _verify_quality_runtime_configuration(
+    *, receipt: SubmissionQualityGateReceipt, repository_root: Path
+) -> Path:
+    """Recheck the exact non-secret configuration bound by a quality receipt."""
+
+    repo = repository_root.resolve()
+    config_path = (repo / receipt.configuration_relative_path).resolve()
+    if (
+        receipt.configuration_relative_path != _CANONICAL_CONFIG_RELATIVE_PATH
+        or config_path != (repo / _CANONICAL_CONFIG_RELATIVE_PATH).resolve()
+        or not config_path.is_file()
+        or config_path.is_symlink()
+        or file_hash(config_path) != receipt.configuration_sha256
+    ):
+        raise SubmissionEvidenceError(
+            "quality receipt configuration bytes do not match repository-root config.yaml"
+        )
+    parsed = ConfigParser().parse_file(config_path, model_type=SystemConfig)
+    if not isinstance(parsed, SystemConfig):
+        raise SubmissionEvidenceError("quality receipt configuration is not a SystemConfig")
+    if _secret_findings((config_path,)):
+        raise SubmissionEvidenceError(
+            "quality receipt configuration contains a credential field or value"
+        )
+    return config_path
+
+
+def _require_submission_artifact_is_public(*, repo: Path, path: Path) -> None:
+    """Keep local credentials and sovereign raw bytes out of bundle inventories."""
+
+    repository = repo.resolve()
+    resolved = path.resolve()
+    if resolved == (repository / _LOCAL_SECRET_ENV_RELATIVE_PATH).resolve():
+        raise SubmissionEvidenceError(
+            "local secret .env must never enter a submission evidence bundle"
+        )
+    private_container = (repository / _SOVEREIGN_PRIVATE_CONTAINER).resolve()
+    if resolved == private_container or resolved.is_relative_to(private_container):
+        raise SubmissionEvidenceError(
+            "sovereign raw memory must never enter a submission evidence bundle"
+        )
+
+
+def _tracked_worktree_clean(
+    repo: Path, *, expected_config_sha256: str | None = None
+) -> bool:
+    repo = repo.resolve()
+    tracked_private = subprocess.run(
+        (
+            "git",
+            "ls-files",
+            "-z",
+            "--",
+            _LOCAL_SECRET_ENV_RELATIVE_PATH,
+            _CANONICAL_CONFIG_RELATIVE_PATH,
+            _SOVEREIGN_PRIVATE_CONTAINER.as_posix(),
+        ),
+        cwd=repo,
+        capture_output=True,
+        check=False,
     )
-    return unstaged.returncode == 0 and staged.returncode == 0
+    if (
+        tracked_private.returncode != 0
+        or not isinstance(tracked_private.stdout, bytes)
+        or tracked_private.stdout
+    ):
+        return False
+    completed = subprocess.run(
+        (
+            "git",
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+            "--ignored=matching",
+        ),
+        cwd=repo,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0 or not isinstance(completed.stdout, bytes):
+        return False
+    if not completed.stdout:
+        return True
+    if not completed.stdout.endswith(b"\0"):
+        return False
+
+    for record in completed.stdout[:-1].split(b"\0"):
+        if len(record) < 4 or record[2:3] != b" ":
+            return False
+        status = record[:2]
+        if status not in {b"??", b"!!"}:
+            return False
+        path = _parse_status_path(record[3:])
+        if path is None:
+            return False
+        if status == b"!!" and _allowed_canonical_private_runtime_state(
+            repo=repo,
+            path=path,
+            expected_config_sha256=expected_config_sha256,
+        ):
+            continue
+        if not _allowed_untracked_output_or_cache(path):
+            return False
+    return True
+
+
+def _allowed_canonical_private_runtime_state(
+    *, repo: Path, path: str, expected_config_sha256: str | None
+) -> bool:
+    normalized = path.rstrip("/")
+    if normalized == _LOCAL_SECRET_ENV_RELATIVE_PATH:
+        env_path = repo / _LOCAL_SECRET_ENV_RELATIVE_PATH
+        return env_path.is_file() and not env_path.is_symlink()
+    if normalized == _CANONICAL_CONFIG_RELATIVE_PATH:
+        config_path = repo / _CANONICAL_CONFIG_RELATIVE_PATH
+        return (
+            expected_config_sha256 is not None
+            and config_path.is_file()
+            and not config_path.is_symlink()
+            and file_hash(config_path) == expected_config_sha256
+        )
+    private_prefix = _SOVEREIGN_PRIVATE_CONTAINER.as_posix()
+    if normalized != private_prefix and not normalized.startswith(private_prefix + "/"):
+        return False
+    return _canonical_sovereign_raw_memory_tree(repo)
+
+
+def _canonical_sovereign_raw_memory_tree(repo: Path) -> bool:
+    """Verify that the one ignored private tree contains only canonical raw memory.
+
+    This reads locally to validate content addressing but returns no payload bytes or
+    private hashes.  The tree is deliberately not represented in the quality receipt,
+    evidence inventory, authorization request, or any publication package.
+    """
+
+    vault_root = (repo / "autoresearch-vault").resolve()
+    private_container = vault_root / "_private"
+    raw_root = private_container / "raw-memory"
+    if (
+        not private_container.is_dir()
+        or private_container.is_symlink()
+        or not raw_root.is_dir()
+        or raw_root.is_symlink()
+    ):
+        return False
+
+    blob_paths: set[Path] = set()
+    referenced_blobs: set[Path] = set()
+    for item in private_container.rglob("*"):
+        if item.is_symlink():
+            return False
+        relative = item.relative_to(private_container)
+        parts = relative.parts
+        if item.is_dir():
+            if not _canonical_raw_memory_directory(parts):
+                return False
+            continue
+        if not item.is_file():
+            return False
+
+        blob_match = re.fullmatch(
+            r"raw-memory/blobs/sha256/([0-9a-f]{2})/([0-9a-f]{64})"
+            r"(?:\.[A-Za-z0-9]+)",
+            relative.as_posix(),
+        )
+        if blob_match is not None:
+            payload_hash = blob_match.group(2)
+            if payload_hash[:2] != blob_match.group(1) or file_hash(item) != payload_hash:
+                return False
+            blob_paths.add(item.resolve())
+            continue
+
+        record_match = re.fullmatch(
+            r"raw-memory/projects/([A-Za-z0-9][A-Za-z0-9_.-]*)/"
+            r"records/([0-9]{4})/([0-9]{2})/(rawmem_[0-9a-f]{64})\.json",
+            relative.as_posix(),
+        )
+        if record_match is None:
+            return False
+        try:
+            raw = item.read_bytes()
+            record = RawMemoryRecord.model_validate_json(raw)
+        except (OSError, ValueError):
+            return False
+        if (
+            raw != (canonical_json(record) + "\n").encode("utf-8")
+            or record.envelope.project_id != record_match.group(1)
+            or f"{record.envelope.captured_at.year:04d}" != record_match.group(2)
+            or f"{record.envelope.captured_at.month:02d}" != record_match.group(3)
+            or record.record_id != record_match.group(4)
+        ):
+            return False
+        blob = (vault_root / record.blob_relative_path).resolve()
+        if (
+            not blob.is_relative_to(raw_root)
+            or not blob.is_file()
+            or blob.is_symlink()
+            or blob.stat().st_size != record.envelope.payload_size
+            or file_hash(blob) != record.envelope.payload_sha256
+        ):
+            return False
+        referenced_blobs.add(blob)
+    return blob_paths == referenced_blobs
+
+
+def _canonical_raw_memory_directory(parts: tuple[str, ...]) -> bool:
+    if parts in {
+        ("raw-memory",),
+        ("raw-memory", "blobs"),
+        ("raw-memory", "blobs", "sha256"),
+        ("raw-memory", "projects"),
+    }:
+        return True
+    if (
+        len(parts) == 4
+        and parts[:3] == ("raw-memory", "blobs", "sha256")
+        and re.fullmatch(r"[0-9a-f]{2}", parts[3])
+    ):
+        return True
+    if len(parts) >= 3 and parts[:2] == ("raw-memory", "projects"):
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", parts[2]) is None:
+            return False
+        suffix = parts[3:]
+        if suffix in {(), ("records",)}:
+            return True
+        if len(suffix) == 2 and suffix[0] == "records":
+            return re.fullmatch(r"[0-9]{4}", suffix[1]) is not None
+        if len(suffix) == 3 and suffix[0] == "records":
+            return (
+                re.fullmatch(r"[0-9]{4}", suffix[1]) is not None
+                and re.fullmatch(r"(?:0[1-9]|1[0-2])", suffix[2]) is not None
+            )
+    return False
+
+
+def _parse_status_path(raw_path: bytes) -> str | None:
+    try:
+        path = raw_path.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    if (
+        not path
+        or path.startswith("/")
+        or "\\" in path
+        or any(ord(character) < 32 or ord(character) == 127 for character in path)
+    ):
+        return None
+    parts = path.rstrip("/").split("/")
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        return None
+    if ":" in parts[0]:
+        return None
+    return path
+
+
+def _allowed_untracked_output_or_cache(path: str) -> bool:
+    if path in _UNTRACKED_CACHE_FILES:
+        return True
+    for root in _UNTRACKED_OUTPUT_ROOTS:
+        if path.startswith(root + "/"):
+            return True
+    components = path.rstrip("/").split("/")
+    for index, component in enumerate(components):
+        if component not in _UNTRACKED_CACHE_DIRS:
+            continue
+        cache_root = "/".join(components[: index + 1])
+        if path.startswith(cache_root + "/"):
+            return True
+    return False

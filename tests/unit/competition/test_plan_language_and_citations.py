@@ -100,6 +100,33 @@ def test_纯英文散文被判定为不达标() -> None:
     assert chinese_prose_ratio(text) < 0.55
 
 
+def test_超长单个英文词不能绕过按字符计算的中文门禁() -> None:
+    text = "中文" + "englishprose" * 200
+    assert chinese_prose_ratio(text) < 0.55
+
+
+def test_超长蛇形英文散文不能伪装成机器标识符() -> None:
+    text = "中文" + "englishprose" * 20 + "_identifier"
+    assert chinese_prose_ratio(text) < 0.55
+
+
+def test_task_谱系编号作为机器标识符不稀释中文叙述() -> None:
+    text = "该证据来自 task2694-promotion-gated-lineage-v1，并仅用于核对冻结谱系来源。"
+    assert chinese_prose_ratio(text) == 1.0
+
+
+def test_普通英文连字符散文仍不能冒充_task_谱系编号() -> None:
+    text = "中文" + "state-of-the-art-english-prose" * 20
+    assert chinese_prose_ratio(text) < 0.55
+
+
+def test_可信调用方可以显式豁免机器标识符() -> None:
+    identifier = "customsolvercomponent"
+    text = f"本方法使用 {identifier} 执行冻结评估。"
+    assert chinese_prose_ratio(text) < 0.55
+    assert chinese_prose_ratio(text, exempt_identifiers=(identifier,)) == 1.0
+
+
 def test_无字母无汉字时不误判() -> None:
     """纯数字或纯标点不该被当成英文。"""
 

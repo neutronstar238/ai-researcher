@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoResearch 科研计划台</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <p class="eyebrow">EVIDENCE-FIRST RESEARCH</p>
+      <h1>科研计划台</h1>
+      <p class="subtitle">真实检索 → Skill 路由 → 假设 → 预实验 → 中文计划 → 独立评审</p>
+    </div>
+    <span id="health" class="badge neutral">正在连接</span>
+  </header>
+
+  <main>
+    <section class="panel create-panel">
+      <div class="panel-title">
+        <div><span class="step">01</span><h2>创建单题运行</h2></div>
+        <span class="note">模型、Base URL 与密钥仅从服务端 config/.env 读取</span>
+      </div>
+      <form id="single-form">
+        <label for="direction">科学问题或指定方向</label>
+        <textarea id="direction" rows="5" required placeholder="输入《Science》问题或指定研究方向"></textarea>
+        <div class="form-row">
+          <label class="check"><input id="single-dry" type="checkbox"> 仅预览，不调用模型或检索 API</label>
+          <button type="submit">创建运行</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel create-panel">
+      <div class="panel-title">
+        <div><span class="step">02</span><h2>批量预览</h2></div>
+        <span class="note">题目只从本地官方 PDF 确定性解析；默认 dry-run</span>
+      </div>
+      <form id="batch-form">
+        <label for="question-pdf">官方 125 问 PDF 的本地路径</label>
+        <input id="question-pdf" required value="C:\Users\Z\Downloads\sjtu-booklet.pdf">
+        <div class="range-row">
+          <label>起始题号<input id="batch-start" type="number" min="1" max="125" value="1"></label>
+          <label>数量<input id="batch-limit" type="number" min="1" max="125" value="125"></label>
+          <label>指定题号（逗号分隔，可空）<input id="batch-ids" placeholder="1, 7, 18"></label>
+        </div>
+        <div class="form-row">
+          <label class="check"><input id="batch-dry" type="checkbox" checked> Dry-run</label>
+          <button type="submit" class="secondary">解析并创建批量任务</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="workspace">
+      <aside class="panel runs-panel">
+        <div class="panel-title"><div><span class="step">03</span><h2>运行记录</h2></div></div>
+        <div id="runs" class="runs"><p class="empty">尚无运行</p></div>
+      </aside>
+
+      <section class="panel detail-panel">
+        <div id="empty-detail" class="empty-detail">
+          <div class="mark">AR</div>
+          <h2>选择一条运行查看证据链</h2>
+          <p>这里会显示九阶段进度、计划与 PDF、证据制品，以及只读的 Skill 候选状态。</p>
+        </div>
+        <div id="detail" hidden>
+          <div class="detail-head">
+            <div><p id="run-id" class="mono"></p><h2 id="run-direction"></h2></div>
+            <span id="run-status" class="badge"></span>
+          </div>
+          <div class="actions">
+            <button id="resume" class="secondary">从断点续跑</button>
+            <button id="cancel" class="danger">请求取消</button>
+          </div>
+          <h3>阶段</h3>
+          <div id="stages" class="stages"></div>
+          <h3>产物</h3>
+          <div id="artifacts" class="artifacts"></div>
+          <h3>Skill / 自进化状态</h3>
+          <div id="evolution" class="evolution"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" role="status"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

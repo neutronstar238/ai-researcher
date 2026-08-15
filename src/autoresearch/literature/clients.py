@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import ssl
 import time
 import urllib.error
@@ -12,17 +13,130 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager, suppress
-from dataclasses import dataclass
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import certifi
 
-from .models import AcademicPaper
+from .models import AcademicPaper, PublicationStatus, normalize_doi
 
 HttpGet = Callable[[str, dict[str, str | int], Mapping[str, str] | None], str]
 OPTIONAL_LITERATURE_SOURCES = frozenset({"semantic_scholar"})
+OPENALEX_TITLE_ABSTRACT_FILTER_PREFIX = "title_and_abstract.search:"
+OPENALEX_SELECT_FIELDS = (
+    "id,display_name,doi,publication_date,publication_year,authorships,"
+    "abstract_inverted_index,primary_location,cited_by_count,type,is_retracted"
+)
+SEMANTIC_SCHOLAR_SEARCH_FIELDS = "title,authors,abstract,year,venue,url,citationCount,externalIds"
+
+
+@dataclass(frozen=True)
+class SourceHTTPAttemptEvent:
+    """One physical public-source HTTP attempt boundary event.
+
+    Only credential-free request metadata is exposed. Response text and the
+    exception object are transient inputs for a caller-owned recorder and are
+    deliberately excluded from ``repr``.
+    """
+
+    phase: Literal["reservation", "completed", "failed"]
+    source: str
+    operation: Literal["literature_search", "paper_status_verification"]
+    endpoint: str
+    public_params: Mapping[str, str | int]
+    excluded_credential_fields: tuple[str, ...]
+    attempt_index: int
+    max_attempts: int
+    response_text: str | None = field(default=None, repr=False)
+    error: BaseException | None = field(default=None, repr=False)
+
+
+SourceHTTPAttemptObserver = Callable[[SourceHTTPAttemptEvent], None]
+_SOURCE_HTTP_ATTEMPT_OBSERVER: ContextVar[SourceHTTPAttemptObserver | None] = ContextVar(
+    "autoresearch_source_http_attempt_observer",
+    default=None,
+)
+_PRIVATE_SOURCE_PARAMETER_FIELDS = frozenset({"api_key", "mailto"})
+
+
+@contextmanager
+def bind_source_http_attempt_observer(
+    observer: SourceHTTPAttemptObserver,
+) -> Iterator[None]:
+    """Bind a synchronous recorder around one logical source operation."""
+
+    parent = _SOURCE_HTTP_ATTEMPT_OBSERVER.get()
+
+    def notify(event: SourceHTTPAttemptEvent) -> None:
+        if parent is not None:
+            parent(event)
+        observer(event)
+
+    token = _SOURCE_HTTP_ATTEMPT_OBSERVER.set(notify)
+    try:
+        yield
+    finally:
+        _SOURCE_HTTP_ATTEMPT_OBSERVER.reset(token)
+
+
+def source_http_attempt_tracing_supported(call: Callable[..., Any]) -> bool:
+    """Return whether a bound source callable emits physical attempt events."""
+
+    owner = getattr(call, "__self__", None)
+    function = getattr(call, "__func__", None)
+    return bool(
+        (type(owner) is ArxivClient and function in (ArxivClient.search, ArxivClient.verify_status))
+        or (type(owner) is OpenAlexClient and function is OpenAlexClient.search)
+        or (type(owner) is SemanticScholarClient and function is SemanticScholarClient.search)
+    )
+
+
+def _emit_source_http_attempt(
+    *,
+    phase: Literal["reservation", "completed", "failed"],
+    source: str,
+    operation: Literal["literature_search", "paper_status_verification"],
+    endpoint: str,
+    params: Mapping[str, str | int],
+    attempt_index: int,
+    max_attempts: int,
+    excluded_credential_fields: tuple[str, ...] = (),
+    response_text: str | None = None,
+    error: BaseException | None = None,
+) -> None:
+    observer = _SOURCE_HTTP_ATTEMPT_OBSERVER.get()
+    if observer is None:
+        return
+    private_fields = tuple(
+        sorted(
+            {
+                *excluded_credential_fields,
+                *(field for field in params if field in _PRIVATE_SOURCE_PARAMETER_FIELDS),
+            }
+        )
+    )
+    public_params = {
+        str(key): value
+        for key, value in params.items()
+        if key not in _PRIVATE_SOURCE_PARAMETER_FIELDS
+    }
+    observer(
+        SourceHTTPAttemptEvent(
+            phase=phase,
+            source=source,
+            operation=operation,
+            endpoint=endpoint,
+            public_params=public_params,
+            excluded_credential_fields=private_fields,
+            attempt_index=attempt_index,
+            max_attempts=max_attempts,
+            response_text=response_text,
+            error=error,
+        )
+    )
 
 
 @dataclass(frozen=True)
@@ -293,19 +407,87 @@ class ArxivClient:
             "start": 0,
             "max_results": limit,
         }
-        text = self._get_with_retry(self.api_url, params)
+        text = self._get_with_retry(
+            self.api_url,
+            params,
+            operation="literature_search",
+        )
         return _parse_arxiv_atom(text)
 
-    def _get_with_retry(self, url: str, params: dict[str, str | int]) -> str:
+    def verify_status(self, paper: AcademicPaper) -> AcademicPaper:
+        """Verify one shortlisted arXiv record against its abstract page.
+
+        Status verification is deliberately separate from search so a caller can
+        enrich only shortlisted records. The request shares the normal arXiv rate
+        limiter and retry policy instead of multiplying requests for every hit.
+        """
+
+        if paper.source != "arxiv" or paper.url is None:
+            return paper
+        status = _parse_arxiv_abs_status(
+            self._get_with_retry(
+                paper.url,
+                {},
+                operation="paper_status_verification",
+            )
+        )
+        if status is None:
+            return paper
+        return paper.model_copy(
+            update={
+                "publication_status": status,
+                "status_source": "arxiv_abs",
+                "status_as_of": date.today(),
+            }
+        )
+
+    def _get_with_retry(
+        self,
+        url: str,
+        params: dict[str, str | int],
+        *,
+        operation: Literal["literature_search", "paper_status_verification"],
+    ) -> str:
         last_error: Exception | None = None
         for attempt in range(1, self.retry.max_attempts + 1):
             self.rate_limiter.wait()
+            _emit_source_http_attempt(
+                phase="reservation",
+                source="arxiv",
+                operation=operation,
+                endpoint=url,
+                params=params,
+                attempt_index=attempt,
+                max_attempts=self.retry.max_attempts,
+            )
             try:
-                return self.http_get(url, params, None)
+                text = self.http_get(url, params, None)
             except Exception as exc:  # noqa: BLE001 - client boundary wraps transport errors.
                 last_error = exc
+                _emit_source_http_attempt(
+                    phase="failed",
+                    source="arxiv",
+                    operation=operation,
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    error=exc,
+                )
                 if attempt < self.retry.max_attempts:
                     self.sleep(_backoff_delay(self.retry, attempt))
+            else:
+                _emit_source_http_attempt(
+                    phase="completed",
+                    source="arxiv",
+                    operation=operation,
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    response_text=text,
+                )
+                return text
         if last_error is not None:
             raise last_error
         raise RuntimeError("retry loop exited without request")
@@ -346,7 +528,7 @@ class SemanticScholarClient:
         params: dict[str, str | int] = {
             "query": query,
             "limit": limit,
-            "fields": "title,authors,abstract,year,venue,url,citationCount,externalIds",
+            "fields": SEMANTIC_SCHOLAR_SEARCH_FIELDS,
         }
         text = self._get_with_retry(self.api_url, params)
         return _parse_semantic_scholar(text)
@@ -356,17 +538,41 @@ class SemanticScholarClient:
         for attempt in range(1, self.retry.max_attempts + 1):
             self.circuit_breaker.raise_if_open()
             self.rate_limiter.wait()
+            excluded_credentials = ("headers.x-api-key",) if self.api_key else ()
+            _emit_source_http_attempt(
+                phase="reservation",
+                source="semantic_scholar",
+                operation="literature_search",
+                endpoint=url,
+                params=params,
+                attempt_index=attempt,
+                max_attempts=self.retry.max_attempts,
+                excluded_credential_fields=excluded_credentials,
+            )
             try:
                 text = self.http_get(url, params, self._request_headers())
             except urllib.error.HTTPError as exc:
                 last_error = exc
+                _emit_source_http_attempt(
+                    phase="failed",
+                    source="semantic_scholar",
+                    operation="literature_search",
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    excluded_credential_fields=excluded_credentials,
+                    error=exc,
+                )
                 if exc.code == 429:
                     retry_after = _retry_after_seconds(exc)
                     self.circuit_breaker.record_rate_limit(
                         retry_after_seconds=retry_after,
                     )
                     remaining = self.circuit_breaker.remaining_seconds()
-                    msg = f"Semantic Scholar HTTP 429 rate limited; circuit open for {remaining:.1f}s"
+                    msg = (
+                        f"Semantic Scholar HTTP 429 rate limited; circuit open for {remaining:.1f}s"
+                    )
                     raise SourceRateLimitError(msg) from exc
                 if _non_retryable_http_error(exc):
                     raise
@@ -374,10 +580,32 @@ class SemanticScholarClient:
                     self.sleep(_backoff_delay(self.retry, attempt))
             except Exception as exc:  # noqa: BLE001 - client boundary wraps transport errors.
                 last_error = exc
+                _emit_source_http_attempt(
+                    phase="failed",
+                    source="semantic_scholar",
+                    operation="literature_search",
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    excluded_credential_fields=excluded_credentials,
+                    error=exc,
+                )
                 if attempt < self.retry.max_attempts:
                     self.sleep(_backoff_delay(self.retry, attempt))
             else:
                 self.circuit_breaker.record_success()
+                _emit_source_http_attempt(
+                    phase="completed",
+                    source="semantic_scholar",
+                    operation="literature_search",
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    excluded_credential_fields=excluded_credentials,
+                    response_text=text,
+                )
                 return text
         if last_error is not None:
             raise last_error
@@ -424,13 +652,16 @@ class OpenAlexClient:
 
     def search(self, query: str, *, limit: int = 10) -> list[AcademicPaper]:
         params: dict[str, str | int] = {
-            "search": query[:1200],
             "per_page": min(max(limit, 1), 100),
-            "select": (
-                "id,display_name,doi,publication_date,publication_year,authorships,"
-                "abstract_inverted_index,primary_location,cited_by_count"
-            ),
+            "select": OPENALEX_SELECT_FIELDS,
         }
+        if query.startswith(OPENALEX_TITLE_ABSTRACT_FILTER_PREFIX):
+            if not query.removeprefix(OPENALEX_TITLE_ABSTRACT_FILTER_PREFIX).strip():
+                raise ValueError("OpenAlex title-and-abstract filter must not be blank")
+            params["filter"] = query
+        else:
+            # Preserve the historical v1 adapter exactly for replayable old requests.
+            params["search"] = query[:1200]
         if self.api_key:
             params["api_key"] = self.api_key
         if self.mailto:
@@ -443,10 +674,29 @@ class OpenAlexClient:
         for attempt in range(1, self.retry.max_attempts + 1):
             self.circuit_breaker.raise_if_open()
             self.rate_limiter.wait()
+            _emit_source_http_attempt(
+                phase="reservation",
+                source="openalex",
+                operation="literature_search",
+                endpoint=url,
+                params=params,
+                attempt_index=attempt,
+                max_attempts=self.retry.max_attempts,
+            )
             try:
                 text = self.http_get(url, params, None)
             except urllib.error.HTTPError as exc:
                 last_error = exc
+                _emit_source_http_attempt(
+                    phase="failed",
+                    source="openalex",
+                    operation="literature_search",
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    error=exc,
+                )
                 if exc.code == 429:
                     retry_after = _retry_after_seconds(exc)
                     self.circuit_breaker.record_rate_limit(retry_after_seconds=retry_after)
@@ -459,10 +709,30 @@ class OpenAlexClient:
                     self.sleep(_backoff_delay(self.retry, attempt))
             except Exception as exc:  # noqa: BLE001 - client boundary wraps transport errors.
                 last_error = exc
+                _emit_source_http_attempt(
+                    phase="failed",
+                    source="openalex",
+                    operation="literature_search",
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    error=exc,
+                )
                 if attempt < self.retry.max_attempts:
                     self.sleep(_backoff_delay(self.retry, attempt))
             else:
                 self.circuit_breaker.record_success()
+                _emit_source_http_attempt(
+                    phase="completed",
+                    source="openalex",
+                    operation="literature_search",
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    response_text=text,
+                )
                 return text
         if last_error is not None:
             raise last_error
@@ -511,8 +781,12 @@ def _parse_arxiv_atom(text: str) -> list[AcademicPaper]:
         if title is None:
             continue
         published = _xml_text(entry, "atom:published", namespace)
-        doi = _xml_text(entry, "arxiv:doi", namespace)
+        raw_doi = _xml_text(entry, "arxiv:doi", namespace)
         url = _xml_text(entry, "atom:id", namespace)
+        comment = _xml_text(entry, "arxiv:comment", namespace)
+        doi, source_repository_doi = _classify_doi(raw_doi)
+        repository_doi = source_repository_doi or _arxiv_repository_doi(url)
+        publication_status = _arxiv_atom_status(title=title, comment=comment)
         authors = [
             author_name
             for author in entry.findall("atom:author", namespace)
@@ -525,8 +799,12 @@ def _parse_arxiv_atom(text: str) -> list[AcademicPaper]:
                 abstract=_clean_optional_text(_xml_text(entry, "atom:summary", namespace)),
                 publication_date=_parse_date(published),
                 doi=doi,
+                repository_doi=repository_doi,
                 url=url,
-                citation_count=0,
+                citation_count=None,
+                publication_status=publication_status,
+                status_source="arxiv_atom",
+                status_as_of=date.today(),
                 source="arxiv",
             )
         )
@@ -541,20 +819,27 @@ def _parse_semantic_scholar(text: str) -> list[AcademicPaper]:
         if not isinstance(row, dict) or not isinstance(row.get("title"), str):
             continue
         external_ids = row.get("externalIds", {})
-        doi = external_ids.get("DOI") if isinstance(external_ids, dict) else None
+        raw_doi = external_ids.get("DOI") if isinstance(external_ids, dict) else None
+        doi, repository_doi = _classify_doi(raw_doi)
         authors = row.get("authors", [])
+        citation_count = _parse_citation_count(row.get("citationCount"))
         papers.append(
             AcademicPaper(
                 title=row["title"],
-                authors=[author["name"] for author in authors if isinstance(author, dict) and "name" in author],
+                authors=[
+                    author["name"]
+                    for author in authors
+                    if isinstance(author, dict) and "name" in author
+                ],
                 abstract=row.get("abstract") if isinstance(row.get("abstract"), str) else None,
                 publication_date=_parse_year(row.get("year")),
                 venue=row.get("venue") if isinstance(row.get("venue"), str) else None,
-                doi=doi if isinstance(doi, str) else None,
+                doi=doi,
+                repository_doi=repository_doi,
                 url=row.get("url") if isinstance(row.get("url"), str) else None,
-                citation_count=row.get("citationCount", 0)
-                if isinstance(row.get("citationCount"), int)
-                else 0,
+                citation_count=citation_count,
+                citation_count_source="semantic_scholar" if citation_count is not None else None,
+                citation_count_as_of=date.today() if citation_count is not None else None,
                 source="semantic_scholar",
             )
         )
@@ -566,39 +851,129 @@ def _parse_openalex(text: str) -> list[AcademicPaper]:
     rows = payload.get("results", [])
     papers: list[AcademicPaper] = []
     for row in rows:
-        if not isinstance(row, dict) or not isinstance(row.get("display_name"), str):
+        if not isinstance(row, dict):
+            continue
+        raw_title = row.get("display_name")
+        if not isinstance(raw_title, str) or not (title := raw_title.strip()):
             continue
         primary_location = row.get("primary_location")
         source = primary_location.get("source") if isinstance(primary_location, dict) else None
         venue = source.get("display_name") if isinstance(source, dict) else None
         landing_page = (
-            primary_location.get("landing_page_url")
-            if isinstance(primary_location, dict)
-            else None
+            primary_location.get("landing_page_url") if isinstance(primary_location, dict) else None
         )
-        doi = row.get("doi")
+        doi, repository_doi = _classify_doi(row.get("doi"))
+        citation_count = _parse_citation_count(row.get("cited_by_count"))
+        publication_status = _openalex_publication_status(row)
         papers.append(
             AcademicPaper(
-                title=row["display_name"],
+                title=title,
                 authors=_openalex_authors(row.get("authorships")),
                 abstract=_openalex_abstract(row.get("abstract_inverted_index")),
                 publication_date=_parse_date(row.get("publication_date"))
                 if isinstance(row.get("publication_date"), str)
                 else _parse_year(row.get("publication_year")),
                 venue=venue if isinstance(venue, str) else None,
-                doi=doi if isinstance(doi, str) else None,
+                doi=doi,
+                repository_doi=repository_doi,
                 url=landing_page
                 if isinstance(landing_page, str)
                 else row.get("id")
                 if isinstance(row.get("id"), str)
                 else None,
-                citation_count=row.get("cited_by_count", 0)
-                if isinstance(row.get("cited_by_count"), int)
-                else 0,
+                citation_count=citation_count,
+                citation_count_source="openalex" if citation_count is not None else None,
+                citation_count_as_of=date.today() if citation_count is not None else None,
+                publication_status=publication_status,
+                status_source="openalex" if publication_status != "unknown" else None,
+                status_as_of=date.today() if publication_status != "unknown" else None,
                 source="openalex",
             )
         )
     return papers
+
+
+def _parse_citation_count(value: Any) -> int | None:
+    """Preserve a reported zero while keeping absent/invalid counts unknown."""
+
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return int(value)
+
+
+def _classify_doi(value: Any) -> tuple[str | None, str | None]:
+    """Separate known repository DOI namespaces from publication DOIs."""
+
+    if not isinstance(value, str):
+        return None, None
+    normalized = normalize_doi(value)
+    if normalized is None:
+        return None, None
+    if normalized.startswith(("10.48550/arxiv.", "10.5281/zenodo.")):
+        return None, normalized
+    return value, None
+
+
+def _arxiv_atom_status(*, title: str, comment: str | None) -> PublicationStatus:
+    status_text = " ".join(value for value in (title, comment) if value).casefold()
+    if re.search(r"\b(?:retracted|retraction)\b", status_text):
+        return "retracted"
+    if re.search(r"\b(?:withdrawn|withdrawal)\b", status_text):
+        return "withdrawn"
+    return "preprint"
+
+
+def _parse_arxiv_abs_status(text: str) -> PublicationStatus | None:
+    status_text = re.sub(r"<[^>]+>", " ", text).casefold()
+    if re.search(
+        r"\b(?:this\s+)?(?:paper|submission|article|manuscript)\s+"
+        r"(?:has\s+been\s+|was\s+)?retracted\b|\(\s*retracted\s*\)",
+        status_text,
+    ):
+        return "retracted"
+    if re.search(
+        r"\b(?:this\s+)?(?:paper|submission|article|manuscript)\s+"
+        r"(?:has\s+been\s+|was\s+)?withdrawn\b|\(\s*withdrawn\s*\)",
+        status_text,
+    ):
+        return "withdrawn"
+    return None
+
+
+def _openalex_publication_status(row: dict[str, Any]) -> PublicationStatus:
+    if row.get("is_retracted") is True:
+        return "retracted"
+    work_type = row.get("type")
+    if work_type == "preprint":
+        return "preprint"
+    if isinstance(work_type, str) and work_type:
+        return "published"
+    return "unknown"
+
+
+def _arxiv_repository_doi(url: str | None) -> str | None:
+    """Derive the DataCite repository DOI from a canonical arXiv entry URL."""
+
+    if url is None:
+        return None
+    parsed = urllib.parse.urlparse(url)
+    if parsed.netloc.casefold() not in {"arxiv.org", "www.arxiv.org", "export.arxiv.org"}:
+        return None
+    path = urllib.parse.unquote(parsed.path)
+    identifier: str | None = None
+    for prefix in ("/abs/", "/pdf/"):
+        if path.startswith(prefix):
+            identifier = path.removeprefix(prefix).removesuffix(".pdf")
+            break
+    if identifier is None:
+        return None
+    identifier = re.sub(r"v\d+$", "", identifier, flags=re.IGNORECASE)
+    if not (
+        re.fullmatch(r"\d{4}\.\d{4,5}", identifier)
+        or re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]*/\d{7}", identifier)
+    ):
+        return None
+    return f"10.48550/arXiv.{identifier}"
 
 
 def _openalex_authors(value: Any) -> list[str]:

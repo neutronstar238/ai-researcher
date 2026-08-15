@@ -34,6 +34,7 @@ A search-freeze receipt is issued if and only if every frozen check passes.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import math
@@ -57,16 +58,24 @@ from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.competition.plan_execution_contract import (
     CandidatePlanAlignmentAudit,
     PlanExecutionContract,
+    ProspectiveCandidatePlanAlignmentAudit,
+    ProspectivePlanExecutionContract,
     audit_candidate_plan_alignment,
+    audit_prospective_candidate_plan_alignment,
+    build_prospective_candidate_execution_declaration,
     compile_plan_execution_contract,
+    compile_system_authored_plan_execution_contract,
     load_plan_execution_contract,
+    load_prospective_plan_execution_contract,
     require_candidate_plan_alignment,
+    require_prospective_candidate_plan_alignment,
     write_plan_execution_contract,
 )
 from autoresearch.competition.scientific_contract_harness import (
     _SOURCE_RESPONSE_SCHEMA,
     ScientificContractRuntimeEnvironment,
     ScientificContractSourceResponse,
+    ScientificContractStaticReview,
     build_scientific_interface_contract,
     inspect_scientific_contract_runtime,
     review_scientific_contract_source,
@@ -75,7 +84,7 @@ from autoresearch.competition.scientific_contract_recovery import (
     load_scientific_contract_recovery_plan,
 )
 from autoresearch.llm.client import run_llm_json_completion
-from autoresearch.schemas import file_hash
+from autoresearch.schemas import ResearchPlan, file_hash
 
 _RUNNER_SOURCE = (
     Path(__file__).resolve().parents[3]
@@ -98,6 +107,7 @@ _BOOTSTRAP_SEED = 2663
 # Bounded local-conformance repair attempts per candidate. Bounded so a model that
 # cannot satisfy the contract fails loudly instead of looping on the frozen budget.
 _GENERATION_CONFORMANCE_ATTEMPTS = 3
+_AUTHORING_ATTEMPT_NAME = "authoring-attempt.json"
 
 # Domain-valid baseline methods, matching the frozen Task 266.1 registry and the
 # exact parameter keys the pinned runner reads. The registry routes Operon to ODE
@@ -144,6 +154,169 @@ def baseline_method_for(data_type: str) -> dict[str, Any]:
 
 class OfficialDevelopmentSearchError(RuntimeError):
     """Raised when a Task 266.3 evidence boundary cannot be proved."""
+
+
+class OfficialCandidateAuthoringAttempt(StrictFrozenModel):
+    """Durable proof that one frozen candidate slot was actually attempted.
+
+    The marker is written before the first logical model turn.  A provider exception
+    can therefore strand neither candidate spend nor the identity needed to resume
+    the same generation safely.
+    """
+
+    schema_version: Literal["official-candidate-authoring-attempt-v1"] = (
+        "official-candidate-authoring-attempt-v1"
+    )
+    stage: Literal["generate-gen1", "revise-gen2"]
+    generation: Literal[1, 2]
+    candidate_id: str
+    base_interaction_id: str
+    parent_source_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    created_at: datetime
+    attempt_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def _validate_attempt_hash(self) -> OfficialCandidateAuthoringAttempt:
+        expected = canonical_model_hash(
+            self.model_dump(mode="json", exclude={"attempt_hash"})
+        )
+        if self.attempt_hash != expected:
+            raise ValueError("candidate authoring-attempt hash mismatch")
+        if (self.generation == 1) != (self.stage == "generate-gen1"):
+            raise ValueError("candidate authoring-attempt generation/stage mismatch")
+        if (self.generation == 1) != (self.parent_source_sha256 is None):
+            raise ValueError("candidate authoring-attempt parent binding mismatch")
+        return self
+
+
+def _register_candidate_authoring_attempt(
+    *,
+    output_root: Path,
+    stage: Literal["generate-gen1", "revise-gen2"],
+    generation: Literal[1, 2],
+    candidate_id: str,
+    base_interaction_id: str,
+    parent_source_sha256: str | None,
+    now: Callable[[], datetime],
+) -> OfficialCandidateAuthoringAttempt:
+    """Create once or verify the exact pre-call candidate marker."""
+
+    path = output_root / "candidates" / candidate_id / _AUTHORING_ATTEMPT_NAME
+    expected = {
+        "stage": stage,
+        "generation": generation,
+        "candidate_id": candidate_id,
+        "base_interaction_id": base_interaction_id,
+        "parent_source_sha256": parent_source_sha256,
+    }
+    if path.is_file():
+        try:
+            retained = OfficialCandidateAuthoringAttempt.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
+        except (OSError, ValidationError) as exc:
+            raise OfficialDevelopmentSearchError(
+                f"invalid retained candidate authoring attempt for {candidate_id}: {exc}"
+            ) from exc
+        if any(getattr(retained, key) != value for key, value in expected.items()):
+            raise OfficialDevelopmentSearchError(
+                f"retained candidate authoring attempt drifted for {candidate_id}"
+            )
+        return retained
+    payload: dict[str, Any] = {
+        "schema_version": "official-candidate-authoring-attempt-v1",
+        **expected,
+        "created_at": now()
+        .astimezone(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z"),
+    }
+    payload["attempt_hash"] = canonical_model_hash(payload)
+    attempt = OfficialCandidateAuthoringAttempt.model_validate(payload)
+    write_json_model(path, attempt)
+    return attempt
+
+
+class OfficialLogicalModelTurnRegistration(StrictFrozenModel):
+    """Pre-call registration for one budgeted logical model turn."""
+
+    schema_version: Literal["official-logical-model-turn-registration-v1"] = (
+        "official-logical-model-turn-registration-v1"
+    )
+    interaction_id: str
+    candidate_id: str
+    stage: Literal[
+        "scientific_contract_implementation", "scientific_contract_repair"
+    ]
+    logical_attempt_index: int = Field(ge=1, le=_GENERATION_CONFORMANCE_ATTEMPTS)
+    request_messages_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    response_schema_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    max_tokens: Literal[12_000] = 12_000
+    registered_at: datetime
+    registration_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def _validate_registration_hash(self) -> OfficialLogicalModelTurnRegistration:
+        expected = canonical_model_hash(
+            self.model_dump(mode="json", exclude={"registration_hash"})
+        )
+        if self.registration_hash != expected:
+            raise ValueError("logical model-turn registration hash mismatch")
+        return self
+
+
+def _register_logical_model_turn(
+    *,
+    output_root: Path,
+    interaction_id: str,
+    candidate_id: str,
+    stage: Literal[
+        "scientific_contract_implementation", "scientific_contract_repair"
+    ],
+    logical_attempt_index: int,
+    messages: Sequence[Mapping[str, str]],
+    now: Callable[[], datetime],
+) -> OfficialLogicalModelTurnRegistration:
+    path = output_root / "interactions" / f"{interaction_id}.logical-turn.json"
+    expected = {
+        "interaction_id": interaction_id,
+        "candidate_id": candidate_id,
+        "stage": stage,
+        "logical_attempt_index": logical_attempt_index,
+        "request_messages_sha256": canonical_model_hash(
+            {"messages": [dict(item) for item in messages]}
+        ),
+        "response_schema_sha256": canonical_model_hash(_SOURCE_RESPONSE_SCHEMA),
+        "max_tokens": 12_000,
+    }
+    if path.is_file():
+        try:
+            retained = OfficialLogicalModelTurnRegistration.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
+        except (OSError, ValidationError) as exc:
+            raise OfficialDevelopmentSearchError(
+                f"invalid retained logical-turn registration {interaction_id}: {exc}"
+            ) from exc
+        if any(getattr(retained, key) != value for key, value in expected.items()):
+            raise OfficialDevelopmentSearchError(
+                f"retained logical-turn registration drifted: {interaction_id}"
+            )
+        return retained
+    payload: dict[str, Any] = {
+        "schema_version": "official-logical-model-turn-registration-v1",
+        **expected,
+        "registered_at": now()
+        .astimezone(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z"),
+    }
+    payload["registration_hash"] = canonical_model_hash(payload)
+    registration = OfficialLogicalModelTurnRegistration.model_validate(payload)
+    write_json_model(path, registration)
+    return registration
 
 
 class OfficialCellSpec(StrictFrozenModel):
@@ -218,17 +391,28 @@ class OfficialCandidateRecord(StrictFrozenModel):
     approved_plan_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     plan_contract_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     plan_alignment: CandidatePlanAlignmentAudit | None = None
+    prospective_plan_alignment: ProspectiveCandidatePlanAlignmentAudit | None = None
 
     @model_validator(mode="after")
     def _validate_plan_alignment(self) -> OfficialCandidateRecord:
         bound = (
             self.approved_plan_hash,
             self.plan_contract_hash,
-            self.plan_alignment,
         )
-        if any(item is not None for item in bound) and any(item is None for item in bound):
+        audits = (self.plan_alignment, self.prospective_plan_alignment)
+        if all(item is None for item in audits):
+            if any(item is not None for item in bound):
+                raise OfficialDevelopmentSearchError(
+                    "candidate plan hashes require exactly one matching alignment audit"
+                )
+            return self
+        if sum(item is not None for item in audits) != 1:
             raise OfficialDevelopmentSearchError(
-                "candidate plan binding must include plan hash, contract hash, and audit"
+                "legacy and prospective plan-alignment audits are mutually exclusive"
+            )
+        if any(item is None for item in bound):
+            raise OfficialDevelopmentSearchError(
+                "candidate plan binding must include plan hash, contract hash, and one audit"
             )
         if self.plan_alignment is not None:
             if self.plan_alignment.approved_plan_hash != self.approved_plan_hash:
@@ -247,6 +431,29 @@ class OfficialCandidateRecord(StrictFrozenModel):
                 raise OfficialDevelopmentSearchError(
                     "a plan-misaligned candidate cannot pass static review"
                 )
+        if self.prospective_plan_alignment is not None:
+            if (
+                self.prospective_plan_alignment.approved_plan_hash
+                != self.approved_plan_hash
+            ):
+                raise OfficialDevelopmentSearchError(
+                    "prospective candidate audit binds a different approved plan"
+                )
+            if (
+                self.prospective_plan_alignment.plan_contract_hash
+                != self.plan_contract_hash
+            ):
+                raise OfficialDevelopmentSearchError(
+                    "prospective candidate audit binds a different execution contract"
+                )
+            if self.prospective_plan_alignment.source_sha256 != self.source_sha256:
+                raise OfficialDevelopmentSearchError(
+                    "prospective candidate audit binds different source bytes"
+                )
+            if self.static_review_approved and not self.prospective_plan_alignment.passed:
+                raise OfficialDevelopmentSearchError(
+                    "a prospective-plan-misaligned candidate cannot pass static review"
+                )
         return self
 
     @model_serializer(mode="wrap")
@@ -261,10 +468,13 @@ class OfficialCandidateRecord(StrictFrozenModel):
         payload = dict(handler(self))
         if self.interaction_hash is None:
             payload.pop("interaction_hash", None)
-        if self.plan_alignment is None:
+        if self.plan_alignment is None and self.prospective_plan_alignment is None:
             payload.pop("approved_plan_hash", None)
             payload.pop("plan_contract_hash", None)
+        if self.plan_alignment is None:
             payload.pop("plan_alignment", None)
+        if self.prospective_plan_alignment is None:
+            payload.pop("prospective_plan_alignment", None)
         return payload
 
 
@@ -464,11 +674,262 @@ def freeze_official_identity(
     return identity, panel
 
 
+_AnyPlanExecutionContract = PlanExecutionContract | ProspectivePlanExecutionContract
+
+
+def _compile_requested_plan_execution_contract(
+    research_plan: Any | None,
+) -> _AnyPlanExecutionContract | None:
+    """Compile the exact contract family carried by the caller.
+
+    Historical ``ResearchPlan`` inputs keep the token-based v1 path.  A formal
+    system-authored artifact must retain its complete prospective lineage and is
+    therefore compiled through the v2 entry point.  Supplying an already compiled
+    contract is useful to stage-local callers and never downgrades it.
+    """
+
+    if research_plan is None:
+        return None
+    if isinstance(research_plan, PlanExecutionContract | ProspectivePlanExecutionContract):
+        return research_plan
+    schema_version = (
+        research_plan.get("schema_version")
+        if isinstance(research_plan, Mapping)
+        else getattr(research_plan, "schema_version", None)
+    )
+    if schema_version == "plan-execution-contract-v1":
+        return PlanExecutionContract.model_validate(research_plan)
+    if schema_version == "plan-execution-contract-v2":
+        return ProspectivePlanExecutionContract.model_validate(research_plan)
+    if schema_version == "system-authored-research-plan-v2":
+        return compile_system_authored_plan_execution_contract(research_plan)
+    return compile_plan_execution_contract(research_plan)
+
+
+def _approval_plan_for_contract(
+    *,
+    research_plan: Any,
+    contract: _AnyPlanExecutionContract,
+) -> ResearchPlan:
+    """Recover the exact human-approved ``ResearchPlan`` without losing v2 identity."""
+
+    if isinstance(contract, ProspectivePlanExecutionContract):
+        return ResearchPlan.model_validate(contract.approved_plan)
+    if isinstance(research_plan, ResearchPlan):
+        return research_plan
+    if isinstance(research_plan, Mapping) and research_plan.get("schema_version") != (
+        "plan-execution-contract-v1"
+    ):
+        return ResearchPlan.model_validate(research_plan)
+    raise OfficialDevelopmentSearchError(
+        "a detached legacy v1 execution contract does not contain the complete "
+        "ResearchPlan required for human approval"
+    )
+
+
+def _load_matching_plan_execution_contract(
+    *, output_root: Path, expected: _AnyPlanExecutionContract
+) -> _AnyPlanExecutionContract:
+    retained: _AnyPlanExecutionContract
+    if isinstance(expected, ProspectivePlanExecutionContract):
+        retained = load_prospective_plan_execution_contract(output_root)
+    else:
+        retained = load_plan_execution_contract(output_root)
+    if retained != expected:
+        raise OfficialDevelopmentSearchError(
+            "retained plan execution contract differs from the approved plan"
+        )
+    return retained
+
+
+def _audit_source_against_contract(
+    *, candidate_id: str, source_text: str, contract: _AnyPlanExecutionContract
+) -> tuple[
+    CandidatePlanAlignmentAudit | None,
+    ProspectiveCandidatePlanAlignmentAudit | None,
+    tuple[str, ...],
+]:
+    if isinstance(contract, ProspectivePlanExecutionContract):
+        prospective = audit_prospective_candidate_plan_alignment(
+            candidate_id=candidate_id,
+            source_text=source_text,
+            contract=contract,
+        )
+        findings = tuple(
+            f"PROSPECTIVE_PLAN_NOT_IMPLEMENTED: {item}"
+            for item in prospective.findings
+        )
+        return None, prospective, findings
+    legacy = audit_candidate_plan_alignment(
+        candidate_id=candidate_id,
+        source_text=source_text,
+        contract=contract,
+    )
+    findings = (
+        (
+            "PLAN_METHOD_NOT_IMPLEMENTED: reachable source is missing approved "
+            f"method tokens {list(legacy.missing_method_tokens)}"
+        ),
+    ) if not legacy.passed else ()
+    return legacy, None, findings
+
+
+def _require_candidates_match_contract(
+    *,
+    candidates: Sequence[OfficialCandidateRecord],
+    contract: _AnyPlanExecutionContract,
+    output_root: Path,
+) -> None:
+    """Dispatch the family-specific gate; v2 also re-audits retained source bytes."""
+
+    if isinstance(contract, PlanExecutionContract):
+        require_candidate_plan_alignment(candidates=candidates, contract=contract)
+        return
+    require_prospective_candidate_plan_alignment(candidates=candidates, contract=contract)
+    failures: list[str] = []
+    for candidate in candidates:
+        source_path = (output_root / candidate.source_relative_path).resolve()
+        try:
+            source_path.relative_to(output_root)
+        except ValueError:
+            failures.append(f"{candidate.candidate_id}: source path escapes output root")
+            continue
+        if not source_path.is_file():
+            failures.append(f"{candidate.candidate_id}: retained source is missing")
+            continue
+        source_text = source_path.read_text(encoding="utf-8")
+        _legacy, fresh, topology = _audit_source_against_contract(
+            candidate_id=candidate.candidate_id,
+            source_text=source_text,
+            contract=contract,
+        )
+        if fresh != candidate.prospective_plan_alignment:
+            failures.append(
+                f"{candidate.candidate_id}: retained prospective audit does not match "
+                "the current source bytes"
+            )
+        failures.extend(f"{candidate.candidate_id}: {item}" for item in topology)
+        if not candidate.static_review_approved:
+            failures.append(f"{candidate.candidate_id}: static review is not approved")
+    if failures:
+        raise OfficialDevelopmentSearchError(
+            "formal prospective candidate failed retained-source verification: "
+            + "; ".join(failures)
+        )
+
+
+def _formal_prospective_source_contract(
+    contract: ProspectivePlanExecutionContract,
+) -> dict[str, Any]:
+    """Return the exact v2 source shape Qwen must author without code injection."""
+
+    declaration = build_prospective_candidate_execution_declaration(contract)
+    declaration_payload = declaration.model_dump(mode="python")
+    anchor = contract.implementation_anchor
+    return {
+        "schema_version": "formal-prospective-source-contract-v2",
+        "candidate_execution_declaration_schema_version": declaration.schema_version,
+        "candidate_alignment_audit_schema_version": (
+            "candidate-plan-alignment-audit-v3"
+        ),
+        "module_constant_name": "PROSPECTIVE_EXECUTION_DECLARATION",
+        "exact_python_assignment": (
+            "PROSPECTIVE_EXECUTION_DECLARATION = " f"{declaration_payload!r}"
+        ),
+        "literal_only": True,
+        "declaration_read_only": True,
+        "declaration_alias_argument_container_store_del_forbidden": True,
+        "dead_code_reads_do_not_count": True,
+        "implementation_anchor_helper": anchor,
+        "implementation_anchor_definition_count": 1,
+        "runtime_binding_payload_key": "prospective_execution_binding",
+        "identity_guards": [
+            {
+                "runtime_path": (
+                    "prospective_execution_binding.plan_execution_contract_hash"
+                ),
+                "declaration_path": "plan_execution_contract_hash",
+                "operator": "!=",
+                "on_mismatch": "raise",
+            },
+            {
+                "runtime_path": (
+                    "prospective_execution_binding.selected_intervention_hash"
+                ),
+                "declaration_path": (
+                    "selected_intervention_identity.intervention_hash"
+                ),
+                "operator": "!=",
+                "on_mismatch": "raise",
+            },
+            {
+                "runtime_path": "prospective_execution_binding.pair_contract_hash",
+                "declaration_path": "paired_control_treatment.pair_hash",
+                "operator": "!=",
+                "on_mismatch": "raise",
+            },
+        ],
+        "identity_guards_must_precede_arm_selection": True,
+        "runtime_configuration_selector": {
+            "runtime_path": (
+                "prospective_execution_binding.configuration["
+                "PROSPECTIVE_EXECUTION_DECLARATION."
+                "paired_control_treatment.intervention_key]"
+            ),
+            "control_declaration_path": (
+                "paired_control_treatment.control_configuration["
+                "paired_control_treatment.intervention_key]"
+            ),
+            "treatment_declaration_path": (
+                "paired_control_treatment.treatment_configuration["
+                "paired_control_treatment.intervention_key]"
+            ),
+            "comparison_operator": "==",
+        },
+        "control_helper": f"{anchor}__control",
+        "treatment_helper": f"{anchor}__treatment",
+        "control_treatment_helpers_must_be_distinct": True,
+        "helper_bodies_are_scientific_not_topology": True,
+        "unknown_arm_action": "raise",
+        "public_hooks_must_directly_return_dispatcher": list(contract.public_hooks),
+        "ordinary_top_level_helpers_allowed": True,
+        "orchestrator_may_inject_or_rewrite_source": False,
+    }
+
+
+def _formal_prospective_topology_instruction(
+    contract: ProspectivePlanExecutionContract,
+    *,
+    revision: bool,
+) -> str:
+    """Describe the restricted dispatcher; only Qwen may author the resulting code."""
+
+    verb = "Preserve" if revision else "Copy"
+    anchor = contract.implementation_anchor
+    return (
+        f"{verb} the supplied exact module-level "
+        "PROSPECTIVE_EXECUTION_DECLARATION v2 assignment. Never alias, pass, "
+        "return, wrap in a container, mutate, Store, or Del that declaration; "
+        "reads hidden under if False do not count. Define exactly one top-level "
+        f"restricted dispatcher named {anchor}. Before any scientific return, it "
+        "must execute exactly the three identity guards in prospective_source_contract "
+        "against the runtime prospective_execution_binding and raise on every "
+        "mismatch. It must then consume the runtime prospective_execution_binding "
+        "configuration at the declared intervention key, select the declared control "
+        "and treatment levels, call distinct control and treatment helpers, and raise "
+        "for every unknown arm. The control and treatment helper bodies contain the "
+        "scientific implementation; do not put scientific computation in the "
+        "dispatcher. Every selected public hook must directly return the dispatcher "
+        "with no fallback or bypass. The complete source must be authored in your "
+        "source_lines response; the orchestrator will not inject or rewrite code."
+    )
+
+
 def _generation_brief(
     panel: dict[str, Any],
     budget: dict[str, Any],
     *,
-    plan_execution_contract: PlanExecutionContract | None = None,
+    plan_execution_contract: _AnyPlanExecutionContract | None = None,
 ) -> dict[str, Any]:
     """Panel SHAPE metadata plus the interface contract. No arrays, no scores."""
 
@@ -481,7 +942,7 @@ def _generation_brief(
                 "system_name": system["system_name"],
             }
         )
-    brief = {
+    brief: dict[str, Any] = {
         "task": (
             "author a fit-once/freeze/predict equation-discovery candidate for the "
             "official MDBench development panel"
@@ -523,12 +984,60 @@ def _generation_brief(
         brief["approved_research_plan_execution_contract"] = (
             plan_execution_contract.model_dump(mode="json")
         )
-        brief["plan_alignment_requirement"] = (
-            "Implement the approved plan, not an alternative method. Every item in "
-            "required_method_tokens must occur in a callable actually reached from "
-            "fit_equations or predict_derivative. Comments, prose, docstrings, "
-            "variable names, and unused helper functions do not count."
-        )
+        if isinstance(plan_execution_contract, ProspectivePlanExecutionContract):
+            contract = plan_execution_contract
+            if contract.implementation_anchor in contract.public_hooks:
+                raise OfficialDevelopmentSearchError(
+                    "formal prospective implementation_anchor must be a helper distinct "
+                    "from every public hook"
+                )
+            declaration = build_prospective_candidate_execution_declaration(contract)
+            brief["prospective_candidate_execution_declaration"] = (
+                declaration.model_dump(mode="json")
+            )
+            source_contract = _formal_prospective_source_contract(contract)
+            brief["prospective_source_contract"] = source_contract
+            static_contract = brief["interface_contract"]["static_source_contract"]
+            static_contract["formal_prospective_extension"] = {
+                "schema_version": "formal-prospective-static-extension-v2",
+                "required_alignment_audit": "candidate-plan-alignment-audit-v3",
+                "required_module_literal": "PROSPECTIVE_EXECUTION_DECLARATION",
+                "required_unique_implementation_anchor_helper": (
+                    contract.implementation_anchor
+                ),
+                "required_runtime_binding_payload_key": (
+                    "prospective_execution_binding"
+                ),
+                "required_identity_guard_count": 3,
+                "identity_guards_must_precede_arm_selection": True,
+                "runtime_configuration_must_select_distinct_arm_helpers": True,
+                "unknown_arm_must_raise": True,
+                "every_declared_public_hook_must_directly_return_anchor": list(
+                    contract.public_hooks
+                ),
+                "declaration_must_remain_read_only_without_alias_or_escape": True,
+                "additional_ordinary_helpers_allowed": True,
+            }
+            brief["plan_alignment_requirement"] = (
+                "Implement the exact selected prospective intervention, not an "
+                "alternative method and not a token-level approximation. Copy "
+                "prospective_source_contract.exact_python_assignment verbatim as one "
+                "module-level literal assignment named "
+                "PROSPECTIVE_EXECUTION_DECLARATION; do not construct, mutate, or "
+                "replace it at runtime. Author the exact three reachable identity "
+                "guards, runtime prospective_execution_binding configuration selector, "
+                "two distinct arm helpers, terminal unknown-arm raise, and direct "
+                "public-hook dispatcher returns described by prospective_source_contract. "
+                "Do not satisfy any requirement in dead code. Ordinary scientific "
+                "helpers are allowed, but the orchestrator will never add missing code."
+            )
+        else:
+            brief["plan_alignment_requirement"] = (
+                "Implement the approved plan, not an alternative method. Every item in "
+                "required_method_tokens must occur in a callable actually reached from "
+                "fit_equations or predict_derivative. Comments, prose, docstrings, "
+                "variable names, and unused helper functions do not count."
+            )
     return brief
 
 
@@ -537,6 +1046,359 @@ def _format_field_error(error: Mapping[str, Any]) -> str:
 
     location = ".".join(str(part) for part in error.get("loc", ())) or "(root)"
     return f"{location}: {error.get('msg', 'invalid')}"
+
+
+_REPAIRABLE_STATIC_TOPOLOGY_CODES = frozenset(
+    {"missing_interface", "invalid_interface"}
+)
+_METHOD_NARRATIVE_FIELDS = (
+    "observation",
+    "problem",
+    "hypothesis",
+    "intervention",
+    "expected_effect",
+    "implementation_summary",
+)
+
+
+def _method_narrative(response: ScientificContractSourceResponse) -> tuple[str, ...]:
+    return tuple(str(getattr(response, field)) for field in _METHOD_NARRATIVE_FIELDS)
+
+
+def _source_call_name(node: ast.expr) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        prefix = _source_call_name(node.value)
+        return f"{prefix}.{node.attr}" if prefix else node.attr
+    return ""
+
+
+def _scientific_method_signature(
+    source_text: str,
+    *,
+    plan_contract: _AnyPlanExecutionContract | None,
+) -> str:
+    """Fingerprint scientific literals/operators while ignoring allowed topology glue."""
+
+    try:
+        tree = ast.parse(source_text)
+    except SyntaxError:
+        return hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+    ignored_calls: set[str] = set()
+    ignored_topology_functions: set[str] = set()
+    if isinstance(plan_contract, ProspectivePlanExecutionContract):
+        ignored_calls = {
+            plan_contract.implementation_anchor,
+            *plan_contract.public_hooks,
+        }
+        ignored_topology_functions = set(ignored_calls)
+    ignored_strings = {
+        "plan_execution_contract_hash",
+        "selected_intervention_identity",
+        "paired_control_treatment",
+    }
+    science: list[tuple[str, str]] = []
+    for statement in tree.body:
+        if (
+            isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef)
+            and statement.name in ignored_topology_functions
+        ):
+            # The v3 audit restricts these functions to identity guards, arm routing,
+            # and direct hook dispatch.  Scientific work must live in the two arm
+            # helpers, whose complete bodies remain in this fingerprint.
+            continue
+        if isinstance(statement, ast.Assign | ast.AnnAssign):
+            targets = (
+                statement.targets
+                if isinstance(statement, ast.Assign)
+                else (statement.target,)
+            )
+            if any(
+                isinstance(target, ast.Name)
+                and target.id == "PROSPECTIVE_EXECUTION_DECLARATION"
+                for target in targets
+            ):
+                continue
+        for node in ast.walk(statement):
+            if isinstance(node, ast.Constant):
+                if isinstance(node.value, str) and node.value in ignored_strings:
+                    continue
+                science.append(("constant", repr(node.value)))
+            elif isinstance(node, ast.Call):
+                name = _source_call_name(node.func)
+                if name and name.split(".")[-1] not in ignored_calls:
+                    science.append(("call", name))
+            elif isinstance(
+                node,
+                ast.operator | ast.unaryop | ast.boolop | ast.cmpop,
+            ):
+                science.append(("operator", type(node).__name__))
+            elif isinstance(node, ast.Import):
+                science.extend(("import", alias.name) for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                science.append(("import_from", node.module or ""))
+    return canonical_model_hash({"scientific_method_features": science})
+
+
+def _source_assessment(
+    *,
+    candidate_id: str,
+    source_text: str,
+    plan_contract: _AnyPlanExecutionContract | None,
+) -> tuple[
+    ScientificContractStaticReview,
+    CandidatePlanAlignmentAudit | None,
+    ProspectiveCandidatePlanAlignmentAudit | None,
+    tuple[str, ...],
+]:
+    review = review_scientific_contract_source(source_text)
+    legacy_alignment: CandidatePlanAlignmentAudit | None = None
+    prospective_alignment: ProspectiveCandidatePlanAlignmentAudit | None = None
+    alignment_findings: tuple[str, ...] = ()
+    if plan_contract is not None:
+        legacy_alignment, prospective_alignment, alignment_findings = (
+            _audit_source_against_contract(
+                candidate_id=candidate_id,
+                source_text=source_text,
+                contract=plan_contract,
+            )
+        )
+    return review, legacy_alignment, prospective_alignment, alignment_findings
+
+
+def _repairable_topology_findings(
+    *,
+    review: ScientificContractStaticReview,
+    prospective_alignment: ProspectiveCandidatePlanAlignmentAudit | None,
+) -> tuple[str, ...]:
+    """Return only structural findings that a topology-only turn may change."""
+
+    non_topology = [
+        item for item in review.findings if item.code not in _REPAIRABLE_STATIC_TOPOLOGY_CODES
+    ]
+    if non_topology:
+        return ()
+    findings = [
+        f"{item.code}: {item.message}" for item in review.findings
+    ]
+    if prospective_alignment is not None and not prospective_alignment.passed:
+        findings.extend(prospective_alignment.findings)
+    return tuple(dict.fromkeys(findings))
+
+
+def _author_source_with_bounded_repairs(
+    *,
+    completion: JsonCompletion,
+    messages: list[dict[str, str]],
+    config_path: Path | str,
+    env_path: Path | str,
+    provider_timeout_seconds: int,
+    base_interaction_id: str,
+    first_stage: Literal[
+        "scientific_contract_implementation", "scientific_contract_repair"
+    ],
+    candidate_id: str,
+    output_root: Path,
+    now: Callable[[], datetime],
+    plan_contract: _AnyPlanExecutionContract | None,
+    failure_label: str,
+) -> tuple[
+    ScientificContractSourceResponse,
+    AutonomousModelInteraction,
+    ScientificContractStaticReview,
+    CandidatePlanAlignmentAudit | None,
+    ProspectiveCandidatePlanAlignmentAudit | None,
+    tuple[str, ...],
+]:
+    """Use at most three logical turns for schema and topology conformance together."""
+
+    attempt_messages = list(messages)
+    schema_errors: list[str] = []
+    topology_basis: ScientificContractSourceResponse | None = None
+    topology_basis_science_signature: str | None = None
+    first_response_narrative: dict[str, str] = {}
+    first_response_science_signature: str | None = None
+    schema_repair_pending = False
+    method_drift_findings: tuple[str, ...] = ()
+    last_assessment: tuple[
+        ScientificContractSourceResponse,
+        AutonomousModelInteraction,
+        ScientificContractStaticReview,
+        CandidatePlanAlignmentAudit | None,
+        ProspectiveCandidatePlanAlignmentAudit | None,
+        tuple[str, ...],
+    ] | None = None
+    for attempt in range(1, _GENERATION_CONFORMANCE_ATTEMPTS + 1):
+        interaction_id = (
+            base_interaction_id
+            if attempt == 1
+            else f"{base_interaction_id}-repair{attempt}"
+        )
+        interaction_stage = (
+            first_stage if attempt == 1 else "scientific_contract_repair"
+        )
+        _register_logical_model_turn(
+            output_root=output_root,
+            interaction_id=interaction_id,
+            candidate_id=candidate_id,
+            stage=interaction_stage,
+            logical_attempt_index=attempt,
+            messages=attempt_messages,
+            now=now,
+        )
+        result, interaction = _call_and_record(
+            completion=completion,
+            messages=attempt_messages,
+            config_path=config_path,
+            env_path=env_path,
+            timeout_seconds=provider_timeout_seconds,
+            max_tokens=12_000,
+            response_schema=_SOURCE_RESPONSE_SCHEMA,
+            response_schema_name="scientific_contract_source",
+            interaction_id=interaction_id,
+            stage=interaction_stage,
+            candidate_id=candidate_id,
+            output_root=output_root,
+            now=now,
+        )
+        if attempt == 1 and isinstance(result.parsed_json, Mapping):
+            first_response_narrative = {
+                field: value
+                for field in _METHOD_NARRATIVE_FIELDS
+                if isinstance(
+                    (value := result.parsed_json.get(field)),
+                    str,
+                )
+            }
+            initial_source_lines = result.parsed_json.get("source_lines")
+            if isinstance(initial_source_lines, list) and all(
+                isinstance(item, str) for item in initial_source_lines
+            ):
+                first_response_science_signature = _scientific_method_signature(
+                    "\n".join(initial_source_lines),
+                    plan_contract=plan_contract,
+                )
+        try:
+            response = ScientificContractSourceResponse.model_validate(result.parsed_json)
+        except ValidationError as exc:
+            schema_repair_pending = True
+            schema_errors = [_format_field_error(item) for item in exc.errors()]
+            if attempt == _GENERATION_CONFORMANCE_ATTEMPTS:
+                break
+            attempt_messages = [
+                *messages,
+                {
+                    "role": "user",
+                    "content": (
+                        "Your previous json object failed strict local validation with "
+                        "these errors: "
+                        + "; ".join(schema_errors)
+                        + ". Return the corrected json object with every required field "
+                        "present. Change only what the errors name; keep the scientific "
+                        "method, all six scientific narrative fields, and source_lines "
+                        "otherwise identical. Every subsequent response is mechanically "
+                        "compared with the scientific content of this first response. "
+                        "Previous json: "
+                        + json.dumps(result.parsed_json, ensure_ascii=False, sort_keys=True)
+                    ),
+                },
+            ]
+            continue
+
+        review, legacy, prospective, alignment_findings = _source_assessment(
+            candidate_id=candidate_id,
+            source_text=response.source_text,
+            plan_contract=plan_contract,
+        )
+        current_science_signature = _scientific_method_signature(
+            response.source_text, plan_contract=plan_contract
+        )
+        schema_repair_drift_fields = tuple(
+            field
+            for field, frozen_value in first_response_narrative.items()
+            if str(getattr(response, field)) != frozen_value
+        )
+        schema_repair_science_drift = bool(
+            first_response_science_signature is not None
+            and current_science_signature != first_response_science_signature
+        )
+        drift_findings: list[str] = []
+        if schema_repair_pending and (
+            schema_repair_drift_fields or schema_repair_science_drift
+        ):
+            drift_findings.append(
+                "REPAIR_SCIENTIFIC_NARRATIVE_DRIFT: schema repair changed frozen "
+                "scientific narrative or arm-helper implementation"
+            )
+        if topology_basis is not None and (
+            _method_narrative(response) != _method_narrative(topology_basis)
+            or current_science_signature != topology_basis_science_signature
+        ):
+            drift_findings.append(
+                "TOPOLOGY_REPAIR_METHOD_DRIFT: topology repair changed one or more "
+                "frozen scientific-method narrative fields or arm-helper bodies"
+            )
+        method_drift_findings = tuple(dict.fromkeys(drift_findings))
+        if not method_drift_findings:
+            schema_repair_pending = False
+        last_assessment = (
+            response,
+            interaction,
+            review,
+            legacy,
+            prospective,
+            (*alignment_findings, *method_drift_findings),
+        )
+        topology_findings = _repairable_topology_findings(
+            review=review,
+            prospective_alignment=prospective,
+        )
+        if method_drift_findings:
+            topology_findings = (*topology_findings, *method_drift_findings)
+        if not topology_findings or attempt == _GENERATION_CONFORMANCE_ATTEMPTS:
+            return last_assessment
+
+        if topology_basis is None:
+            topology_basis = response
+            topology_basis_science_signature = current_science_signature
+        attempt_messages = [
+            *messages,
+            {
+                "role": "user",
+                "content": (
+                    "The exact source passed JSON schema validation but failed only "
+                    "deterministic static/prospective topology checks: "
+                    + "; ".join(topology_findings)
+                    + ". Return the complete corrected JSON object. This is a "
+                    "topology-only repair: preserve the scientific method, equations, "
+                    "feature library, coefficients, thresholds, fitting logic, "
+                    "prediction mathematics, and all six scientific narrative fields "
+                    "exactly. Do not change the control and treatment helper bodies. Change "
+                    "only the exact execution declaration, selected implementation-anchor "
+                    "dispatcher, three identity guards, runtime "
+                    "configuration selector and its two helper call sites, terminal "
+                    "unknown-arm raise, and direct public-hook dispatcher returns needed "
+                    "by those findings. Never hide a read under if False or introduce an "
+                    "alias, fallback, or bypass. Frozen scientific narrative: "
+                    + json.dumps(
+                        first_response_narrative,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                    + ". "
+                    "Previous exact source_lines: "
+                    + json.dumps(list(response.source_lines), ensure_ascii=False)
+                ),
+            },
+        ]
+
+    if last_assessment is not None:
+        return last_assessment
+    raise OfficialDevelopmentSearchError(
+        f"{candidate_id} could not produce a schema-conformant {failure_label} in "
+        f"{_GENERATION_CONFORMANCE_ATTEMPTS} attempts: {'; '.join(schema_errors)}"
+    )
 
 
 def generate_official_candidates(
@@ -556,11 +1418,7 @@ def generate_official_candidates(
 
     now = clock or (lambda: datetime.now(timezone.utc))
     output_root = Path(output_dir).resolve()
-    plan_contract = (
-        compile_plan_execution_contract(research_plan)
-        if research_plan is not None
-        else None
-    )
+    plan_contract = _compile_requested_plan_execution_contract(research_plan)
     if plan_contract is not None:
         write_plan_execution_contract(contract=plan_contract, output_dir=output_root)
     brief = _generation_brief(
@@ -570,6 +1428,25 @@ def generate_official_candidates(
     for index in range(1, identity.initial_candidate_count + 1):
         candidate_id = f"official-{index:02d}"
         interaction_id = f"official-generate-{index:02d}"
+        _register_candidate_authoring_attempt(
+            output_root=output_root,
+            stage="generate-gen1",
+            generation=1,
+            candidate_id=candidate_id,
+            base_interaction_id=interaction_id,
+            parent_source_sha256=None,
+            now=now,
+        )
+        if isinstance(plan_contract, ProspectivePlanExecutionContract):
+            topology_instruction = _formal_prospective_topology_instruction(
+                plan_contract,
+                revision=False,
+            )
+        else:
+            topology_instruction = (
+                "Define exactly the two top-level functions fit_equations(payload) and "
+                "predict_derivative(payload)."
+            )
         messages = [
             {
                 "role": "system",
@@ -578,9 +1455,9 @@ def generate_official_candidates(
                     "method for real noisy measured data. Return exactly one JSON "
                     "object matching the supplied schema. Encode exact standalone "
                     "Python as the JSON array source_lines, one array element per "
-                    "physical line, with no newline escapes anywhere. Define exactly "
-                    "the two top-level functions fit_equations(payload) and "
-                    "predict_derivative(payload). Obey static_source_contract in the "
+                    "physical line, with no newline escapes anywhere. "
+                    + topology_instruction
+                    + " Obey static_source_contract in the "
                     "supplied interface_contract: only allowlisted imports, no "
                     "classes, no lambdas, no async, no while loops, no attribute "
                     "mutation, no print, no dunder access, no dynamic execution, and "
@@ -599,89 +1476,41 @@ def generate_official_candidates(
                 ),
             },
         ]
-        # Bounded local-conformance repair. Task `268.5` enables bounded reasoning on
-        # every autonomous call, which downgrades transport-level `json_schema` to
-        # `json_object` on DashScope-shaped providers, so the PROVIDER no longer
-        # enforces the schema and strict conformance is local. On a 12k-token source
-        # payload the model can drop a small required metadata field. Re-ask once per
-        # attempt with the exact validation errors, exactly as the autonomous
-        # portfolio and candidate paths already do. The deterministic schema stays the
-        # final authority: a repair prompt may help the model comply, it can never
-        # weaken the contract. Recorded as `P-20260804-079`.
-        response: ScientificContractSourceResponse | None = None
-        accepted_interaction: AutonomousModelInteraction | None = None
-        attempt_messages = list(messages)
-        errors: list[str] = []
-        for attempt in range(1, _GENERATION_CONFORMANCE_ATTEMPTS + 1):
-            result, interaction = _call_and_record(
-                completion=completion,
-                messages=attempt_messages,
-                config_path=config_path,
-                env_path=env_path,
-                timeout_seconds=provider_timeout_seconds,
-                max_tokens=12_000,
-                response_schema=_SOURCE_RESPONSE_SCHEMA,
-                response_schema_name="scientific_contract_source",
-                interaction_id=(
-                    interaction_id if attempt == 1 else f"{interaction_id}-repair{attempt}"
-                ),
-                stage="scientific_contract_implementation",
-                candidate_id=candidate_id,
-                output_root=output_root,
-                now=now,
-            )
-            try:
-                response = ScientificContractSourceResponse.model_validate(
-                    result.parsed_json
-                )
-                accepted_interaction = interaction
-                break
-            except ValidationError as exc:
-                errors = [_format_field_error(item) for item in exc.errors()]
-                if attempt == _GENERATION_CONFORMANCE_ATTEMPTS:
-                    break
-                attempt_messages = [
-                    *messages,
-                    {
-                        "role": "user",
-                        "content": (
-                            "Your previous json object failed strict local validation "
-                            "with these errors: "
-                            + "; ".join(errors)
-                            + ". Return the corrected json object with every required "
-                            "field present. Change only what the errors name; keep "
-                            "your method and your source_lines otherwise identical."
-                        ),
-                    },
-                ]
-        if response is None or accepted_interaction is None:
-            raise OfficialDevelopmentSearchError(
-                f"{candidate_id} could not produce a schema-conformant response in "
-                f"{_GENERATION_CONFORMANCE_ATTEMPTS} attempts: {'; '.join(errors)}"
-            )
+        (
+            response,
+            accepted_interaction,
+            review,
+            legacy_alignment,
+            prospective_alignment,
+            alignment_findings,
+        ) = _author_source_with_bounded_repairs(
+            completion=completion,
+            messages=messages,
+            config_path=config_path,
+            env_path=env_path,
+            provider_timeout_seconds=provider_timeout_seconds,
+            base_interaction_id=interaction_id,
+            first_stage="scientific_contract_implementation",
+            candidate_id=candidate_id,
+            output_root=output_root,
+            now=now,
+            plan_contract=plan_contract,
+            failure_label="response",
+        )
         source_text = response.source_text
         source_path = output_root / "candidates" / candidate_id / "candidate.py"
         source_path.parent.mkdir(parents=True, exist_ok=True)
         with source_path.open("w", encoding="utf-8", newline="") as handle:
             handle.write(source_text)
-        review = review_scientific_contract_source(source_text)
-        alignment = (
-            audit_candidate_plan_alignment(
-                candidate_id=candidate_id,
-                source_text=source_text,
-                contract=plan_contract,
-            )
-            if plan_contract is not None
-            else None
-        )
         findings = [
             f"{item.code}: {item.message[:160]}" for item in review.findings
         ]
-        if alignment is not None and not alignment.passed:
-            findings.append(
-                "PLAN_METHOD_NOT_IMPLEMENTED: reachable source is missing approved "
-                f"method tokens {list(alignment.missing_method_tokens)}"
-            )
+        findings.extend(alignment_findings)
+        alignment_passed = (
+            (legacy_alignment is None or legacy_alignment.passed)
+            and (prospective_alignment is None or prospective_alignment.passed)
+            and not alignment_findings
+        )
         records.append(
             OfficialCandidateRecord(
                 candidate_id=candidate_id,
@@ -691,7 +1520,7 @@ def generate_official_candidates(
                 source_relative_path=source_path.relative_to(output_root).as_posix(),
                 source_sha256=review.source_sha256,
                 static_review_approved=(
-                    review.approved and (alignment is None or alignment.passed)
+                    review.approved and alignment_passed
                 ),
                 static_review_findings=tuple(findings),
                 implementation_summary=response.implementation_summary,
@@ -701,7 +1530,8 @@ def generate_official_candidates(
                 plan_contract_hash=(
                     plan_contract.contract_hash if plan_contract is not None else None
                 ),
-                plan_alignment=alignment,
+                plan_alignment=legacy_alignment,
+                prospective_plan_alignment=prospective_alignment,
             )
         )
     write_json_model(
@@ -965,18 +1795,25 @@ def execute_official_stage(
     if research_plan is not None:
         from autoresearch.research.plan_confirmation import require_approved_plan
 
+        expected_contract = _compile_requested_plan_execution_contract(research_plan)
+        if expected_contract is None:  # pragma: no cover - narrowed by the branch
+            raise OfficialDevelopmentSearchError("research plan contract is missing")
+        approval_plan = _approval_plan_for_contract(
+            research_plan=research_plan,
+            contract=expected_contract,
+        )
         # Raises unless a human recorded an approval against this exact plan.
         bound_plan_hash = require_approved_plan(
-            plan=research_plan, decision=plan_decision
+            plan=approval_plan, decision=plan_decision
         )
-        expected_contract = compile_plan_execution_contract(research_plan)
-        retained_contract = load_plan_execution_contract(output_root)
-        if retained_contract != expected_contract:
-            raise OfficialDevelopmentSearchError(
-                "retained plan execution contract differs from the approved plan"
-            )
-        require_candidate_plan_alignment(
-            candidates=candidates, contract=retained_contract
+        retained_contract = _load_matching_plan_execution_contract(
+            output_root=output_root,
+            expected=expected_contract,
+        )
+        _require_candidates_match_contract(
+            candidates=candidates,
+            contract=retained_contract,
+            output_root=output_root,
         )
         bound_contract_hash = retained_contract.contract_hash
 
@@ -1226,14 +2063,14 @@ def revise_official_candidates(
 
     now = clock or (lambda: datetime.now(timezone.utc))
     output_root = Path(output_dir).resolve()
-    plan_contract = (
-        compile_plan_execution_contract(research_plan)
-        if research_plan is not None
-        else None
-    )
+    plan_contract = _compile_requested_plan_execution_contract(research_plan)
     if plan_contract is not None:
         write_plan_execution_contract(contract=plan_contract, output_dir=output_root)
-        require_candidate_plan_alignment(candidates=candidates, contract=plan_contract)
+        _require_candidates_match_contract(
+            candidates=candidates,
+            contract=plan_contract,
+            output_root=output_root,
+        )
     brief = _generation_brief(
         panel, budget, plan_execution_contract=plan_contract
     )
@@ -1251,6 +2088,22 @@ def revise_official_candidates(
         )
         revised_id = f"{record.candidate_id}-r2"
         interaction_id = f"official-revise-{record.candidate_id}"
+        _register_candidate_authoring_attempt(
+            output_root=output_root,
+            stage="revise-gen2",
+            generation=2,
+            candidate_id=revised_id,
+            base_interaction_id=interaction_id,
+            parent_source_sha256=record.source_sha256,
+            now=now,
+        )
+        if isinstance(plan_contract, ProspectivePlanExecutionContract):
+            topology_instruction = _formal_prospective_topology_instruction(
+                plan_contract,
+                revision=True,
+            )
+        else:
+            topology_instruction = "Keep the same two top-level functions."
         messages = [
             {
                 "role": "system",
@@ -1260,8 +2113,10 @@ def revise_official_candidates(
                     "its behaviour. Return exactly one JSON object matching the "
                     "supplied schema, with the complete revised program as "
                     "source_lines, one array element per physical line and no newline "
-                    "escapes. Keep the same two top-level functions and obey the same "
-                    "static_source_contract. You are NOT told any baseline score or "
+                    "escapes. "
+                    + topology_instruction
+                    + " Obey the same static_source_contract. You are NOT told any "
+                    "baseline score or "
                     "any other candidate's result, so do not try to guess them; "
                     "improve your method on its own merits."
                 ),
@@ -1287,92 +2142,41 @@ def revise_official_candidates(
                 ),
             },
         ]
-        # Bounded local-conformance repair, identical to the generate path.
-        # `P-20260807-091`: revision validated the response EXACTLY ONCE while
-        # generation retried with the validation errors. Same provider, same 12k-token
-        # source payload, so the same `P-20260804-079` dropped-metadata-field failure
-        # applies to both. A single omitted `response_type` therefore aborted the whole
-        # revise stage and stranded a lineage mid-run with its generation budget spent.
-        # The deterministic schema stays the final authority: a repair prompt can help
-        # the model comply, it can never weaken the contract.
-        response_obj: ScientificContractSourceResponse | None = None
-        accepted_interaction: AutonomousModelInteraction | None = None
-        attempt_messages = list(messages)
-        revise_errors: list[str] = []
-        for attempt in range(1, _GENERATION_CONFORMANCE_ATTEMPTS + 1):
-            result, interaction = _call_and_record(
-                completion=completion,
-                messages=attempt_messages,
-                config_path=config_path,
-                env_path=env_path,
-                timeout_seconds=provider_timeout_seconds,
-                max_tokens=12_000,
-                response_schema=_SOURCE_RESPONSE_SCHEMA,
-                response_schema_name="scientific_contract_source",
-                interaction_id=(
-                    interaction_id
-                    if attempt == 1
-                    else f"{interaction_id}-repair{attempt}"
-                ),
-                stage="scientific_contract_repair",
-                candidate_id=revised_id,
-                output_root=output_root,
-                now=now,
-            )
-            try:
-                response_obj = ScientificContractSourceResponse.model_validate(
-                    result.parsed_json
-                )
-                accepted_interaction = interaction
-                break
-            except ValidationError as exc:
-                revise_errors = [_format_field_error(item) for item in exc.errors()]
-                if attempt == _GENERATION_CONFORMANCE_ATTEMPTS:
-                    break
-                attempt_messages = [
-                    *messages,
-                    {
-                        "role": "user",
-                        "content": (
-                            "Your previous json object failed strict local validation "
-                            "with these errors: "
-                            + "; ".join(revise_errors)
-                            + ". Return the corrected json object with every required "
-                            "field present. Change only what the errors name; keep "
-                            "your method and your source_lines otherwise identical."
-                        ),
-                    },
-                ]
-        if response_obj is None or accepted_interaction is None:
-            raise OfficialDevelopmentSearchError(
-                f"{revised_id} could not produce a schema-conformant revision in "
-                f"{_GENERATION_CONFORMANCE_ATTEMPTS} attempts: "
-                f"{'; '.join(revise_errors)}"
-            )
-        response = response_obj
+        (
+            response,
+            accepted_interaction,
+            review,
+            legacy_alignment,
+            prospective_alignment,
+            alignment_findings,
+        ) = _author_source_with_bounded_repairs(
+            completion=completion,
+            messages=messages,
+            config_path=config_path,
+            env_path=env_path,
+            provider_timeout_seconds=provider_timeout_seconds,
+            base_interaction_id=interaction_id,
+            first_stage="scientific_contract_repair",
+            candidate_id=revised_id,
+            output_root=output_root,
+            now=now,
+            plan_contract=plan_contract,
+            failure_label="revision",
+        )
         source_text = response.source_text
         source_path = output_root / "candidates" / revised_id / "candidate.py"
         source_path.parent.mkdir(parents=True, exist_ok=True)
         with source_path.open("w", encoding="utf-8", newline="") as handle:
             handle.write(source_text)
-        review = review_scientific_contract_source(source_text)
-        alignment = (
-            audit_candidate_plan_alignment(
-                candidate_id=revised_id,
-                source_text=source_text,
-                contract=plan_contract,
-            )
-            if plan_contract is not None
-            else None
-        )
         findings = [
             f"{item.code}: {item.message[:160]}" for item in review.findings
         ]
-        if alignment is not None and not alignment.passed:
-            findings.append(
-                "PLAN_METHOD_NOT_IMPLEMENTED: reachable source is missing approved "
-                f"method tokens {list(alignment.missing_method_tokens)}"
-            )
+        findings.extend(alignment_findings)
+        alignment_passed = (
+            (legacy_alignment is None or legacy_alignment.passed)
+            and (prospective_alignment is None or prospective_alignment.passed)
+            and not alignment_findings
+        )
         revised.append(
             OfficialCandidateRecord(
                 candidate_id=revised_id,
@@ -1382,7 +2186,7 @@ def revise_official_candidates(
                 source_relative_path=source_path.relative_to(output_root).as_posix(),
                 source_sha256=review.source_sha256,
                 static_review_approved=(
-                    review.approved and (alignment is None or alignment.passed)
+                    review.approved and alignment_passed
                 ),
                 static_review_findings=tuple(findings),
                 implementation_summary=response.implementation_summary,
@@ -1392,7 +2196,8 @@ def revise_official_candidates(
                 plan_contract_hash=(
                     plan_contract.contract_hash if plan_contract is not None else None
                 ),
-                plan_alignment=alignment,
+                plan_alignment=legacy_alignment,
+                prospective_plan_alignment=prospective_alignment,
             )
         )
     write_json_model(

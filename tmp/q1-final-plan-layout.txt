@@ -1,0 +1,239 @@
+                     科学假设与研究计划
+
+
+有限尺度下素数间隙序列高阶顺序结构的信息
+        论检验计划
+                     科学假设与研究计划
+
+
+摘要（Paper Abstract）
+
+    本研究计划旨在通过计算数论与信息论方法，检验素数间隙序列在有限整数区
+间内是否存在超越 wheel-210 同余约束和边际分布的局部顺序结构。我们将计算连
+续素数有序间隙的五阶排列熵，并与全局置换、局部块置换、残基路径条件置换及
+wheel-210 四类零模型进行系统比较。探索性预实验在五个固定基准区间上显示，真实
+序列的排列熵（约 0.9294）显著低于全局置换（约 0.9544）和局部块置换（约 0.9539）
+零模型，证实了序列存在强烈的非随机顺序结构。更关键的是，在控制了一阶同余转
+移的残基路径条件置换零模型（约 0.9305）和 wheel-210 零模型（约 0.9316）下，真
+                                ，且经验 p 值达到下界 0.005。然而，
+实序列的熵值依然偏低（delta 约-0.001 至-0.002）
+该差异的绝对幅度极小，且标准化效应量在控制条件后大幅下降，表明绝大部分顺序
+结构已被同余规则解释，残余差异可能源于 Hardy-Littlewood k-tuple 猜想中的高阶
+联合相关性或有限样本偏差。本研究不涉及开放猜想的证明，所有结论将严格限定于
+预注册的有限数据范围与指标定义之内。
+
+
+1   待研究问题（Problem Statement）
+
+    素数在宏观上服从素数定理描述的渐近密度分布，但在有限尺度下其局部间隙序
+列是否包含超越经典同余约束（如 wheel-210）和边际分布的高阶顺序结构，目前缺
+乏基于信息论的量化实证检验。
+
+
+2   解决思路（Rationale）
+
+    主假设：在有限整数区间内，连续素数间隙的局部顺序结构存在超越基础同余筛
+除规则（wheel-210）和简单残基路径条件的微弱高阶约束，表现为其五阶排列熵在严
+格控制边际分布与一阶同余转移后，仍显著低于相应的条件置换零模型。
+    现有文献 [2] 证实了素数间隙统计矩与 Hardy-Littlewood k-tuple 猜想的高度一
+致性，但这主要验证了边际分布的正确性；若素数的“特殊性”仅止于此，则其间隙
+序列在控制同余类后应表现为伪随机。通过引入排列熵作为顺序敏感探针，并构建多
+层级零模型，可以在不依赖开放数学猜想的前提下，检验是否存在尚未被解析的局部
+路径依赖或算术结构残留，从而为“素数为何特别”提供可证伪的计算数论证据。
+
+
+
+                            1
+                               科学假设与研究计划
+
+
+3    必要的技术手段（Technical Details）
+
+      本研究将使用确定性筛法生成连续素数序列，提取有序间隙并计算含并列处理的
+                                                    。核心分析将
+五阶归一化排列熵（tie_aware_normalized_permutation_entropy_m5）
+在五个不相交的有限整数区间上进行，以评估指标的稳定性。关键在于构建四个层级
+                            、局部块置换（local_block_permutation）
+的零模型：全局置换（global_permutation）                             、
+残基路径条件置换（residue_path_conditioned_permutation）以及 wheel-210 算术基
+线。通过比较真实序列与各零模型的排列熵差异，分离出由密度衰减、局部波动、同
+余约束和潜在高阶结构分别贡献的信息量。所有计算均限定在普通工作站可承载的数
+值范围内，避免将有限计算外推为对黎曼猜想等开放问题的证明。
+
+
+4    数据集（Datasets）
+
+      Source   consecutive_integer_primes
+
+      Target   ordered_consecutive_prime_gaps
+
+
+5    方法论（Methods）
+
+      采用 prime-gap-information-theory-v1 适配器流程：首先用确定性筛法生成素数
+间隙序列；其次计算含并列处理的五阶归一化排列熵作为主要指标；然后依次生成四
+种零模型样本（全局置换、局部块置换、残基路径条件置换、wheel-210）并计算对应
+熵值；最后在不相交区间上重复实验以评估稳定性，并使用分块 Bootstrap 估计不确
+定性。关键在于区分不同零模型的解释对象：全局置换检验整体非随机性，局部块置
+换检验局部波动，残基路径条件置换检验一阶同余转移之外的顺序结构，wheel-210 检
+验超越基础可除性规则的约束。
+
+
+6    实验设计（Experiments）
+
+    1. 第 一 步： 在 预 注 册 的 五 个 固 定 基 准 区 间 上 运 行 确 定 性 筛 法， 导 出 连
+      续 素 数 间 隙 序 列 并 用 公 开 数 据 库 校 验。 第 二 步： 计 算 真 实 序 列 的
+      tie_aware_normalized_permutation_entropy_m5。 第 三 步： 对 同 一 区 间 分
+                                              ，
+      别生成四类零模型样本（全局置换、局部块置换、残基路径条件置换、wheel-210）
+      每类至少 199 次独立实现，计算熵值分布。第四步：比较真实熵值与各零模型分
+      布的差异，记录效应方向、raw 经验 p 值与 Holm 校正值。第五步：将控制同余
+      结构后的残差与 Hardy-Littlewood k-tuple 猜想的高阶联合概率预测进行比对，
+      检验残差是否可被经典启发式模型解释。
+
+
+
+                                        2
+                              科学假设与研究计划
+
+
+6.1    基线对比（Baselines）
+                        local_block_permutation；
+    • global_permutation；                      residue_path_conditioned_permutation；
+      wheel_210
+
+
+6.2    评估指标（Metrics）
+    • tie_aware_normalized_permutation_entropy_m5
+
+
+7     实验结果（Results）
+
+      探索性预实验在五个固定基准区间上完成。原始观察：真实素数间隙的五阶排
+列熵均值约为 0.9294。统计解释：与全局置换零模型（均值约 0.9544）相比，delta
+为-0.0251，raw 经验 p 值为 0.005，Holm 校正 p 值为 0.02；与局部块置换零模型（均
+值约 0.9539）相比，delta 为-0.0246，raw 经验 p 值为 0.005，Holm 校正 p 值为 0.02；
+与残基路径条件置换零模型（均值约 0.9305）相比，delta 为-0.0012，raw 经验 p 值
+为 0.005，Holm 校正 p 值为 0.02；与 wheel-210 零模型（均值约 0.9316）相比，delta
+为-0.0023，raw 经验 p 值为 0.005，Holm 校正 p 值为 0.02。替代解释：虽然所有四个
+零模型的比较均显示真实序列熵值更低，但绝对差异在控制同余结构后急剧缩小（从
+约 0.025 降至约 0.001），且标准化效应量从-85.8 降至-7.5 和-6.0，表明绝大部分顺序
+结构已被同余规则解释。残余差异可能源于 Hardy-Littlewood k-tuple 猜想中的高阶
+联合相关性或有限样本偏差，而非全新的数论机制。
+      预 实 验 局 限： 本 研 究 存 在 以 下 局 限：1） 五 个 固 定 基 准 区 间 是 预 先
+选定的计算             benchmark， 不 是 从 数 轴 总 体 随 机 抽 取 的 自 然 样 本， 因 此
+fixed_interval_resampling_delta_ci95 仅 为 n=5 固 定 区 间 的 描 述 性 重 采 样 范 围，
+不是总体置信区间；2）standardized_effect 是用各模拟零模型 draw 分布的标准差
+标准化的 simulation-standardized diagnostic，不是 population effect size，不得用于
+总体效应外推；3）residue_path_conditioned_permutation 按局部 segment 及相邻
+素数 mod30 残基路径分组并在条件组内打乱 gap 顺序，它不是 mod210 模型，与
+wheel_210 回答不同问题；4）wheel_210 从不被 2、3、5、7 整除的允许候选中构造
+序列并保持局部点数与区间端点，它也不是完整的素数生成零模型；5）预实验显示
+的微小残差（绝对熵差约 0.001）可能源于 Hardy-Littlewood k-tuple 猜想中的高阶联
+合相关性或有限样本偏差，而非全新的数论机制；6）所有结论严格限定于预注册的
+有限数据范围与指标定义之内，不能证明或否定黎曼猜想、Cramér 猜想等开放问题。
+
+
+
+
+                                       3
+                                     科学假设与研究计划
+
+
+8   参考论文（References）
+
+71 record_id=direction-paper-5fd72f54dee56687 题名：Empirical verification of the
+    even Goldbach conjecture and computation of prime gaps up to 4�10¹� 作者：Tomás
+    Oliveira e Silva、Siegfried Herzog、Silvio Pardi 日期：2013-11-18 期刊或会议：
+    Mathematics of Computation 正式发表 DOI：10.1090/s0025-5718-2013-02787-1
+    仓储 DOI：未提供发表状态：published（来源：openalex；截至：2026-08-13）
+    URL：https://doi.org/10.1090/s0025-5718-2013-02787-1 论文来源字段：openalex
+    被引次数：170（来源：openalex；截至：2026-08-13）期刊影响因子：未知（当
+    前检索 API 未提供可核验数值，不按刊名推断）完整摘要：This paper describes
+    how the even Goldbach conjecture was confirmed to be true for all even numbers
+    not larger than <inline-formula content-type=”math/mathml”> <mml:math
+    xmlns:mml=”http://www.w3.org/1998/Math/MathML” alttext=”4 dot 10 Su-
+    perscript   18”>        <mml:semantics>       <mml:mrow>   <mml:mn>4</mml:mn>
+    <mml:mo>          �      </mml:mo>       <mml:msup>        <mml:mn>10</mml:mn>
+    <mml:mrow              class=”MJX-TeXAtom-ORD”>            <mml:mn>18</mml:mn>
+    </mml:mrow>               </mml:msup>           </mml:mrow>        <mml:annotation
+    encoding=”application/x-tex”>4\cdot                      10^{18}</mml:annotation>
+    </mml:semantics> </mml:math> </inline-formula> .                   Using a result
+    of Ramaré and Saouter, it follows that the odd Goldbach conjecture is
+    true   up   to        <inline-formula   content-type=”math/mathml”>     <mml:math
+    xmlns:mml=”http://www.w3.org/1998/Math/MathML” alttext=”8.37 dot 10
+    Superscript 26”> <mml:semantics> <mml:mrow> <mml:mn>8.37</mml:mn>
+    <mml:mo> � </mml:mo> <mml:msup> <mml:mn>10</mml:mn> <mml:mrow
+    class=”MJX-TeXAtom-ORD”>                <mml:mn>26</mml:mn>          </mml:mrow>
+    </mml:msup>            </mml:mrow>      <mml:annotation    encoding=”application/x-
+    tex”>8.37\cdot 10^{26}</mml:annotation> </mml:semantics> </mml:math>
+    </inline-formula> .         The empirical data collected during this extensive ver-
+    ification effort, namely, counts and first occurrences of so-called minimal
+    Goldbach partitions with a given smallest prime and of gaps between con-
+    secutive primes with a given even gap, are used to test several conjectured
+    formulas related to prime numbers.             In particular, the counts of minimal
+    Goldbach partitions and of prime gaps are in excellent accord with the predic-
+    tions made using the prime <inline-formula content-type=”math/mathml”>
+    <mml:math             xmlns:mml=”http://www.w3.org/1998/Math/MathML”           alt-
+    text=”k”>        <mml:semantics>         <mml:mi>k</mml:mi>        <mml:annotation
+
+
+                                              4
+                                   科学假设与研究计划
+
+
+  encoding=”application/x-tex”>k</mml:annotation>                         </mml:semantics>
+  </mml:math> </inline-formula> -tuple conjecture of Hardy and Littlewood
+  (with an error that appears to be <inline-formula content-type=”math/mathml”>
+  <mml:math           xmlns:mml=”http://www.w3.org/1998/Math/MathML”                       alt-
+  text=”upper O left-parenthesis StartRoot t log log t EndRoot right-parenthesis”>
+  <mml:semantics>            <mml:mrow>           <mml:mi>O</mml:mi>                  <mml:mo
+  stretchy=”false”>(</mml:mo>                <mml:msqrt>               <mml:mi>t</mml:mi>
+  <mml:mi>log</mml:mi> <mml:mo> </mml:mo> <mml:mi>log</mml:mi>
+  <mml:mo>                  </mml:mo>        <mml:mi>t</mml:mi>                </mml:msqrt>
+  <mml:mo          stretchy=”false”>)</mml:mo>           </mml:mrow>         <mml:annotation
+  encoding=”application/x-tex”>O(\sqrt                {t\log   \log    t})</mml:annotation>
+  </mml:semantics>               </mml:math>            </inline-formula>        ,       where
+  <inline-formula                 content-type=”math/mathml”>                        <mml:math
+  xmlns:mml=”http://www.w3.org/1998/Math/MathML”                                alttext=”t”>
+  <mml:semantics>                   <mml:mi>t</mml:mi>                       <mml:annotation
+  encoding=”application/x-tex”>t</mml:annotation>                         </mml:semantics>
+  </mml:math> </inline-formula> is the true value of the quantity being
+  estimated). Prime gap moments also show excellent agreement with a general-
+  ization of a conjecture made in <inline-formula content-type=”math/mathml”>
+  <mml:math           xmlns:mml=”http://www.w3.org/1998/Math/MathML”                       alt-
+  text=”1982”> <mml:semantics> <mml:mn>1982</mml:mn> <mml:annotation
+  encoding=”application/x-tex”>1982</mml:annotation>                      </mml:semantics>
+  </mml:math>           </inline-formula>        by     Heath-Brown.           真实检索谱
+  系：openalex|(prime           counting    function       OR    pi(x)    OR     Riemann     zeta
+  OR       prime     gaps    OR    twin    primes)       AND     (asymptotic    OR      density
+  OR         pattern)|2026-08-12T18:14:59.712622+00:00；openalex|(prime                    num-
+  ber theorem OR Riemann hypothesis OR Goldbach conjecture) AND
+  (proof     OR       evidence     OR     verification)|2026-08-12T18:14:59.712622+00:00
+  record_sha256=afe37dced5ed1a9a865323ea5112044d7e3f118b160b77463c167efc88c41955
+
+34 record_id=direction-paper-38f653eb6b1d0e4f 题名：Prime Numbers and Com-
+  puter Methods for Factorization 作者：Hans Riesel 日期：1985-01-01 期刊或
+  会 议：Birkhäuser Boston eBooks 正 式 发 表 DOI：10.1007/978-1-4757-1089-2
+  仓储 DOI：未提供发表状态：published（来源：openalex；截至：2026-08-13）
+  URL：https://doi.org/10.1007/978-1-4757-1089-2 论 文 来 源 字 段：openalex 被
+  引次数：390（来源：openalex；截至：2026-08-13）期刊影响因子：未知（当
+
+
+                                             5
+                          科学假设与研究计划
+
+
+前检索 API 未提供可核验数值，不按刊名推断）完整摘要：In this book the
+author treats four fundamental and apparently simple problems. They are: the
+number of primes below a given limit, the ap proximate number of primes, the
+recognition of prime numbers 真 实 检 索 谱 系：openalex|(prime numbers OR
+primes) AND (special OR unique OR fundamental OR distribution OR prop-
+erties) AND (number theory OR arithmetic)|2026-08-12T18:14:59.712622+00:00
+record_sha256=22e821e899b80b0f3d2ba733be2089b89c32009fb462288d71d8b74f1590d343
+
+
+
+
+                                   6
+

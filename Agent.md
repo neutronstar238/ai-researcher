@@ -13965,6 +13965,33 @@ This file defines the project development standard for coding agents and records
 
 ---
 
+## 2026-08-13 17:42:00 +08:00 - Codex 子 Agent `/root/merged_literature_router` - 两阶段文献合并与 Skill 路由 v3
+
+- 用户请求/活动任务：把“宽题原始检索核对→证据驱动聚焦方向→围绕该方向查最近工作/方法/基线/反证→再选择 Skills”的质量要求落成严格的合并证据边界；系统需保留两次检索，不能把合并目录冒充单次检索，也不能由 Skill 选择模型自行挑文献或截摘要。本子任务不改主 loop，由并行集成任务接线。
+- 使用技能：完整读取 `literature-review`，采用多阶段查询、检索参数/来源保留、DOI/题名去重、反证搜索和主题综合原则；完整读取 `scholar-evaluation`，采用问题清晰度、证据相关性、可证伪性、方法/基线、替代解释和结果—主张边界。技能中按被引、期刊和作者声望的建议只作软质量信号，未转为 merged 层硬门。
+- 变更文件：新增 `src/autoresearch/competition/contest_direction_merged_literature.py`、`tests/unit/competition/test_contest_direction_merged_literature.py`；扩展 `src/autoresearch/competition/contest_direct_skill_router.py`；更新 `Problem.md` 的 `P-20260813-150`；追加本记录。未修改主 loop、API、renderer、reference policy、历史 Q1 制品或外部系统。
+- merged 合同：`contest-direction-merged-literature-v1` 独立绑定 broad artifact/catalog、focus artifact/selected focus、targeted binding/artifact/catalog 和 merged catalog/hash；逐个 work 保留 broad/targeted origin record/hash、citation/status provenance，以及 source/query/time/fetch/hash。双方均有规范 DOI 时只按 DOI 交集归并，DOI 不交明确 non-match；缺 DOI 时才允许 Unicode-safe 题名相似度且要求作者重叠。摘要取最长；DOI 只在一致时补空；被引优先从带来源/日期记录中取最大；发表状态按 retracted/withdrawn 优先的最保守规则合并；unknown citation 仍为 `None`，撤稿/撤回不在 merge 层删除。
+- planning 投影：merged artifact 暴露 `objective_retrieval_catalog()` 与 `objective_literature_catalog()`，供现有相关性优先 5–10 条 selector 复用。machine mapping 有完整 metadata、source/as-of、`stage:source`、aware retrieval time 与 source phases；human context 保留 origin artifact/catalog/record/hash 与 query/fetch/hash，不抹平两次检索。
+- Skill router：`ContestDirectLiteratureEvidenceContext.from_two_stage_artifact(merged, record_ids=...)` 只接受程序显式选择的已知非空 ID；逐条完整投影、继续 14 KiB UTF-8 总预算，超限要求减少完整记录而非截摘要。routing schema v3 独立绑定 broad/focus/targeted/merged 九项哈希及 selected record/subset/context hashes；旧 `literature_retrieval_artifact_hash` 必须为空，避免冒充单检索。v1 无文献和 v2 单检索的消息/字段/hash 兼容测试继续通过；模型仍只看到 Skill metadata，不见 Skill 正文。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_merged_literature.py tests/unit/competition/test_contest_direct_skill_router.py tests/unit/competition/test_contest_direction_focus_literature.py` → `23 passed`；Ruff 检查两个生产模块和新增测试全绿；Mypy 两个生产模块 `Success: no issues found`。反例覆盖 DOI 冲突同题名不并、无 DOI 同题名但作者不同不并、中文题名身份、unknown/retracted 保留、跨阶段来源与 fetch hash、最长摘要和 citation/status provenance、自洽但无法从四上游重推导的伪 merged 拒绝，以及 v3 不冒充 v2。
+- 问题新增或更新：扩展 `P-20260813-150`，当前 core + merged/router resolved，production integration/live smoke pending。没有联网或真实模型调用，因此未冒充已完成实际两阶段检索。
+- Git：共享工作树含大量先前与并行 Agent 的 untracked/modified 文件；为避免错误 stage/commit 非本子任务内容，本 Agent 未 staging、未 commit。
+- 后续：主 loop 需复用同一 rate-limited Arxiv/OpenAlex searcher 实例，顺序写入 broad→focus→targeted→merged；用 merged planning projection 选 5–10 条与 14 KiB Skill subset；再让 Skill、假设、真实预实验、独立评审和自包含 plan 消费同一 selected focus/merged evidence，最后跑一次真实 Q1 fresh smoke。
+
+---
+
+## 2026-08-13 18:03:00 +08:00 - Codex 子 Agent `/root/merged_literature_router` - capability-bound merged resume 修复
+
+- 用户请求/活动任务：修复 core focus 新增 `executable_adapter_capabilities` 后的真实 resume 阻塞；merged loader 必须用完全相同的能力重验 focus，且 merged planning source 投影不能因阶段前缀让 arXiv finalist 状态复核失效。只改 merged sibling 与测试，不改主 loop。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_merged_literature.py`、`tests/unit/competition/test_contest_direction_merged_literature.py` 和本记录。
+- 修复：`load_contest_direction_merged_literature` 新增兼容默认空值的 `executable_adapter_capabilities: Sequence[Mapping[str, Any]] = ()`，逐字透传给 `load_contest_direction_focus_selection`；merged 自身无需新增重复字段，因为 focus artifact/hash 已经绑定规范化能力及其 hash。缺失或不同能力仍按预期拒绝，传入相同能力后可完整重载并重推导 merged artifact。
+- source 投影：`objective_retrieval_catalog()` 的 `retrieved_from`/`paper_source` 恢复为普通 source 名列表（例如 `OpenAlex,ArXiv`），使既有 `_retrieval_sources` 能识别 `arxiv` 并触发 finalist verifier；阶段信息另存 `retrieval_stage_sources`（例如 `targeted_direction:OpenAlex`），没有丢失 broad/targeted 来源边界。
+- 验证：merged/router/focus 联合 `26 passed`；新增用例证明 capability-bound focus 在未传能力时拒绝、传相同能力时恢复，以及跨阶段 `OpenAlex,ArXiv` 投影被既有 source parser 识别为 `{"openalex", "arxiv"}`。Ruff 全绿，Mypy 两个生产模块全绿，py_compile 通过。
+- 问题：没有新增问题；这是 `P-20260813-150` 主 loop 接线期间发现并关闭的 resume seam。未联网或调用模型。
+- Git：共享 dirty/untracked worktree，未 staging、未 commit，避免混入并行任务。
+
+---
+
 ## 2026-08-08 22:12:40 +08:00 - Codex - Task 270.1 outcome numeric-semantics gate
 
 - User request: 以最快速度、最高质量完成榜题提交前开发；当前独立子任务是用最严标准关闭已发现的结果语义完整性缺口。
@@ -14127,3 +14154,2938 @@ This file defines the project development standard for coding agents and records
   - 立即执行新的系统自产中文、计划对齐真实谱系；不得把 `task2700` 的 338 个单元当作其积分贝叶斯计划的实验结果，也不得手改科研散文以满足中文门。
   - 新谱系只有在精确作者回执、计划合同、候选/单元来源、结果语义、创新审计、独立重执行、最终报告和无排除质量门全部齐备后，才可进入人工计划提交复核。
   - `.understand-anything/` 仍是上轮 skill 预检产生的未跟踪文件，未纳入本任务；完整仓库图扫描继续等待用户按该 skill 的强制规则回复 `确认扫描`。
+
+---
+
+## 2026-08-09 05:21:57 +08:00 - Codex - Task 270.5 系统自产中文预注册链路（真实验收未通过）
+
+- 用户请求：以最快速度、最高质量完成提交前开发；研究计划及全部科研内容必须为中文并由系统自己生成，不能由实现代理直接写入题目、假设、机制、方法或结果；以最严标准判断是否真正能独立产生可发表成果。
+- 变更文件：
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/model_authorship.py`
+  - `src/autoresearch/competition/official_lineage.py`
+  - `src/autoresearch/competition/plan_execution_contract.py`
+  - `src/autoresearch/competition/plan_literature_survey.py`
+  - `src/autoresearch/competition/system_authored_plan.py`
+  - `src/autoresearch/competition/system_plan_ideation.py`（新增）
+  - `src/autoresearch/competition/system_plan_review.py`（新增）
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/competition/test_bilingual_plan_graders.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/unit/competition/test_official_lineage.py`
+  - `tests/unit/competition/test_plan_execution_contract.py`
+  - `tests/unit/competition/test_plan_literature_survey.py`
+  - `tests/unit/competition/test_system_authored_plan.py`
+  - `tests/unit/competition/test_system_plan_ideation.py`（新增）
+  - `tests/unit/competition/test_system_plan_review.py`（新增）
+  - `tests/unit/research/test_plans.py`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 新增单一正式 CLI `competition mdbench lineage-preregister-plan`：先冻结全新零消耗谱系、基线政策和阶段宽度，再从不可变原始证据启动检索与计划，不再使用固定英文计划或未审查 scratch orchestration。审批前执行保持拒绝。
+  - 文献链改为模型自产查询、真实 ArXiv/OpenAlex 目录、模型中文相关性选择和精确无密钥作者回执；计划只能引用实际检索记录。编排器不提供人工题目、假设、机制、问题陈述、方法、预期结果或 framing。
+  - 新增五方向发散竞赛：五种创造视角必须产生不同机制、可反驳假设、决定性实验、近邻对照、失败诊断与可达方法 token；独立初审使用五项不可加权硬门并允许全部拒绝。所有方向与评审科研散文逐字段中文校验，原始论文题名/标识符例外。
+  - 真实 `v11` 暴露方向初审与完整计划审查错配后，新增第二个独立“入选方向反方审查”。它只有否决权，专门拒绝标准量改名、无效负对照、不可识别机制、任意阈值、统计/预算不可行和组件拼接；其模型原文回流下一轮作者，编排器不写替代方案。通过方向、初审、反方与每个回执共同进入 hash-bound ideation artifact。
+  - 完整计划作者现在必须保留入选方向的模型自产方法 token，所有科学字段为中文、引用真实目录、既有数字保持原语义、未执行结果保持条件句；确定性检查之后再由独立模型按机制、设计、证据语义、执行和新颖性五门审查。调用/JSON 失败有限重试，失败响应不伪造作者回执；新增安全恢复路径，只能复用同一谱系已接受的文献/方向并写入全新目录。
+  - 扩大可核验科学指标词汇并允许 `ir`/`tv` 等两字符模型自产方法缩写；AST 仍只接受从 `fit_equations`/`predict_derivative` 可达的 callable term。修复 Windows GBK 终端打印 `∇` 等字符时的二次 `UnicodeEncodeError`，诊断安全转义且有界，完整证据留盘。
+  - 没有由本代理撰写任何真实研究题目、假设、机制、方法、计划正文或结果。测试中的中文科研句子是确定性夹具；项目文档只记录系统结构和真实负结论。
+- 真实验收结果：
+  - `task2705-preregister-plan-smoke-v11`：初审曾选择“观测流形折叠”，完整计划审查认定它只是最小二乘投影残差改名，空间打乱对照、阈值、统计单位和替代解释不成立；八轮计划作者仍未通过。两个安全 resume 均未写正式计划。
+  - `task2705-preregister-plan-smoke-v12`：完成全新冻结、模型检索、真实 ArXiv/OpenAlex 调查与四轮方向生成；所有候选在结构或科学初审中失败，未写正式方向/计划。CLI 的 GBK 二次崩溃被定位并修复。
+  - `task2705-preregister-plan-smoke-v13`：修复后重新从不存在的目录启动；完成模型检索与 95 KB 真实文献调查，四轮共 20 个中文模型方向、四份独立初审回执。20/20 因既有方法等价、机制假设不适用、因果/算子不可识别、或冻结资源不可执行而拒绝。最终 `system-plan-ideation.json=false`、`plan/research-plan.json=false`、审批不存在、执行不存在、锁正常释放。没有继续创建 v14 或降低门禁。
+- 验证：
+  - 最终聚焦回归：`poetry run pytest -q --no-cov` 覆盖方向、完整计划审查、中文计划、双语 graders、文献调查、官方谱系、执行合同、CLI 与研究计划 schema 九个模块 → `139 passed`。
+  - 新增反方门专测初次运行 → `9 passed`；两字符 token/终端安全等专门回归 → `26 passed`。
+  - `poetry run ruff check` 覆盖 9 个变更源模块及全部相关测试 → clean。
+  - `poetry run mypy` 覆盖 9 个变更源模块 → `Success: no issues found in 9 source files`。
+  - `git diff --check` → 无空白错误；仅报告既有 CRLF→LF 信息提示。
+  - 真实 provider + ArXiv/OpenAlex：`v12`、`v13` 均运行并失败关闭；没有用 mocked 测试冒充 live 验收。
+- 问题新增或更新：
+  - 新增 `P-20260809-104`（Critical/Open）：当前系统尚不能在冻结面板内产生通过严格科学门禁的系统自产中文预注册，因此不能声称已自主产生可发表成果。
+  - 新增 `P-20260809-105`（Medium/Resolved）：两字符科学 token 被误杀，且 GBK 终端对中文拒绝理由二次崩溃；两项均已修复并由测试/真实 v13 验证。
+- 后续：
+  - Task `270.5` 保持未勾选；按 `AGENTS.md` 不为未通过验收的任务创建完成提交。本工作区改动保持未提交，便于继续审查；`.understand-anything/` 仍为用户/先前技能的未跟踪内容，未修改、未纳入。
+  - 下一合法工作只能在结果盲前提下建立范围更合适的新预注册、增加可核验全文/更强新颖性检索，或改进假设搜索与对立评审协同；不得人工塞入科研方向、降低门禁、重用被拒计划或无限抽样。
+  - 对外提交必须如实写成“自主检索—生成—反驳链已实现且会失败关闭，但尚未产生通过门禁的正式中文计划或可发表成果”；执行授权、`publication_ready`、`submission_ready` 均保持 false。
+
+---
+
+## 2026-08-09 12:44:55 +08:00 - Codex - Task 270.5 公开数据机会图、自循环去重与严格负验收
+
+- 用户请求：立即以最高质量完成提交前开发；研究计划和全部科研内容必须为中文且由系统自主生成，不能由实现代理直接写题目、假设、机制、方法或结果；以最严标准判断是否符合榜题、具有可发表创新并独立完成科研。
+- 变更文件：
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/model_authorship.py`
+  - `src/autoresearch/competition/official_lineage.py`
+  - `src/autoresearch/competition/plan_execution_contract.py`
+  - `src/autoresearch/competition/plan_literature_survey.py`
+  - `src/autoresearch/competition/public_data_profile.py`（新增）
+  - `src/autoresearch/competition/system_authored_plan.py`
+  - `src/autoresearch/competition/system_plan_ideation.py`（新增）
+  - `src/autoresearch/competition/system_plan_opportunity_map.py`（新增）
+  - `src/autoresearch/competition/system_plan_review.py`（新增）
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/competition/test_bilingual_plan_graders.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/unit/competition/test_official_lineage.py`
+  - `tests/unit/competition/test_plan_execution_contract.py`
+  - `tests/unit/competition/test_plan_literature_survey.py`
+  - `tests/unit/competition/test_public_data_profile.py`（新增）
+  - `tests/unit/competition/test_system_authored_plan.py`
+  - `tests/unit/competition/test_system_plan_ideation.py`（新增）
+  - `tests/unit/competition/test_system_plan_opportunity_map.py`（新增）
+  - `tests/unit/competition/test_system_plan_review.py`（新增）
+  - `tests/unit/research/test_plans.py`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - 真实证据目录：`runs/manual-live/task2705-preregister-plan-smoke-v15/`、`task2705-preregister-plan-smoke-v15-opportunity-resume-v1` 至 `v6`、`task2705-preregister-plan-smoke-v15-ideation-v1` 至 `v6`（运行证据，未作为源码提交）。
+- 变更摘要：
+  - 新增无 NumPy 依赖的公开 NPZ/NPY 确定性画像器。它仅从实际 clean/`snr_20` 数组复制路径与哈希并计算形状、dtype、坐标间隔、通道统计、状态/导数相关性、经验噪声与 PDE 边界比，不输出机制、假设或研究散文。当前真实上下文覆盖 12 个可研究系统、24 个数组路径和 53 条索引事实。
+  - 在完整计划前新增机会发现层：模型基于冻结事实、真实目录和画像自产七格中文研究空白；机器只做证据/目标/scope 绑定和稳定去重；独立模型按七项不可加权硬门评审，可全部拒绝。接受门从“必须五格”纠正为“至少一格”，后续五种发散视角可围绕同一合格机会独立提出不同方向。
+  - 新增精确回执恢复与透明 scope 修复：只能复用同一上下文、目录、边界和模型响应哈希；若 reviewer 把 synthetic sentinel 契约错用于 official cell，只能逐句记录并机械删除准确命中的无效否决，不可改布尔、其他批评或模型科研文本，且 artifact 保留原 review hash、删除位置和规则。
+  - 强化方向自循环：续跑不重新展示上一轮被拒全文，只传模型自产失败门与不可逆摘要；累计记录标题、方法 token、核心机制哈希和科学签名，禁止精确复投、换标题复投或复用已拒方法；目标必须在机会格白名单，变换须保持动态语义、单位和回映射，official 与 sentinel 预算严格隔离。
+  - 逐字段复核发现 v15 唯一暂时通过的 O04 自身仍在 `feasibility_risk` 使用“20 秒 sentinel 预算”。新增作者侧 11 字段 scope 门、评审前 repair 反馈、artifact 消费复核和 binding 复核；当前 schema 实际拒绝旧 v15/v6 机会制品。没有通过修改模型科学散文来“修好”它。
+  - 本代理没有撰写任何正式科研题目、假设、机制、方法、计划正文、结果或创新主张。代码只提供结构、证据和拒绝门；文档记录真实负结论；测试中文句子仅为确定性夹具。
+- 真实验收结果：
+  - `v15` 模型自产 4 条查询，真实调查保留 59 条 ArXiv/OpenAlex 记录并中文选择 10 条；12 个公开画像事实绑定 24 个 clean/noisy 数组路径。
+  - 机会审查原始结果只暂留 O04；透明评审过滤记录 4 条 reviewer scope 错句，canonical artifact hash 为 `5c727ee984dce31b6d89fec10b0ca96f49df7b680364c61fda94fad2fa0e916f`。新消费门随后因 O04 作者字段的 sentinel scope 污染明确拒绝该 artifact，故它不是有效科研机会证据。
+  - 六个 bounded ideation 续跑共保留 47 次精确交互，模型产生并审查了多组全中文方向；确定性门或独立评审全部拒绝。六个目录均无 `system-plan-ideation.json`，更无 `plan/research-plan.json`、审批、执行、论文或结果。
+- 验证：
+  - 聚焦 pytest（公开画像、机会图、方向、文献、计划审查、计划、执行合同、官方谱系、中文 graders、CLI、research schema）→ `168 passed in 31.07s`。
+  - 聚焦 Ruff 覆盖 11 个变更源模块及全部相关测试 → `All checks passed!`。
+  - 聚焦 Mypy 覆盖 11 个变更源模块 → `Success: no issues found in 11 source files`。
+  - 当前 schema 真实读取 v15/v6 opportunity artifact → fail-closed，精确指出 `O04.feasibility_risk` 错用 `20 秒 sentinel`。
+  - 广泛 competition pytest → `729 passed, 4 failed in 124.39s`；4 项均为已记录 `P-20260807-093` 的宿主子进程缺 NumPy。
+  - 全量 Ruff → 未修改 `test_official_lineage_lock.py` 的 3 个 `SIM117`；全量 Mypy → 未修改的两个源文件共 5 项。聚焦改动 clean，但 submission quality gate 如实保持 red。
+  - `git diff --check` → 无空白错误，仅有 CRLF→LF 信息警告。
+- 问题新增或更新：
+  - 更新 `P-20260809-104`：加入 v15 的 59/10 文献、12/24 画像、47 交互与无方向/计划的真实负证据。
+  - 新增 `P-20260809-106`（High）：作者机会字段的 synthetic-sentinel scope 污染；新路径已 fail-closed，历史 v15 机会制品判无效。
+  - 新增 `P-20260809-107`（Medium/Open）：广泛质量门仍有 4 个 NumPy 环境测试、3 个 Ruff 和 5 个 Mypy 红项。
+  - 新增 `P-20260809-108`（Critical/Open）：仓库缺榜题必交≤20页技术方案 PDF、百炼调用凭证截图和合格真实案例，现有 submission audit 也未覆盖这些赛事材料。
+- 后续：
+  - Task `270.5` 继续未勾选；按 `AGENTS.md` 不为未达到 live acceptance 的任务提交 commit，不 staging，不提交。`.understand-anything/` 仍为先前技能留下的未跟踪内容，本轮未修改、未纳入。
+  - 新真实谱系必须从无 scope 污染的机会作者响应开始；随后依次通过机会审查、五方向初审、入选方向反方、完整中文计划审查和人工计划哈希批准。不得复用 O04、任何被拒方向或由实现代理补写科研文本。
+  - 对外只能声称系统已实现自主证据读取、检索、机会生成、方向发散、对立评审、失败记忆与严格停止；不能声称已生成有效研究计划、完成科研、得到创新成果、可发表或可提交。
+  - 榜题模型口径本身列举 Qwen-Max/Plus/Turbo；当前百炼 `qwen3.7-max` 配置与回执可作为机器来源证据，但提交前仍需由人类提供脱敏百炼调用截图，并在有真实合格案例后生成≤20页中文技术方案 PDF。
+
+---
+
+## 2026-08-09 15:54:20 +08:00 - Codex subagent `/root/qwen_loop_audit` - Task 270.5 P0 门禁修复（3/4/7）
+
+- 用户请求/活动任务：在提交前最严审计后，独立实施 P0 3/4/7；严格按 CJK/Latin 字符判定中文并支持标识符豁免；禁止完整计划评审出现 false gate 却无 finding/revision；禁止“至少三篇”文献比较重复同一 `reference_index`。明确不修改 `official_lineage.py`、`system_authored_plan.py` 或 opportunity reviewer 循环，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/language_guard.py`
+  - `src/autoresearch/competition/system_plan_review.py`
+  - `src/autoresearch/competition/system_plan_ideation.py`
+  - `tests/unit/competition/test_plan_language_and_citations.py`
+  - `tests/unit/competition/test_system_plan_review.py`
+  - `tests/unit/competition/test_system_plan_ideation.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 把旧的“汉字数 /（汉字数 + Latin token 数）”改为逐字符计算 CJK ideograph 与 Unicode Latin letter；长连续英文和超长蛇形伪标识符不能再靠 token 压缩绕过。自动豁免仅覆盖有界的反引号标识符、token-list 赋值、路径、结构化 identifier、CLI flag 和短大写缩写；可信调用方还可通过 `exempt_identifiers` 显式声明机器标识符。
+  - `CriticalPlanAssessment` 建立 false gate 到行动项的结构不变量：类别 finding 为空时，必须为每个未通过门提供一个互异 required revision；空字符串/纯空白 finding 与 revision 直接拒绝。由此任何合法的拒绝评审都保证 `repair_findings()` 非空，不再让作者循环把“已否决但无反馈”误当成表面可修复状态。
+  - 完整计划 `closest_prior_work`、五方向逐项 `prior_work_comparisons`、入选方向反方 `closest_prior_work` 均在模型 validator 中强制全部 `reference_index` 互异；相关 Qwen 提示同步明确“至少三篇且编号互不相同”。候选方向的 `nearest_work_indices` 原本已具备同一不变量，保持不变。
+  - 新增定向反例：两个汉字加数千 Latin 字符、超长 snake-case 伪标识符、可信标识符显式豁免、false gate 空列表、空白占位 finding、两个无类别 finding 的 false gates 共用一个 revision，以及三个评审阶段重复引用同一篇文献。
+  - 未生成、补写或改写任何正式科研题目、假设、方法、计划或结果；测试中的中文文本只用于确定性 schema 反例。未触碰用户明确排除的三个文件/循环。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_plan_language_and_citations.py tests/unit/competition/test_system_plan_review.py tests/unit/competition/test_system_plan_ideation.py -q --no-cov` → `44 passed in 2.10s`。
+  - 覆盖全部现有中文门禁消费者的 10 模块聚焦回归 → `165 passed in 8.88s`。
+  - `poetry run ruff check` 覆盖 3 个源文件与 3 个定向测试文件 → `All checks passed!`。
+  - `poetry run mypy` 覆盖 3 个源文件 → `Success: no issues found in 3 source files`。
+  - `poetry run python -m py_compile` 覆盖 3 个源文件 → 成功。
+  - `git diff --check`（本轮 tracked 文件）→ 无空白错误；仅有既有 CRLF→LF 信息警告。
+- 问题新增或更新：新增 `P-20260809-109`（High/Resolved），记录三个可复现的 fail-open 门禁及修复证据；不改变 `P-20260809-104`、`P-20260809-108` 的未完成/不可提交结论。
+- 后续：本轮按明确要求不 staging、不 commit。Task `270.5` 仍未满足真实 provider 计划/科研验收；本修复只提高确定性门禁可信度，不能作为已产生创新成果或已可发表的证据。
+
+---
+
+## 2026-08-09 15:58:32 +08:00 - Codex temporary sub-agent `/root/temporary_agent_audit` - Task 270.5 临时子 Agent 隔离基础层
+
+- 用户请求/活动任务：在不修改 `official_lineage.py` 或 `system_plan_*` 的前提下，实现“当前环节主 Agent 独占派工权、临时子 Agent 并行完成有界中文内容任务、运行身份归档后消失但输出/输入哈希/模型回执绑定/归档状态可持久化、不得绕过证据/审批/安全/独立审稿门禁”的最小基础契约；不得调用真实模型或由实现代理撰写科研内容，不提交。
+- 变更文件：
+  - `src/autoresearch/agents/temporary.py`（新增）
+  - `src/autoresearch/agents/__init__.py`
+  - `tests/unit/agents/test_temporary_agents.py`（新增）
+  - `Agent.md`
+- 变更摘要：
+  - 新增 hash-bound `StageControllerBinding` 和只驻内存、令牌不落盘、不可 pickle 的 `StageDispatchCapability`；所有派工、结果登记、归档和批次封存均须使用绑定当前谱系阶段的未撤销主 Agent capability。
+  - 新增冻结且可序列化的 assignment/result/archive/manifest 契约，分别绑定输入包哈希、输出 schema 哈希、精确输出哈希、模型回执相对路径与哈希、运行身份终止状态和稳定批次顺序；所有顶层内容地址均可在反序列化及协调器入口重新自校验。
+  - 临时身份被结构性限定为一次性中文内容任务：仅能读取显式输入与只读 skill 引用，工具集合为空，不能再派工、审批、执行、裁决、发布、release 或提升证据；结果自身明确不是科学证据，批次 manifest 明确未绕过既有四类门禁。
+  - 新增线程安全归档协调器：按主 Agent 冻结的并行上限管理活动身份，拒绝重复身份/跨阶段任务，归档后从活动集合移除身份，同时保留 assignment、result 和 receipt 哈希绑定；稳定归并只返回按 dispatch ID 排序的模型原始结构化输出，不代写归并科研散文。
+  - 补充防御性快照、入口二次哈希核验、指定中文字段校验及 Windows 盘符/目录穿越回执路径拒绝，避免冻结模型内部字典被事后原地篡改。模块不导入 provider，不调用模型，也不生成任何研究题目、计划、假设、方法或结果。
+- 验证：
+  - `poetry run pytest tests/unit/agents/test_temporary_agents.py --no-cov -q` → `16 passed in 0.51s`。
+  - `poetry run pytest tests/unit/agents tests/property/agents tests/integration/agents --no-cov -q` → `55 passed in 2.33s`。
+  - `poetry run ruff check src/autoresearch/agents/temporary.py src/autoresearch/agents/__init__.py tests/unit/agents/test_temporary_agents.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/agents/temporary.py src/autoresearch/agents/__init__.py` → `Success: no issues found in 2 source files`。
+  - `git diff --check -- src/autoresearch/agents/temporary.py src/autoresearch/agents/__init__.py tests/unit/agents/test_temporary_agents.py` → 无空白错误。
+- 问题新增或更新：无。本轮未发现需要新增 `Problem.md` 的阻塞或未验证假设；工作区中该文件的既有并发改动未触碰。
+- 后续：由主 Agent 在官方谱系/计划循环中显式接入这些纯契约，并通过现有 artifact store 持久化返回模型；本隔离层本身不声称已运行临时模型、已产生科研内容或已通过科研门禁。按父任务明确要求不 staging、不 commit。
+
+---
+
+## 2026-08-09 15:58:33 +08:00 - Codex temporary sub-agent - Task 270.4 source commit 未跟踪文件加固
+
+- 用户请求：严格隔离修复 `submission_evidence_bundle.py::_tracked_worktree_clean()` 忽略 untracked 的 P0；默认拒绝未提交源码、Skills、配置与文档，只允许明确 lineage 输出/缓存；路径解析失败关闭；只改生产模块、最窄测试与 `Agent.md`/`Problem.md`，不触碰 official lineage、系统计划或 CLI，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/submission_evidence_bundle.py`
+  - `tests/unit/competition/test_submission_evidence_bundle.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 用 `git status --porcelain=v1 -z --untracked-files=all --ignored=matching` 取代只看 tracked diff 的两条命令，使 tracked、untracked 与 ignored 状态进入同一机器可判审计。
+  - 增加严格 NUL 状态解析；Git 失败、输出类型或终止符异常、未知状态、解码失败、绝对/盘符/反斜杠/控制字符、空段和 `.`/`..` 路径全部返回不洁净。
+  - 白名单仅包含 `runs/`、`artifacts/`、`outputs/` 与显式常规缓存目录/`.coverage`；未提交源码、Skills、配置、文档、临时脚本和其他本地状态均不能由 ignore 规则隐藏。
+  - 临时 Git 仓库回归覆盖普通 untracked 源码/Skills/文档、被 ignore 的配置、允许的 lineage 输出、被 ignore 的 pytest cache、未暂存/已暂存变更及路径逃逸伪记录。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_submission_evidence_bundle.py -q --no-cov` → `15 passed in 3.68s`。
+  - `poetry run ruff check src/autoresearch/competition/submission_evidence_bundle.py tests/unit/competition/test_submission_evidence_bundle.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/submission_evidence_bundle.py` → `Success: no issues found in 1 source file`。
+  - `git diff --check -- src/autoresearch/competition/submission_evidence_bundle.py tests/unit/competition/test_submission_evidence_bundle.py Problem.md` → 通过；仅有 `Problem.md` 既有 CRLF→LF 提示。
+  - 当前真实工作区调用 `_tracked_worktree_clean(Path.cwd())` → `False`，正确拒绝现有未提交关键源码/Skills/配置。
+- 问题新增或更新：新增 `P-20260809-110`（Critical/Resolved），记录未跟踪与 ignored 关键输入未绑定 `source_commit` 的漏洞及修复证据。
+- 后续：无本任务内遗留；按明确要求未 staging、未 commit。工作区其他并行改动保持原样，未修改 official lineage、`system_plan_*` 或 CLI。
+
+---
+
+## 2026-08-09 16:14:09 +08:00 - Codex subagent `/root/qwen_loop_audit` - Task 270.5 方向双审修复单调性与技能续跑
+
+- 用户请求/活动任务：只在既有 `system_plan_ideation.py` 与最窄测试中加入同一初审/反方 JSON repair 的科学判断单调不放宽硬约束；transport/解析错误必须追加而非覆盖反馈；若存在 receipt resume，恢复并核对 method-skill binding 且保持 Qwen reasoning 不少于 200 字。不得修改 opportunity、official lineage、临时 Agent、CLI，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/system_plan_ideation.py`
+  - `tests/unit/competition/test_system_plan_ideation.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 初审和入选方向反方各自维护仅限当前 repair loop 的 parsed judgment history。首轮 history 为空，可独立合法通过；只有首轮因结构、引用、中文、scope 或 reasoning 校验进入同一 JSON repair 时才启用跨响应核对。
+  - 初审逐方向冻结九项科学门：任何既有 false 不得变 true；`portfolio_ready=false` 不得变 true；全拒后不得新增入选，已选择一个后不得改选此前未选择方向；有 false gate 或非机械否决理由的方向不得在 repair 中变成 qualifies。反方同样冻结九项门及 `survives_adversarial_review=false`。
+  - 既有中文非机械 `critical_findings`/`required_revisions` 必须逐字保留；非中文理由允许翻译为中文，但非机械条目数量不得减少。只允许删除 synthetic-sentinel 错 scope 句，以及明显是正面评价却误放进 `critical_findings` 的机械矛盾项。修复可以新增否决或 true→false，不可减弱科学判断。
+  - 所有 author/reviewer/prosecutor transport、JSON、schema、reasoning、引用、scope 与 binding 反馈都通过保序去重合并；原始 parsed false gates 和科学否决也转为累积反馈。即使随后 transport 失败，下一外层作者仍会收到此前科学否决和本次异常，而不是只看到最后一个错误。
+  - rejected-receipt 续跑现在从方向作者与评审回执恢复独立 `system_selected_project_method_skills` 消息，校验消息角色、使用边界、selection artifact、模型自产选择、完整 SKILL 内容及内容 SHA-256；两份回执必须一致并等于当前机会图绑定。有技能时两个回执的 Qwen `reasoning_content` 均须至少 200 字。
+  - 定向测试机会夹具同步补齐并发更新后的 `method_application_trace` 必填结构；未修改其生产模块。
+  - 未生成或补写任何正式科研题目、假设、方法、计划或结果；未触碰 opportunity/official lineage/temporary agent/CLI。
+- 验证：
+  - 首次窄测 → `2 passed, 19 failed`；19 项均在构造机会夹具时因并发 schema 新增必填 `method_application_trace` 失败。补齐本测试夹具后再执行最终验证，未修改 opportunity 生产模块。
+  - `poetry run pytest tests/unit/competition/test_system_plan_ideation.py -q --no-cov` → `29 passed in 2.71s`。
+  - `poetry run ruff check src/autoresearch/competition/system_plan_ideation.py tests/unit/competition/test_system_plan_ideation.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/system_plan_ideation.py` → `Success: no issues found in 1 source file`。
+- 问题新增或更新：新增 `P-20260809-111`（Critical/Resolved），记录 JSON repair 可翻转科学否决、异常覆盖反馈以及续跑丢失技能/推理约束的漏洞和反例证据。
+- 后续：按明确要求不 staging、不 commit。未运行真实 provider；Task `270.5` 仍没有合格正式计划、科研结果或可发表成果，本修复不能改变不可提交结论。
+
+---
+
+## 2026-08-09 16:16:47 +08:00 - Codex temporary sub-agent `/root/temporary_agent_audit` - Task 270.5 临时 Qwen 内容池隔离集成
+
+- 用户请求/活动任务：基于既有 temporary agent API 新增通用 `run_temporary_qwen_content_batch`；当前阶段 main Agent 独占 capability，先一次性创建/登记全部 assignment，再由有界线程池并行调用 provider-agnostic `run_llm_json_completion`；消息分离通用角色、独立 SKILL 上下文和短任务 payload，强制中文与至少 200 字 reasoning；每项无论成功或失败都先保留可得回执/输出再归档，最终稳定持久化 assignment/result/archive/manifest，任一失败在归档后 fail-closed。不得修改官方谱系、计划循环、CLI 或基础 temporary API，不得硬编码科研散文，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/temporary_qwen_pool.py`（新增）
+  - `src/autoresearch/competition/model_authorship.py`（仅增加 `temporary_content_output` 回执类型）
+  - `tests/unit/competition/test_temporary_qwen_pool.py`（新增）
+  - `Agent.md`
+- 变更摘要：
+  - 新增冻结的任务、SKILL 上下文、稳定输出、逐任务诊断记录和批次终态 artifact。SKILL 正文必须与 SHA-256 一致；assignment/result/archive/manifest 复用基础层自校验；任务记录与批次索引另有内容地址和篡改拒绝。
+  - runner 在启动线程前完成全部 assignment 的创建、受限路径落盘和主 Agent capability 登记；worker 线程从未持有 capability，只接收任务、独立只读 SKILL 消息和 completion 参数。`ThreadPoolExecutor` 同时受任务数、controller 并行上限和显式 `max_workers` 约束。
+  - 每次 completion 固定 `thinking_mode="enabled"` 和有界 thinking budget；精确消息、provider 响应、parsed JSON 及 reasoning 先记录 `ModelAuthorshipReceipt`。reasoning transport 缺失、少于 200 字、无中文推理、输出指定字段非中文或任意调用/校验异常均判失败，不伪造 `TemporaryAgentResultArtifact`。
+  - 主线程按 future 完成逐项登记合法 result 并归档；失败项即使只有回执也归档为 failed。全部身份消失后才封存 manifest 并撤销 capability；assignment、合法 result、archive、task record、manifest 和 batch artifact 使用 dispatch 稳定顺序落盘。若任一任务失败，终态 artifact 先持久化，再抛出携带该 artifact 的 `TemporaryQwenBatchError`。
+  - 所有生成路径均为 output directory 下的固定目录加 ID 哈希文件名；拒绝绝对路径、盘符、`..`、NUL 和 symlink 祖先逃逸。恶意 batch/dispatch/runtime ID 不直接进入文件路径。实现没有研究题目、假设、机制、方法、计划或结果模板，只有通用权限和输出语言约束。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_temporary_qwen_pool.py --no-cov -q` → `6 passed in 1.57s`。屏障与事件证明两个 completion 真正重叠而非用耗时猜测，并覆盖反序完成后的稳定排序、主 Agent capability、消息隔离、中文/reasoning、失败回执与归档、路径逃逸及哈希篡改。
+  - `poetry run pytest tests/unit/competition/test_temporary_qwen_pool.py tests/unit/agents/test_temporary_agents.py tests/unit/competition/test_system_plan_methodology.py tests/unit/competition/test_final_research_report.py --no-cov -q` → `33 passed in 7.01s`。
+  - `poetry run ruff check src/autoresearch/competition/temporary_qwen_pool.py src/autoresearch/competition/model_authorship.py tests/unit/competition/test_temporary_qwen_pool.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/temporary_qwen_pool.py src/autoresearch/competition/model_authorship.py` → `Success: no issues found in 2 source files`。
+  - `git diff --check -- src/autoresearch/competition/temporary_qwen_pool.py src/autoresearch/competition/model_authorship.py tests/unit/competition/test_temporary_qwen_pool.py` → 无空白错误。
+  - 开发中首次专项测试暴露 batch factory 在哈希前未把 Pydantic tuple 转为原生 JSON（`4 failed, 1 passed`）；改为先 `model_dump(mode="json")` 再哈希后已由最终 6/6 和篡改反例验证。新增篡改测试最初错误期待 Pydantic 包装自定义运行异常（`1 failed, 5 passed`），仅修正断言为实际 fail-closed 异常类型后全绿，生产逻辑未放宽。
+- 问题新增或更新：无。上述开发期失败已在本轮定位并通过回归关闭；`Problem.md` 的并发既有改动未触碰。
+- 后续：本轮按要求只用可注入 completion 做确定性测试，未消费真实模型额度、未生成科研内容。主 Agent 接入正式阶段后，应使用现有 Qwen 配置做一次非科研模板的 opt-in live smoke，并将本 batch artifact 作为过程制品接入官方 artifact store；它本身不构成证据、审批、独立评审或科研成果。未 staging、未 commit。
+
+---
+
+## 2026-08-09 16:23:00 +08:00 - Codex temporary sub-agent - Task 270.5 紧凑机会派工路由 P0
+
+- 用户请求：新增严格隔离的 `system_plan_opportunity_routing.py` 与独立测试，把巨型机会图调用前置为当前阶段主 Qwen 的短上下文派工路由；不得硬编码科研假设，不得修改既有生产文件、CLI、official lineage、机会图、模型回执模块或系统计划，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/system_plan_opportunity_routing.py`（新增）
+  - `tests/unit/competition/test_system_plan_opportunity_routing.py`（新增）
+  - `Agent.md`（仅本交接条目）
+- 变更摘要：
+  - 新增 `OpportunityWorkerRoute` 与七路 portfolio：每路严格绑定 `O01..O07`、3—4 个矩阵可比较目标、完整必需事实闭包、三个互异真实文献编号、一个签名候选谱系及其摘要逐字片段，以及模型自产的中文单组件派工和理由。七路目标集合、事实集合、候选原文片段与规范化派工结构签名必须分别唯一，任何路由不得全选完整白名单。
+  - 新增完整 envelope 到紧凑 Qwen 上下文的确定性机械投影，只包含签名候选摘要截断、矩阵可比较系统与数值、逐系统画像/完整效果 fact ID 索引、关联面板数值、截断文献题名/摘要和正式冻结预算；不传完整 envelope。已选项目 SKILL.md 作为独立、哈希校验消息发送，不与证据混合。
+  - `run_system_plan_opportunity_routing(...)` 使用可注入 completion，强制当前主模型身份包含 Qwen、DashScope thinking transport 与至少 200 字符 reasoning。所有模型自产派工散文必须为中文；精确消息、响应和解析载荷通过既有 `ModelAuthorshipReceipt` 留存。
+  - 确定性消费门逐目标要求一个 `data_profile` 与至少两个不同完整 lineage 的 `system_effect`，强制引用 `cross_lineage_effect_matrix`，复核候选 source lineage/quote 与真实文献索引，并拒绝漏项、增项、伪 quote、重复或越界。artifact、单 worker binding 均内容寻址，且固定 `is_scientific_evidence=false`、`execution_authorized=false`、`hand_written_scientific_prose_count=0`。
+  - 提供 `artifact.worker_binding(cell_id)` 与 `artifact.worker_bindings()`，只物化临时 worker 所需的本路事实、三篇文献、候选摘要来源、冻结预算和独立 SKILL 绑定；本模块不启动 worker、不授权实验，也不生成科研结论。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_system_plan_opportunity_routing.py -q --no-cov` → `9 passed in 3.06s`；覆盖正常路径、七个 worker binding、独立 SKILL 消息、prompt 显著压缩、重复路由、全白名单、伪 quote、缺事实、重复文献、短 reasoning 与非中文反例。
+  - prompt 回归构造超过 20 万字符的完整 envelope，实测发送消息小于其四分之一，且巨型原始画像填充未出现在消息；候选摘要、矩阵行、逐系统事实索引、关联数值、截断文献和冻结预算均存在。
+  - `poetry run ruff check src/autoresearch/competition/system_plan_opportunity_routing.py tests/unit/competition/test_system_plan_opportunity_routing.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/system_plan_opportunity_routing.py tests/unit/competition/test_system_plan_opportunity_routing.py` → `Success: no issues found in 2 source files`。
+  - `poetry run python -m py_compile src/autoresearch/competition/system_plan_opportunity_routing.py` 与定向 `git diff --check` → 通过。
+- 问题新增或更新：无。实现与定向反例均通过；按任务要求未修改 `Problem.md`，其并发既有内容保持原样。
+- 后续：由主 Agent 将 `artifact.worker_bindings()` 接入已完成的 `temporary_qwen_pool` 和正式机会图链路，并补一次真实 Qwen 的非科研派工 live smoke；在接入、live 回执和后续独立机会评审完成前，本 artifact 只属于过程路由，不构成科研证据、执行许可或可发表成果。本轮未 staging、未 commit。
+
+---
+
+## 2026-08-09 16:42:07 +08:00 - Codex subagent `/root/qwen_loop_audit` - Task 270.5 正式系统 outcome 阶段
+
+- 用户请求/活动任务：补齐正式、受测、可由 production CLI 调用的 adjudicate → 系统中文结果解释阶段。只能加载并哈希核验官方计划、执行/裁决及真实结果制品；必须调用既有 `author_outcome_interpretation` 让配置模型自主生成全部中文科研解释，并对 reasoning、receipt、数值溯源失败关闭；不得由编排器写科研散文，不得执行实验、批准、发布或提交。只改 outcome 所需 official lineage/CLI/最窄测试和日志，不触碰 submission bundle，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/official_lineage.py`
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_official_lineage.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 将 `outcome` 追加到正式 `LineageStage`/`LINEAGE_STAGES`，严格位于 `adjudicate` 后；`competition mdbench lineage-stage --stage outcome` 通过 provider-neutral `--config/--env` 调用，并报告 outcome 路径/哈希/接受状态，同时固定声明 `publication_ready=false`。
+  - 新增只读 outcome 输入加载器：核验 canonical `system-authored-plan.json` 与正式计划精确一致、中文门、计划 authorship receipt、现有人类批准绑定、计划执行合同、冻结计划/身份/ledger 与裁决包；不创建批准、不执行容器。
+  - 对 pilot/baseline/full 的 outer spec、summary、逐 cell raw spec/result 做 schema、内容哈希、数据字节、候选源码、runner、split policy、预算、身份及集合闭包核验；从原始结果重新选择候选、计算 system effects/aggregate/frozen gate/receipt，并要求与签名裁决包完全一致。full 仅保留现有“失败 smoke 可拒绝晋级”的冻结 cell 例外，不能凭缺失结果通过。
+  - 仅在全部前置物通过后调用 `author_outcome_interpretation(..., require_chinese=True)`。模型返回后重新核验全部官方输入关闭 TOCTOU，再加载落盘 outcome，合取中文字段、数值溯源、数值关系、冻结门一致性、精确 authorship receipt、非空 thinking transport/reasoning token 与配置模型身份。失败 outcome 不被正式阶段报告为成功。
+  - 报告正文只包含固定流程元数据和哈希，不复制、概括或补写任何结果科学句；该阶段无实验、批准、发布和提交入口，且拒绝 adjudicate 专用 `--package-output-dir`。
+  - 定向测试覆盖生产 CLI 参数传递、正式 dispatch、模型自产中文字段保持原样、thinking provenance 缺失、模型调用前前置物缺失、raw result 哈希篡改、模型调用期间 package 改变，以及阶段顺序。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_official_lineage.py -q --no-cov -k "outcome or raw_result_hash or declared_stage_sequence"` → `7 passed, 39 deselected`。
+  - `poetry run pytest tests/unit/competition/test_official_lineage.py tests/unit/competition/test_competition_cli.py tests/unit/competition/test_system_authored_outcome.py -q --no-cov` → `86 passed in 30.88s`。
+  - `poetry run pytest tests/unit/competition/test_official_lineage_lock.py tests/unit/competition/test_final_research_report.py tests/unit/competition/test_submission_evidence_bundle.py -q --no-cov` → `32 passed in 9.81s`；submission bundle 仅作回归，未修改。
+  - `poetry run ruff check src/autoresearch/competition/official_lineage.py src/autoresearch/competition/cli.py tests/unit/competition/test_official_lineage.py tests/unit/competition/test_competition_cli.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/official_lineage.py src/autoresearch/competition/cli.py tests/unit/competition/test_official_lineage.py tests/unit/competition/test_competition_cli.py` → `Success: no issues found in 4 source files`。
+  - `poetry run python -m py_compile src/autoresearch/competition/official_lineage.py src/autoresearch/competition/cli.py` 与定向 `git diff --check` → 通过。
+  - 对保留的 `runs/manual-live/task2700-latex-plan-lineage-v1` 运行只读原始结果核验探针 → 按预期拒绝 `pilot-official-04-reaction_diffusion_cylinder-clean-101`：summary 的全零哈希、占位失败原因/空耗时与真实 raw result 不一致；未修改该谱系。
+- 问题新增或更新：新增 `P-20260809-112`（Critical；code-resolved/live pending），记录结果解释仅存在 scratch 能力而未进入正式谱系、无法证明真实结果与模型来源的缺口及修复证据。
+- 后续：需要先由 Task `270.5` 产生一条真正通过计划前置门并完整执行/裁决的新谱系，再用用户配置的真实 Qwen 做一次 outcome live smoke。历史 task2700 被严格拒绝，不能迁就或追认；本轮没有调用真实 provider、没有运行实验、没有生成科研解释，也没有批准、发布、提交、staging 或 commit。工作区其他并发改动保持原样。
+
+---
+
+## 2026-08-09 16:49:44 +08:00 - Codex temporary sub-agent `/root/temporary_agent_audit` - Task 270.5 分布式机会图临时 Agent 正式链路
+
+- 用户请求/活动任务：将已完成的紧凑机会路由与临时 Qwen 内容池接成正式、隔离、受测的“当前阶段主 Agent 派工 → 七个临时作者并行 → 七个不同临时评审并行 → 全部归档 → 稳定机会图/评审”链路；阶段 capability 只能由 owner 主线程有限跨越 author/reviewer 两个显式 phase，任一异常最终撤销；输出必须严格绑定 route 的目标、完整事实、三篇文献和单组件派工，不能绕过证据、审批、安全、执行或独立评审门禁。不修改 official lineage、CLI、旧 `system_plan_opportunity_map`/review/authored-plan，不提交。
+- 变更文件：
+  - `src/autoresearch/agents/temporary.py`
+  - `src/autoresearch/competition/temporary_qwen_pool.py`
+  - `src/autoresearch/competition/system_plan_opportunity_distributed.py`（新增）
+  - `tests/unit/competition/test_temporary_qwen_pool.py`
+  - `tests/unit/competition/test_system_plan_opportunity_distributed.py`（新增）
+  - `Agent.md`
+- 变更摘要：
+  - 基础归档协调器增加显式 intermediate manifest 路径：只证明本批 assignment 全部终态/身份消失，不撤销 capability，也不声称整个研究阶段完成；另提供已归档记录的防御性快照供异常落盘恢复。中文字段校验允许 schema 合法的空容器，因此七门全通过的独立评审可原样保留 `critical_findings=[]`，非空内容仍必须包含中文。
+  - Qwen pool 增加不可序列化、owner-thread-only 的两阶段状态机。sequence 在创建时冻结 controller/token/owner/output root/phase 顺序；只有成功的非最终 phase 可保留同一 capability，失败 phase、最终 phase、未完成 context exit、controller/capability 替换均撤销并关闭，禁止复用。phase manifest 明确 `research_stage_completion_claimed=false`、是否保留/最终撤销、下一 phase 和批 artifact 哈希。
+  - pool 在每个 phase 仍先落盘并登记全部 assignment，再启动有界线程池；异常兜底会在撤销前把所有已登记活动身份归档为 failed，并尽力写入 archive/task-record/清理诊断。worker 从未接触 capability。所有 assignment/result/receipt/archive/manifest/batch 保留内容哈希，stable outputs 始终按 dispatch ID 排序。
+  - 新增 `run_distributed_system_plan_opportunity_map(...)`：要求 controller lineage 和 stage input hash 精确绑定 routing artifact；构造七个 author assignment，短 user payload 只含对应 worker route、该路完整事实、三篇文献、候选摘要/原文、冻结预算和 skill 哈希引用，完整 SKILL.md 只作为独立只读 system 消息。七个作者真实并行后，机械解析为七个既有 `ResearchOpportunityCell`。
+  - 作者输出必须逐字段等于 route 的 cell/facts/literature/targets，且 `method_application_trace.changed_component` 必须逐字等于主 Agent 的 `single_component_assignment`；重复/串换组件也不能绕过。随后为每格登记一个不同 runtime identity 的 reviewer assignment，输入精确绑定该 route 与作者 result hash，独立并行产生一个既有 `OpportunityCellAssessment`；supporting facts/literature 也必须逐字段一致，禁止同一身份自审。
+  - 只用现有模型确定性组装 `ResearchOpportunityMap` 和 `ResearchOpportunityMapReview`；`accepted_cell_ids`/`map_ready` 只能由七项布尔门禁推导，编排器只写非科学的机械计数摘要。新 distributed artifact 显式嵌入两个 phase manifest、两个 7-task batch、14 条回执/归档路径与哈希、七个 worker binding、原始模型输出及派生 map/review 哈希；不伪装成旧的单一 receipt。成功 `.binding()` 返回现有 `ResearchOpportunityMapBinding` 供 ideation 直接消费；全拒仍先持久化诊断 artifact，但拒绝产生 binding。
+  - 所有路径限定在 `output_dir`，canonical 顶层文件为 `system-plan-opportunity-distributed.json`。固定 `execution_authorized=false`、`is_scientific_evidence=false`、`approval_granted=false`、`release_authorized=false`、`independent_review_bypassed=false`；本实现不调用工具执行科研、不硬编码科研机会或计划散文。
+- 验证：
+  - `poetry run pytest -q tests/unit/agents/test_temporary_agents.py tests/unit/competition/test_temporary_qwen_pool.py tests/unit/competition/test_system_plan_opportunity_distributed.py`（加入单组件逐字绑定后一次完整运行）→ `31 passed in 20.45s`；随后新增 owner/controller/reuse 与 preflight 撤销后执行最新 pool+distributed 集合 → `17 passed in 19.90s`。
+  - 集成屏障分别要求七个 author 和七个 reviewer 同时到达，证明两阶段内部真实线程重叠；同时核验 14 个 assignment/archive/receipt、稳定顺序、中间/最终 phase 状态和落盘 artifact 可重新校验。
+  - 反例覆盖：author 目标串换、重复另一格证据/目标、单组件串换、author 短 reasoning、reviewer supporting facts 重排、七格全拒、跨 phase capability 替换、controller 替换、非 owner 线程、最终 capability 复用；所有已登记身份归档后 fail-closed。
+  - `poetry run ruff check src/autoresearch/agents/temporary.py src/autoresearch/competition/temporary_qwen_pool.py src/autoresearch/competition/system_plan_opportunity_distributed.py tests/unit/competition/test_temporary_qwen_pool.py tests/unit/competition/test_system_plan_opportunity_distributed.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/agents/temporary.py src/autoresearch/competition/temporary_qwen_pool.py src/autoresearch/competition/system_plan_opportunity_distributed.py` → `Success: no issues found in 3 source files`。
+  - `git diff --check --` 上述五个源码/测试文件 → 无空白错误。
+- 问题新增或更新：无。开发期类型/格式告警均已在本轮修正并由最终检查关闭；`Problem.md` 的并发既有内容未触碰。
+- 后续：主 Agent 可直接从 `autoresearch.competition.system_plan_opportunity_distributed` 导入 runner 和 artifact，并把成功返回的 `.binding()` 交给现有 ideation。按隔离任务未调用真实 provider；正式提交前仍需用用户 `.env`/config 的真实 Qwen 做一次 opt-in live smoke，并将 canonical artifact 纳入 official lineage。未 staging、未 commit。
+
+---
+
+## 2026-08-09 17:01:07 +08:00 - Codex subagent `/root/contest_pdf_gap_audit` - Task 270.4 提交授权、质量与独立重执行 P0 加固
+
+- 用户请求/活动任务：只在 `submission_evidence_bundle.py`、最窄测试和日志中实施红队审计可确定修复：冻结真实质量命令并核验日志实物，防止授权后默认重跑使哈希失效；把独立重执行绑定当前/质量 commit、谱系内真实输出和逐单元 manifest；关闭计划/质量路径逃逸；让 `publication_ready` 纳入 secrets；不得用弱自签名伪造人类，不修改 CLI、official lineage 或提交。
+- 变更文件：
+  - `src/autoresearch/competition/submission_evidence_bundle.py`
+  - `tests/unit/competition/test_submission_evidence_bundle.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 将质量回执升级为 `submission-quality-gate-receipt-v2`。生产命令固定为当前解释器执行完整 `pytest tests -q`、`ruff check src tests`、`mypy src/autoresearch`；任何调用方替换（包括三条零退出 no-op）在执行前拒绝。每条命令写规范 UTF-8 JSON 日志，回执绑定命令合同、日志路径、SHA-256、字节数、stdout/stderr 哈希与 skip/deselect；复用时重新解析并逐项核对，日志缺失、篡改或路径逃逸全部失败关闭。
+  - 授权文件存在时，即使 API/CLI 请求运行质量门，总审计也只复用授权所绑定的同一回执，不再生成包含新 duration/created_at 的回执使授权循环失效；回执仍须绑定当前 HEAD 且当前工作区通过既有严格洁净门。
+  - 将独立重执行升级为 `independent-reexecution-receipt-v2` 并新增 `independent-reexecution-manifest-v1`/逐 cell artifact。消费端要求 reexecution commit、quality commit、当前 HEAD 三者相等；clean output 是谱系内已存在的专用目录；manifest 文件本身绑定字节/hash，并精确覆盖签名包全部 attempt。每个 raw result 的真实文件、大小、SHA-256、内部 `result_hash`、attempt 与不可变 cell 身份均重验，再用这些重执行结果重放选择、效果、汇总和冻结判定；旧 JSON-only 自述回执无法加载。
+  - `project_id` 决策路径在调用旧 loader 前先做 containment；显式质量回执路径必须位于 lineage 且使用 canonical 文件名。凭据扫描提前进入发表判定并覆盖新增质量日志；bundle schema 同时合取 `publication_readiness` 与 `secrets_absent`，禁止只因 secrets 红仍标记 publication ready。
+  - 消费并接入主 Agent 同期新增的纯验证 `publication_signature.py`，但未修改该文件：authorization 升级 v2，先由 `prepare_human_publication_authorization_request` 生成不写授权的 objective request；request hash 绑定全部最终制品、commit、人类身份/说明、时间和证据边界。`record_human_publication_authorization` 只验证外部 Ed25519 detached signature；audit 必须由调用方提供外部可信公钥指纹，绝不从 artifact 自推导 trust，且生产代码没有私钥/签名生成入口。CLI 未在本范围接入 fingerprint，因此保持 fail-closed。
+  - 最窄反例覆盖伪绿命令、缺失/篡改日志、授权后重跑、陈旧 commit、clean output 越界/缺失、manifest raw cell 缺失、真实 manifest/files 正向核验、计划/质量路径逃逸、secrets-only 红门、旧 unsigned authorization、无外部 trust 与自签公钥替换可信根。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_submission_evidence_bundle.py tests/unit/competition/test_publication_signature.py tests/unit/competition/test_competition_cli.py::test_submission_audit_cli_writes_truthful_blocked_bundle -q --no-cov` → 最新复跑 `41 passed in 4.96s`。
+  - `poetry run ruff check src/autoresearch/competition/submission_evidence_bundle.py tests/unit/competition/test_submission_evidence_bundle.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/submission_evidence_bundle.py tests/unit/competition/test_submission_evidence_bundle.py` → `Success: no issues found in 2 source files`。
+  - `poetry run python -m py_compile src/autoresearch/competition/submission_evidence_bundle.py` → 通过。
+  - `git diff --check -- src/autoresearch/competition/submission_evidence_bundle.py tests/unit/competition/test_submission_evidence_bundle.py Problem.md Agent.md` → 无空白错误；仅显示两份既有日志文件的 CRLF→LF 提示。
+  - 开发中首次把测试文件加入 Mypy 时报告同目录 fixture import 无类型包信息和状态模拟器 `CompletedProcess.args` 类型过宽；在最窄测试内增加明确 ignore 与稳定字符串 args 后复跑全绿，生产门禁未放宽。
+  - 上述成功回归后增加旧 unsigned v1 schema 反例并作最终复跑时，曾被并发出现、非本任务修改的未跟踪 `src/autoresearch/knowledge/raw_memory.py` 阻断测试收集：它一度从 `autoresearch.kernel` 导入未导出的 `KernelContract`。本任务没有越界修改；并发作者改用 `kernel.contracts` 稳定入口后，最新 41 项 pytest 已重新全绿。
+- 问题新增或更新：新增 `P-20260809-113`（Critical；确定性绕过已 code-resolved，真实 v2 制品/外部配置/live 仍 pending），记录弱人工授权、伪质量门、自证重执行、授权重跑循环、路径和 secrets 就绪漏洞及修复证据。
+- 后续：主 Agent需在不暴露私钥的前提下为 CLI/提交操作提供外部 trusted public-key fingerprint，并按“prepare request → 人在外部签名 → record → reuse-quality final audit”顺序做真实 smoke；正式重执行生产者必须输出本 v2 manifest 与逐单元文件。跨进程 checkout/制品改写的完整 TOCTOU 锁与前后快照仍应单独加固。当前没有真实全绿谱系、可发表成果或可提交赛事材料；未 staging、未 commit。
+
+---
+
+## 2026-08-09 20:40:12 +08:00 - Codex subagent `/root/route_grounding_guard` - Task 270.5 机会路由确定性 grounding guard
+
+- 用户请求/活动任务：只修复 `system_plan_opportunity_routing.py` 与最窄测试。针对真实 v29 路由从系统名称猜测振荡、衰减、混沌、不同动力学特性，并无证声称过拟合/欠拟合、显著效果和性能机制的问题，把主 Qwen 路由限定为非科学证据的机械分派；要求通用确定性门、中文输出、一次聚合 findings、旧 schema 失败关闭，不修改 official lineage、CLI、memory 或 distributed，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/system_plan_opportunity_routing.py`
+  - `tests/unit/competition/test_system_plan_opportunity_routing.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 新增 `MechanicalAssignmentRationale`：`assignment_rationale` 不再接受科研自由文本，只能提交封闭的中文枚举与布尔常量，声明本路绑定数据画像、完整系统效果、跨谱系效果矩阵、全部目标必需事实和三篇入选文献，并明确独立核查必需、科学推断/系统性质推断/机制推断/性能推断均未授权；额外字段由严格 schema 拒绝。
+  - 为每条 route 增加显式 `opportunity-worker-route-v4`；portfolio、worker binding、routing artifact 一并升 v4。真实 v29 的 v3 制品不做隐式升级，加载时失败关闭。
+  - 将 `single_component_assignment` 从“合法 atom 前缀 + 任意后缀”收紧为确定性完整模板：只引用已审 atom 标签/编号，冻结其余组件、数据、条件、随机种子、预算和评分规则，并禁止从路由推断效果、机制或系统性质。既有完整事实闭包、文献、适用类型、七路差异和一次聚合 findings 保持不变。
+  - Qwen 指令同步给出精确结构契约和逐字模板，明确 reasoning 也不得由系统名推断动力学、物理、方程、系统性质或性能机制；程序门而非提示词负责最终拒绝。
+  - 最窄测试使用 v29 原句“这四个ODE系统涵盖振荡、衰减和混沌特性……不同动力学类型的泛化影响”作为反例，并覆盖结构额外科学字段、旧 v3 组合、单组件合法前缀后追加机制句，以及合规封闭结构的正例。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_system_plan_opportunity_routing.py -q --no-cov` → `17 passed in 1.74s`。
+  - `poetry run ruff check src/autoresearch/competition/system_plan_opportunity_routing.py tests/unit/competition/test_system_plan_opportunity_routing.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/system_plan_opportunity_routing.py tests/unit/competition/test_system_plan_opportunity_routing.py` → `Success: no issues found in 2 source files`。
+  - 对 `runs/manual-live/task2705-preregister-plan-smoke-v29/system-plan-opportunity-routing.json` 执行当前 `SystemPlanOpportunityRoutingArtifact.model_validate_json` → `OLD_V29_REJECTED ValidationError`，共 17 项校验错误。
+  - `poetry run pytest tests/unit/competition/test_system_plan_opportunity_distributed.py -q --no-cov` → `10 passed in 3.32s`，证明 v4 worker-binding API 未破坏下游分布式测试。
+- 问题新增或更新：新增 `P-20260809-114`（High；确定性消费门 resolved，旧 v29 fail-closed，新真实路由 pending），记录自由文本路由把无证系统性质与性能机制传给临时作者的污染路径及 v4 修复。
+- 后续：主 Agent 必须从 v4 主 Qwen 路由阶段重新运行，不能续用 v29 的 routing/worker 制品；新路由仍须经过七个临时作者与七个独立临时评审。reasoning 只作非证据审计。本轮未生成科研内容，未授权执行/发表/提交，未 staging、未 commit。
+
+---
+
+## 2026-08-09 20:45:41 +08:00 - Codex subagent `/root/temp_payload_projection` - Task 270.5 临时 Qwen 完整任务载荷 P0
+
+- 用户请求/活动任务：只修复 `system_plan_opportunity_distributed.py` 与最窄测试中的确定性 32KB 载荷失败；不得提高 `_MAX_TASK_PAYLOAD_CHARACTERS`，必须保留全部必要绑定与科学字段，并实际验证 real-shape/large v4 binding 下的完整七作者、七评审 `TemporaryQwenContentTask` 序列化。按仓库规则追加日志，不修改 official lineage、CLI、routing 或 memory，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/system_plan_opportunity_distributed.py`
+  - `tests/unit/competition/test_system_plan_opportunity_distributed.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 新增语义等价 compact response schema：递归删除仅作注解、不参与 JSON Schema 验证的 title、description、default、examples、deprecated、readOnly、writeOnly 与 `$comment`；type、required、additionalProperties、pattern、minLength/minItems 及 `$defs`/`$ref` 全部保留。provider 返回后仍由原 Pydantic 模型完整解析与跨字段校验，不以 compact schema 替代消费门。
+  - 新增模型任务专用 worker-binding 视图：保留 binding 主哈希、cell/目标/完整事实编号/三篇文献/单组件派工、全部投影科学事实值、组件来源与冻结预算；只去掉 input refs、binding hash 和独立 SKILL system refs 已重复承诺的逐事实哈希、中间哈希、机械 schema/rationale 与技能哈希副本。完整 binding 制品及其严格校验没有变化。
+  - reviewer 输入仍绑定完整作者结果哈希，并新增 full-cell SHA-256；只不再重复发送已由 `_cells_from_batch` 在 reviewer 派工前逐字验证的 cell/facts/literature/targets 与 trace 编号副本，所有机会科研散文、方法轨迹、changed component、对照、诊断、判据和风险仍原样下发。评审输出 supporting facts/literature 继续与 route 精确同序校验。
+  - 新测试以当前 v4 binding 为基线，将完整 binding 扩展到 26,309—26,311 字符，实际构造并通过 14 个 `TemporaryQwenContentTask` 的内建 32,000 字符校验；同时保留端到端七作者/七评审、归档、稳定输出和最终原模型验证。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_system_plan_opportunity_distributed.py tests/unit/competition/test_temporary_qwen_pool.py -q --no-cov` → `21 passed in 3.96s`。
+  - real-shape v4 完整任务测量：author 七项为 `29,553—29,555` 字符，最大余量 `2,445`；reviewer 七项为 `28,454—28,456` 字符，最大余量 `3,544`；硬上限仍为 `32,000`。
+  - `poetry run ruff check src/autoresearch/competition/system_plan_opportunity_distributed.py tests/unit/competition/test_system_plan_opportunity_distributed.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/system_plan_opportunity_distributed.py tests/unit/competition/test_system_plan_opportunity_distributed.py` → `Success: no issues found in 2 source files`。
+  - `git diff --check -- src/autoresearch/competition/system_plan_opportunity_distributed.py tests/unit/competition/test_system_plan_opportunity_distributed.py` → 无空白错误。
+  - 开发中首轮把既有测试文件纳入 Mypy 时报告两个 helper 缺返回类型和一个 `Any` 返回；已在最窄测试内补齐明确类型并复跑全绿。对已失效 v29 v3 制品的第二次诊断加载被当前 v4 schema 正确拒绝；未迁就旧制品。
+- 问题新增或更新：新增 `P-20260809-115`，记录“只测 binding 子对象、完整 task 超限”的 P0 盲区与修复余量。
+- 后续：主 Agent 需从 v4 路由重新运行真实 Qwen 谱系，确认 14 个 assignment/result/receipt/archive 全部生成；v29 不得续用。本轮未调用真实 provider，未生成或改写科研结论，未执行实验、批准、发表、提交、staging 或 commit。
+
+---
+
+## 2026-08-09 20:52:57 +08:00 - Codex subagent `/root/partial_plan_resume` - Task 270.5 routing 后正式计划续跑
+
+- 用户请求/活动任务：只在 `official_lineage.py`、生产 CLI、最窄测试和审计日志中新增正式、可追溯的 plan 部分续跑；从严格复核的 survey + method + component + routing 开始，由唯一阶段主 controller 继续 distributed → ideation → 系统自产中文计划/独立评审。不得重跑或覆盖既有 reasoning；已有完整 distributed 只能验证后跳过；缺件、跨谱系/hash mismatch、非新鲜 receipt 目录与已有 plan 必须失败关闭。不修改任何 `system_plan_*`、memory 或 submission bundle，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/official_lineage.py`
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_official_lineage.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 新增 `resume_plan_from_retained_routing(config, *, output_dir, completion, config_path, env_path)`。它先在 lineage heartbeat lock 内重建完整 frozen evidence context 与方法任务签名，再重新加载四件 retained artifact；逐项要求 v4 schema、同一 lineage、规范 output path、模型 receipt 实物、survey focus hash、method task hash、feasibility envelope、component binding、routing catalog/reference hash 及七个 worker binding 全闭合。
+  - 新输出限定在谱系内新鲜 resume root，并分为 `distributed/`、`ideation/`、`authoring/`。未知文件、残缺阶段目录或旧 authoring receipt 一律拒绝，绝不在原路径重放。仅在没有 distributed 时签发一次绑定 routing artifact hash、容量 7 的主阶段 controller；已有 distributed 会完整重验两个 phase、两个 batch、14 条 assignment/result/model-receipt/archive/task-record、batch/phase manifest 与稳定输出哈希，验证通过后不签 controller、不调用临时 Agent。ideation 同样只在不存在时运行，已有制品须验证 lineage、distributed hash 与三类模型回执。
+  - distributed、ideation、最终计划与 review 完成后再次重载四件 retained 输入和两个后续 artifact，关闭模型调用期间的输入漂移。计划仍只由 `author_research_plan(... require_chinese=True)` 生成，并由独立 `review_system_authored_plan` 给出修复反馈；编排层没有计划科学散文。
+  - 原始 authoring artifact/receipt 留在新鲜子目录；另机械生成根目录 canonical `system-authored-research-plan.json`，把 receipt 相对路径改为谱系内真实嵌套路径并重算 artifact hash，随后只写一次 `plan/research-plan.json`。`plan-stage-resume-manifest-v1` 绑定四件 retained hash、distributed、ideation、canonical plan、critical review、路径、复用状态与 `execution_authorized=false`，写后重验。
+  - 新增生产命令 `airesearcher competition mdbench lineage-resume-plan`，支持 `--lineage-id`、`--work-dir`、`--resume-dir`、重复 `--prior-run-dir`、原冻结 plan/autonomous plan/data root，以及 provider-neutral `--config/--env`。成功只声明系统自产中文计划，仍明确阻断执行。
+  - 复用与 `run_plan_stage` 完全相同的 `_plan_method_task_signature`，避免初跑和恢复各自复制后漂移；未改变任何科研 schema 或门禁。
+- 验证：
+  - 先写反例并观察新 API import 失败；实现后缺件、非新鲜/未知 receipt 目录、已有官方 plan、防跨 lineage、catalog hash mismatch，以及已有 distributed 验证后续跑且绝不再签 controller/重跑，共 6 个恢复测试通过。
+  - CLI 注册/参数传播与成功边界 2 项通过；最终聚焦命令合计 `8 passed, 52 deselected`。
+  - `poetry run pytest` 覆盖 literature survey、methodology、component atoms、routing v4、distributed、ideation、system-authored plan、plan review、official lineage 与 CLI → `204 passed in 34.60s`。
+  - `poetry run pytest tests/unit/competition/test_official_lineage.py tests/unit/competition/test_competition_cli.py -q --no-cov` → `60 passed in 29.06s`（canonical root artifact 最后加固前）；最后加固后恢复/CLI 聚焦 8 项再次通过。
+  - `poetry run ruff check` 上述四个生产/测试文件 → `All checks passed!`；`poetry run mypy` 同四文件 → `Success: no issues found in 4 source files`；`git diff --check` 定向无空白错误。
+  - 对 `runs/manual-live/task2705-preregister-plan-smoke-v29` 执行生产 `lineage-resume-plan` 只读探针：当前 v4 loader 以 17 项校验错误拒绝其 routing v3；resume 目录未创建、lock 未残留、没有 controller 或模型调用，证明未为历史制品兼容降级。
+- 问题新增或更新：新增 `P-20260809-116`（High；code-resolved、v4 live pending），记录 routing 后没有正式不可变续跑入口以及当前修复边界。开发期唯一预期失败是反例首次因 API 尚不存在而 pytest 收集失败；随后已实现并验证。一次全量两文件 pytest 超过 30 秒返回 session，正确续读后为 60 passed；没有漏报为完成。
+- 后续：主 Agent应从新 v4 谱系运行真实 Qwen；若它在 routing 后中断，可调用新 CLI 并将 resume root 固定为谱系内新目录。当前 v29 必须废弃，不能升级或续用。真实 live 未由本子任务启动；本轮没有生成科研计划/结果、执行实验、批准、发表、提交、staging 或 commit。
+
+---
+
+## 2026-08-09 23:52:02 +08:00 - Codex subagent `/root/submission_private_state_gate` - Task 270.4/271.1 提交洁净门与主权私有状态隔离
+
+- 用户请求/活动任务：修复 `submission_evidence_bundle._tracked_worktree_clean` 因 ignored `.env`、`config.yaml` 与 `autoresearch-vault/_private/` 永久为红的 P0 冲突；只能精确允许不进入发布包的规范本地状态，配置必须哈希绑定，源码/测试/Skills 与任意私有杂项仍失败关闭；证明原始记忆不会进入 bundle，不修改 official lineage/development/ideation，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/submission_evidence_bundle.py`
+  - `tests/unit/competition/test_submission_evidence_bundle.py`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 将质量回执升级为 `submission-quality-gate-receipt-v3`，新增规范 `config.yaml` 相对路径与完整 SHA-256、`.env` 排除和主权原始记忆排除的强类型常量。生成质量回执前要求配置是仓库根常规非符号链接文件、可解析为 `SystemConfig` 且不含凭据字段/值；复用回执、外部授权请求和最终 audit 均重验当前配置字节。已有人工授权请求绑定 quality receipt hash，因此不会在签名后静默换配置。
+  - 工作区门先用 `git ls-files` 拒绝任何被 tracked 的 `.env`、`config.yaml` 或 `_private`，再只对 `!!` ignored 状态开放三个精确边界：根 `.env` 常规文件；与 v3 预期 SHA 完全一致的根 `config.yaml`；通过规范目录、无 symlink、canonical record JSON、project/date/record ID、blob 大小/SHA、闭合引用集合校验的 `_private/raw-memory`。其余 untracked/ignored 源码、测试、Skills、文档、scratch 或 private 杂项保持红灯。
+  - artifact inventory 新增硬拒绝器，根 `.env` 与整个 sovereign `_private` 无论由哪个上游路径传入都不能成为提交证据条目。raw-memory 校验只在本地读取，不把 payload、私有哈希或路径清单写入质量回执、bundle 或授权请求。`config.yaml` 则只以本地 digest/无凭据身份进入既有证据清单，不复制内容。
+  - 保留当前 v2 opaque blob，并兼容已留存、仍由 `RawMemoryRecord` 严格验证的 v1 canonical suffix；任意伪 suffix、孤立 blob、篡改 record、额外可执行文件或未知目录均拒绝。实际两条用户原始记忆的本地树通过该只读验证。
+  - 新增反例测试：ignored `src`/Skills/任意输入不放行；配置无 hash/错误 hash/运行后漂移或 YAML 中出现凭据字面值均阻断；`.env` 值不进入 receipt；真实内容寻址 raw-memory 通过、追加 `injected.py` 后阻断；强制 tracked 但工作区无 diff 的 `.env` 仍阻断；artifact inventory 直接拒绝 `.env` 和 raw blob。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_submission_evidence_bundle.py tests/unit/competition/test_publication_signature.py tests/unit/competition/test_competition_cli.py::test_submission_audit_cli_writes_truthful_blocked_bundle -q --no-cov` → `48 passed in 8.52s`。
+  - `poetry run ruff check src/autoresearch/competition/submission_evidence_bundle.py tests/unit/competition/test_submission_evidence_bundle.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/submission_evidence_bundle.py tests/unit/competition/test_submission_evidence_bundle.py` → `Success: no issues found in 2 source files`。
+  - `poetry run python -m py_compile src/autoresearch/competition/submission_evidence_bundle.py` → 通过。
+  - `poetry run python -c "... _canonical_sovereign_raw_memory_tree(Path('.').resolve()) ..."` → `True`，只返回布尔值，未输出私有内容或哈希。
+  - 首轮聚焦 submission 测试在 tracked-private 最终反例前为 `35 passed in 7.72s`；最终联动复跑包含该反例，为上述 47 项全绿。没有把共享工作区当前大量未提交源码或 ignored scratch 误报为 clean。
+- 问题新增或更新：新增 `P-20260809-117`，记录旧洁净门与 `.env`/配置/主权记忆的不可达冲突、v3 配置绑定、私有排除证明与剩余语义边界。
+- 后续：完成共享源码聚焦提交并移走/清理明确应阻断的 ignored scratch 后，主 Agent需运行新的完整质量门以生成真实 v3 回执；旧 v2 质量回执应失败关闭而不能升级。若未来 `.env` 承载除凭据以外会改变科研语义的变量，必须迁入哈希绑定配置或新建无秘密运行合同。本轮没有 staging、commit、外部模型调用、实验执行、发表或提交授权。
+
+---
+
+## 2026-08-10 00:31:13 +08:00 - Codex `/root` - Task 271.3 主权记忆双平面与自适应科研双环
+
+- 用户请求/活动任务：调研记忆管理、自修改和自主科研前沿，吸收成熟方案或形成可检验的新架构；不要把探索阶段做成过严格式流程；必须证明系统能从一个目标自行循环，而不是 Codex 逐条指令、代写中文科研计划或针对单一问题写死；学科方法只放 `skills/`，临时 Agent 由当前阶段主 Agent 分配并在归档后消失。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_loop.py`
+  - `src/autoresearch/research/adaptive_skill_router.py`
+  - `src/autoresearch/research/adaptive_exploration_runtime.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/research/test_adaptive_sovereign_loop.py`
+  - `tests/unit/research/test_adaptive_skill_router.py`
+  - `tests/unit/cli/test_adaptive_explore_cli.py`
+  - `tests/live/__init__.py`
+  - `tests/live/test_adaptive_sovereign_loop_live.py`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/dreaming/dream_92d411384253d225b6ad83ae6156552a343135f74b8d8ce15b6ea3a8afcbe8b4.{json,md,commit}`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/dreaming/assets/sovereign-memory-adaptive-research-dual-loop.png`
+  - `Problem.md`
+  - `Agent.md`
+- 原始私有制品（不进入 Git/提交包）：官方 ArXiv 八篇前沿论文 Atom 元数据已通过 `RawMemoryStore` 保存为 `rawmem_34451970ba16a0d5aca9d250ace32d6878a4a13b98b66b0db040c905cc205922`，payload SHA-256 `d7611ac0058bd8b20f8b7e99f89fc38961b2844fbf379f4aaedc1cf3d1651c29`，22,676 字节；真实自循环 seed、两次 Skill 路由响应/reasoning、两次科研动作响应/reasoning与转移载荷全部写入 canonical `_private/raw-memory` 并由最终快照重验。
+- 变更摘要：
+  - 新增通用自适应主 Agent 控制器，提供 13 个跨学科算子、保留全部分支、反馈回灌、预算/平台期停止、开放探索/证据晋级/独立验证/等待人工范围审批分区。用户 seed API 只有中文目标与范围，没有假设、方法、预期结果或计划参数；所有科研散文来自配置模型。
+  - 开放探索允许未引用但明确未验证的猜想；晋级才启用多来源、可证伪、决定性测试、对照、外部反馈、资源和独立验证；通过也不授予实验、证据、创新或发表。工作流变异只影响未来策略说明，不能改硬政策。
+  - 新增动态 `RepositoryQwenSkillProvider`：每轮只把项目 Skill 的 name/description/path/hash/长度交给 Qwen，可选择零个；未选目录由程序按补集生成，精确入选文件再作为独立 user message注入动作，本体 system prompt 不含学科方法。选择、消息、模型身份、原始响应与 reasoning 均内容寻址，续跑发现制品时重验后零调用复用；路由调用与动作调用进入同一模型预算。
+  - 新增 `airesearcher adaptive-explore` 概念探索入口。它从一次中文目标/范围启动多轮真实 Qwen 决策，固定 external/temporary budget 为零，明确不能冒充检索、实验、晋级或完整 AI Scientist；输出状态、动作序列和永久 false 的执行/发表边界。
+  - 文献调研整合 Memory for LLMs、2026 Agent Memory、Agent-Native Memory、GEM、AgeMem、AI Scientist-v2、AFlow、Darwin Gödel Machine、AI Research Agents与外部反馈自纠证据，生成可重建 Dreaming 投影和经过目视检查的架构图；所有“主权记忆双平面 × 自适应科研双环”表述均标为待实验的设计候选。
+- 真实 Qwen 验证：
+  - `RUN_LIVE_ADAPTIVE_LOOP=1 poetry run pytest tests/live/test_adaptive_sovereign_loop_live.py -q --no-cov`（PowerShell 环境变量写法）→ `1 passed in 181.78s`。`qwen3.7-max` 无中间人工消息连续两轮，自主选择 `reframe_question` 与 `decompose_uncertainty`，两次 Skill 路由加两次动作共四次调用；测试临时运行四份 reasoning 为 3361/3128/2415/3310 字符。
+  - 生产 CLI：`poetry run airesearcher adaptive-explore ... --max-steps 2 --maximum-selected-skills 3 --thinking-budget 2000` → `paused_budget`、`autonomous_turns=2`、`model_calls=4`、动作 `reframe_question → decompose_uncertainty`。持久化运行第一轮路由并使用 `research-novelty-triangulation`，第二轮自主选择零 Skill；四份 reasoning 为 3284/3838/2537/4170 字符。`load_adaptive_research_loop_snapshot` 重验返回 raw bindings verified、external actions 0、human scope/execution/publication 全 false。
+- 自动验证：
+  - `poetry run pytest tests/unit/research/test_adaptive_sovereign_loop.py tests/unit/research/test_adaptive_skill_router.py tests/unit/cli/test_adaptive_explore_cli.py -q --no-cov` → `16 passed in 6.65s`。
+  - 聚焦 Ruff → `All checks passed!`；聚焦 Mypy（9 个 source/test 文件联合）→ `Success: no issues found in 9 source files`；三生产模块 `py_compile`、定向 `git diff --check` 通过；`poetry run airesearcher adaptive-explore --help` 正常展示完整入口。
+  - 架构图 SHA-256：`9d6651cf82eba0034e097fedc99e63680b04b892092ebd0318c8efb42df45575`；使用本地 image viewer 以 high detail 目视确认标题、双平面、双环、动态 Skill、人工审批和红色权限阻断均清晰。
+- 开发期问题：初次配置探针错误读取 `SystemConfig.llm`；初次 live 因要求模型机械填写完整 rejected Skill 账本而失败；新增 live 测试初用未注册 marker；单独运行 live 文件 Mypy 缺 source package context。均已修正并如实记录在 `P-20260810-118`；失败的 Qwen 原始响应未删除。
+- 问题新增或更新：新增 `P-20260810-118`。它说明旧 `autopilot --watch` 只是固定流程重复、本轮解决的阶段局部严格度与动态 Skill，以及生产检索/临时 Agent/沙箱/Dreaming/独立验证、预算匹配消融和正式成对干预执行仍未完成。
+- 后续：优先实现 `ResearchActionEnvironment` 的真实文献检索、Dreaming与有界沙箱适配，以及 `TemporaryResearchDispatcher` 到现有 temporary Qwen pool 的桥；冻结 fixed/linear/adaptive/adaptive+sovereign-memory 四臂评估。随后再修正式 upstream plan 完整重放、人工计划审批签名和 prospective control/treatment 双容器执行。本任务未勾选、未 staging、未 commit；没有生成实验结果、科研计划、创新通过结论、发表或提交授权。
+
+---
+
+## 2026-08-10 01:36:52 +08:00 - Codex `/root` - Task 271.3 能力级自循环、独立审查与结果盲消融
+
+- 用户请求/活动任务：继续把记忆管理、自修改和自主科研前沿高效融入系统；探索阶段保持自由，晋级/执行/发表阶段才严格；用真实证据回答当前实现能否从一个目标自行循环，而不是 Codex 逐条指令、代写中文科研内容或为一个问题写死。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_loop.py`
+  - `src/autoresearch/research/adaptive_skill_router.py`
+  - `src/autoresearch/research/adaptive_capabilities.py`
+  - `src/autoresearch/research/adaptive_exploration_runtime.py`
+  - `src/autoresearch/research/adaptive_promotion_verifier.py`
+  - `src/autoresearch/research/adaptive_autonomy_audit.py`
+  - `src/autoresearch/research/adaptive_loop_benchmark.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/agents/temporary.py`
+  - `src/autoresearch/competition/temporary_qwen_pool.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/research/test_adaptive_sovereign_loop.py`
+  - `tests/unit/research/test_adaptive_skill_router.py`
+  - `tests/unit/research/test_adaptive_capabilities.py`
+  - `tests/unit/research/test_adaptive_promotion_verifier.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark.py`
+  - `tests/unit/agents/test_temporary_agents.py`
+  - `tests/unit/competition/test_temporary_qwen_pool.py`
+  - `tests/unit/cli/test_adaptive_explore_cli.py`
+  - `tests/live/test_adaptive_sovereign_loop_live.py`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/frontier/agent-memory-self-loop-frontier-2026-08-10.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 将概念控制器升级为能力级生产入口 `airesearcher adaptive-research`。Arxiv/OpenAlex 检索结果、Dreaming 投影、当前阶段主 Agent 发起的临时 Qwen batch 和独立晋级评审全部通过通用 capability 协议返回环境反馈；临时身份在归档后撤销，内容和回执保留。零技能 batch 合法，不再为机械满足 schema 强迫选择学科 Skill。
+  - 新增独立 Qwen 晋级审查。只有模型主动申请 promotion 且机械来源/反证/对照/资源门通过后才触发；审查者逐篇比较全部入选文献、仅允许摘要范围结论、要求配置 Qwen 与至少 200 字 reasoning，并保留 `innovation_verified=false`、`execution_authorized=false`、`publication_authorized=false`。编排器不替 Qwen 写科研判断。
+  - 真实 Qwen 暴露两个形状/循环问题：非临时算子错误携带 `temporary_tasks`，以及 18 术语全 AND 检索导致合法空结果。控制器现先持久化每次失败响应/reasoning 再校验，最多进行两次只修合同形状的 Qwen repair，冻结算子和已生成科研散文；错误 step/branch/capability/Skill/预算不可修。检索正文改由 Qwen显式给出 3—10 个 ASCII 关键词，适配器只确定性抽取，Arxiv AND 上限为 3。没有 Codex 代写搜索结论。
+  - 新增 `AdaptiveAutonomyAudit`，从 canonical snapshot、raw bindings、Skill receipts 和动作消息机械重放每轮可选算子、是否有 forcing 字段、是否重新注入先前反馈、是否为 Qwen、可见 JSON 与原始响应/reasoning 是否一致、启动后是否出现人工科研散文。审计只证明控制器自治，科学正确/创新/执行/发表恒为 false。
+  - 冻结结果盲四臂协议：固定流水线、线性模型循环、自适应派生记忆、自适应主权记忆；五类挑战为迟到重要性、陈旧纠错、冲突来源、空工具结果和记忆污染；三个种子，共 60 cells。主终点为有效晋级精确率、陈旧依赖纠正率、负反馈适应率、记忆污染率、启动后人工介入；模型/工具/总预算和严格晋级/安全政策跨臂一致。协议生成时 `no_result_observed_when_frozen=true`。
+  - 新增中文 OB 前沿研究笔记，区分模型原生记忆与用户主权外部记忆，记录 19 个 primary sources、TF-Engram 对“推理期外挂记忆必然失败”的反例，以及无法找到 Satano/InGram+LoRA 一手来源的未核实状态。提出的“双记忆平面 × 双科研循环”仍是可证伪设计候选。
+- 真实运行与制品：
+  - `task2713_adaptive_capability_v2`：一次中文目标/范围、零中途人工消息，`qwen3.7-max` 三轮自主选择 `retrieve_evidence → reframe_question → decompose_uncertainty`；首轮两个真实来源均传输成功但返回零结果，后续模型看见负反馈并换路；运行以 `paused_budget` 停止，external actions=1、temporary agents=0、执行/发表=false。
+  - `runs/manual-live/task2713-adaptive-capability-v2/adaptive-autonomy-audit.json`：audit hash `1564498d36958c5fe2a0d69e26ce509b8b5859dcc12121c32f5a7ab0e7e208d2`；三轮三种算子、每轮 12 个可选动作、后两轮先前反馈暴露率 1.0、启动后人工科研消息 0，`controller_self_loop_verified=true`；科学正确、创新、执行和发表均 false。
+  - `runs/preregistration/task2713-adaptive-loop-benchmark-v1/`：协议 hash `69a79baa68592fe244805af960a415d62c73f0d76347075fb76c342087f5e721`；只有 JSON/中文 Markdown 预注册，没有任何 60-cell 结果。
+- 验证：
+  - `poetry run pytest -q tests/unit/research/test_adaptive_capabilities.py tests/unit/research/test_adaptive_loop_benchmark.py tests/unit/research/test_adaptive_promotion_verifier.py tests/unit/research/test_adaptive_skill_router.py tests/unit/research/test_adaptive_sovereign_loop.py tests/unit/agents/test_temporary_agents.py tests/unit/competition/test_temporary_qwen_pool.py tests/unit/cli/test_adaptive_explore_cli.py tests/live/test_adaptive_sovereign_loop_live.py --no-cov` → `59 passed, 2 skipped in 12.05s`；两个 live 用例默认正确跳过。
+  - `poetry run pytest -q tests/unit/research --no-cov` → `261 passed in 117.75s`，证明新控制器、审计和预注册没有破坏既有 research 合同；这不是全仓 competition/deployment 回归。
+  - 使用当前代码从最终 snapshot 和私有 `RawMemoryStore` 重新执行 `audit_adaptive_research_autonomy(...)`，得到同一 audit hash、`True 3 3 1.0 0`（已验证自循环、3 轮、3 种算子、反馈暴露率 1.0、后置人工科研消息 0），证明审计不是手写 JSON。
+  - `$env:RUN_LIVE_ADAPTIVE_RETRIEVAL='1'; poetry run pytest -q tests/live/test_adaptive_sovereign_loop_live.py::test_real_literature_sources_enter_sovereign_memory_before_feedback --no-cov` → `1 passed in 3.55s`，实际调用 Arxiv/OpenAlex 环境；结果先写 sovereign raw memory，再进入反馈。
+  - 11 个相关生产文件 Mypy → `Success: no issues found in 11 source files`；20 个生产/测试文件 Ruff → `All checks passed!`；包根 autonomy/benchmark 与显式 promotion 模块导入 smoke 通过。
+  - 首次尝试从 `autoresearch.research` 包根导出 promotion verifier 导致既有 `competition.planning → autoresearch.research` 循环导入；未用别名掩盖，立即撤销该根导出，保留无循环的显式模块 API 后复验通过。
+- 问题新增或更新：更新 `P-20260810-118`，加入 capability v1 结构失败、校验前失败回执缺口、Qwen 查询形状问题、修复边界、v2 自循环审计、四臂协议与剩余证据缺口。没有新增问题编号。
+- 后续：通用有界沙箱、真实非空多文献的独立晋级 live、统一 verifier/临时 Agent/动作总成本账本、60-cell 四臂执行和广泛回归仍未完成；更下游正式 prospective control/treatment 成对容器执行、完整计划谱系重放与外部人工计划签名仍是红灯。Task `271.3` 未勾选，未 staging、未 commit；没有生成研究计划或实验结果，没有证明系统贡献创新/更优，没有批准发表或提交。
+
+---
+
+## 2026-08-10 02:04:11 +08:00 - Codex subagent `/root/adaptive_benchmark_receipts` - Task 271.3 四臂 benchmark 执行证据底座
+
+- 用户请求/活动任务：只新增四臂 benchmark 的执行回执与最窄测试，不执行模型、不接入 CLI/包根；严格区分真实外部 Qwen 与 diagnostic double，统一主调用、修复、Skill、临时 Agent、验证器、工具和墙钟预算，保留失败成本，以四臂精确能力证明、双记忆平面隔离、不可换臂轨迹、前向哈希日志与写一次终态阻断伪 provider、机械回执冒充、隐藏成本和日志删插重排。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_receipts.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_receipts.py`
+  - `Agent.md`
+- 变更摘要：
+  - 新增 `ProviderAttemptReceipt` 与内容寻址 `ExternalTransportAnchor`。`live_qwen_provider` 只接受显式 `qwen*` 模型、provider request ID、transport 原始元数据；成功调用另须 response ID、可见输出、reasoning 和 usage 精确字节哈希。`diagnostic_double` 固定为非 Qwen 身份并禁止携带 provider ID、HTTP 或外部 transport 证据。成功与失败均可落盘；失败绑定阶段和原始 error hash；`formal_eligible` 只能由 live 模式和外部 HTTPS adapter anchor 同时存在机械推导，不能由调用方声明。
+  - 新增 `MechanicalChallengeTransitionReceipt`，仅允许墙钟 reservation，模型请求与网络请求恒为 0，`provider_attempt_created`、科研证据和 formal provider 资格恒为 false；严格 `receipt_kind` 与 extra-forbid 阻断其伪装成 Qwen 回执。
+  - 新增 `ArmRuntimeAttestation`，从冻结协议重新推导四臂完整 capability profile、cell ID 与含 arm 的 trajectory ID；审计原始记忆平面与 controller-visible 投影使用不同 ID/manifest 并明确前者不直接进入 controller context。更换 arm、篡改能力位或复用旧 trajectory 均失败关闭。
+  - 新增 `BudgetVector`、`BudgetReservation`、`BudgetLedgerEntry` 与 `BudgetLedger`。七类通道使用同一向量；每个开始的操作（包括失败）必须保留其预留请求/工具计数，墙钟按实际值计；每项 reservation 恰好一个 settlement，ID/哈希/顺序/证据回执一一绑定，reserved、charged、failed-charged 三个声明总量均从明细重算，遗漏、重复或减记被拒绝。
+  - 新增 `CellJournalEntry`、`TerminalEnvelope` 与 `CellJournalReplay`。日志逐项绑定 protocol/cell/arm/trajectory、前驱哈希与 payload；重放要求 attestation 首项、reservation→receipt→settlement 的精确顺序，以及 ledger/Provider/机械回执的完整有序覆盖。终态封存全部 entry hash、ledger 和回执顺序，且科学证据、优越性、创新与发表授权恒为 false。逐 entry 文件和终态均用独占创建/精确字节复用，封存后禁止追加。
+  - API 提供四臂 attestation、预算 reservation/settlement/ledger、外部 transport anchor、Provider/机械回执、journal entry、terminal 的 builder，以及磁盘 load、replay、entry/terminal/通用 contract write-once；生产模块不调用模型、网络或科学执行器。
+- 验证：
+  - `poetry run pytest tests/unit/research/test_adaptive_loop_benchmark.py tests/unit/research/test_adaptive_loop_benchmark_receipts.py -q --no-cov` → `26 passed in 1.35s`（其中新模块 23 个参数化/对抗用例）。覆盖四臂精确 profile、raw/visible plane alias、同轨迹换 arm、fake provider、diagnostic 冒充、无 anchor formal 声明、成功/失败 Qwen、机械科学冒充、七类预算与失败计费、settlement/总量隐藏、journal 删除/插入/重排、后缀重哈希换臂、磁盘删除、写一次冲突和封存后追加。
+  - `poetry run ruff check src/autoresearch/research/adaptive_loop_benchmark_receipts.py tests/unit/research/test_adaptive_loop_benchmark_receipts.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/research/adaptive_loop_benchmark_receipts.py tests/unit/research/test_adaptive_loop_benchmark_receipts.py` → `Success: no issues found in 2 source files`。
+  - `poetry run python -m py_compile src/autoresearch/research/adaptive_loop_benchmark_receipts.py` → 通过；`git diff --check` 对两个新增源码/测试文件无错误。
+  - 开发期首次 16 项测试全部暴露 `_addressed` 不能序列化嵌套 Pydantic capability profile；改为递归生成规范 JSON 视图后，单例、完整测试和静态门均复验全绿。该问题只存在于未交付的新模块开发态，未产生或污染任何 benchmark 制品。
+- 问题新增或更新：无；未修改共享 `Problem.md`。上述嵌套序列化缺陷已在同轮实现内闭合并由完整最窄回归覆盖。
+- 后续：本模块仅建立可消费的证据合同，不执行 60 cells，也不证明真实 transport adapter 已输出 anchor。主 Agent仍需把四个 runner 接到这些 builder/写一次 API，冻结同一 budget limit，执行正式 live Qwen cells，并用 terminal replay 后的制品计算预注册指标；当前没有科学优越性、创新、发表或提交授权，Task `271.3` 仍不应勾选、staging 或 commit。
+
+---
+
+## 2026-08-10 02:10:59 +08:00 - Codex subagent `/root/execution_contract_v2` - Task 270 正式前瞻成对执行合同第一层
+
+- 用户请求/活动任务：在不接入 official development search、runner、official lineage、报告或提交门的边界内，新增只服务正式 prospective 链的 control/treatment arm binding，并把候选静态审计升级为失败关闭的 restricted dispatcher；旧 v2 审计不得继续授权正式执行。
+- 变更文件：
+  - `src/autoresearch/competition/plan_execution_contract.py`
+  - `tests/unit/competition/test_plan_execution_contract.py`
+  - `Agent.md`
+- 变更摘要：
+  - 新增 `ProspectiveExecutionArmBinding`、`ProspectivePairedExecutionBinding` 与 `derive_prospective_paired_execution_binding(...)`。它们从 `ProspectivePlanExecutionContract` 确定性派生两臂，逐项绑定 plan contract、prospective atom/intervention、pair、intervention key、完整 configuration 及其哈希；两臂配置键集合相同且机械差分严格等于唯一 intervention key。每臂保留原资源请求，时间、内存、CPU 和 public-fit-call 总预算均显式等于两倍；`execution_authorized` 与 `is_scientific_evidence` 恒为 false。
+  - 没有给历史 cell/spec 添加 optional 字段。正式候选声明独立升级为 `prospective-candidate-execution-declaration-v2` 并嵌入精确 pair binding；正式静态审计独立升级为 `candidate-plan-alignment-audit-v3`，旧 v2 JSON 无法通过 Literal/schema 验证，`require_prospective_candidate_plan_alignment(...)` 只认当前强类型审计。
+  - v3 采用刻意收窄、可判定的 top-level dispatcher 形状，而非声称通用 CFG 完备：anchor 必须先对 runtime arm 的 plan/intervention/pair 三个身份做失败关闭校验，再从 runtime configuration 的声明 intervention key 选择 control/treatment 两个不同 helper，未知值必须 raise，且 selector 必须支配 anchor 的全部科学返回。每个选中 public hook 的全部返回必须直接通过 anchor。
+  - declaration 只能作为只读静态下标根使用；alias、赋值/命名表达式、函数传参、返回、容器封装、默认参数、Store、Del 和 mutating method 均拒绝。新增确定性反例覆盖 `if False` 中的死 selector、alias 后修改、直接 Store/Del、容器/参数逃逸、未消费 runtime configuration、两臂共用 helper、anchor 旁路返回及 public-hook 旁路。
+- 验证：
+  - 初始测试先因新 formal-only API 尚不存在而在收集期出现预期 `ImportError`，随后实现并闭合。
+  - `poetry run pytest tests/unit/competition/test_plan_execution_contract.py -q --no-cov` → `36 passed in 2.91s`。
+  - `poetry run ruff check src/autoresearch/competition/plan_execution_contract.py tests/unit/competition/test_plan_execution_contract.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/plan_execution_contract.py tests/unit/competition/test_plan_execution_contract.py` → `Success: no issues found in 2 source files`。
+  - `poetry run python -m py_compile src/autoresearch/competition/plan_execution_contract.py tests/unit/competition/test_plan_execution_contract.py` 与定向 `git diff --check` 均通过。
+- 问题新增或更新：无；未修改共享 `Problem.md`。Mypy 首轮指出 Mapping 哈希入参、Optional AST narrowing 和局部变量重名，共 7 项，均在本轮修正并复验全绿。未运行预期仍使用旧候选形状的 official/runner 广泛回归，以免把尚未授权的运行时接线误作本层交付。
+- 后续：主 Agent需在正式候选生成处投影 declaration v2/restricted dispatcher 并留存 audit v3；在 cell builder 中为每个冻结 cell 创建两个全新的强类型 arm spec（不得扩展旧 spec），runner 分臂传入不可变 `prospective_execution_binding`，执行前后重验 source/spec/data/contract/atom/pair/arm hashes 并防止候选改写配置；结果层只有在同一 cell 的两臂回执、预算和数据身份均闭合后才计算效应，报告/提交门只接受完整 pair。上述接线均不在本轮实现；当前没有执行任何 arm、生成结果、证明科学证据/创新、授权发表或提交，也未 staging/commit。
+
+---
+
+## 2026-08-10 02:13:58 +08:00 - Codex subagent `/root/adaptive_benchmark_v2_protocol` - Task 271.3 四臂确认性 v2 结果前执行协议
+
+- 用户请求/活动任务：依据最新 `adaptive_loop_benchmark_design.py` v2，在不修改既有模块、CLI 或包导出的边界内，新增结果前 execution protocol：绑定父 v1 协议与设计审计，冻结五类各十二个真正不同的中文场景、逐轮公开刺激、隐藏机器 oracle、四臂单次模型抽样的 240-cell 配对矩阵、平衡随机次序、盲 cell 清单、runner-only 分配清单，以及不可在失败/缺失/零动作上博弈的确认性分析合同；不得运行模型、网络或生成结果。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_execution_protocol.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py`
+  - `Agent.md`
+- 变更摘要：
+  - 新增 `AdaptiveLoopBenchmarkExecutionProtocol`、`AdaptiveLoopBenchmarkExecutionBundle` 及分层 public scenario/hidden oracle/blinded cell/runner assignment/analysis contract。协议精确引用父 v1 hash `69a79baa68592fe244805af960a415d62c73f0d76347075fb76c342087f5e721` 与 design-audit v2 hash `ee21aeb74ed3632259f510a4f711e108bd71462a07818ec95629effdf019e4fe`。
+  - 手工冻结五类各十二个语义和事实均不同的中文场景，共 60 个独立实验单位；每个场景有四轮公开刺激、内容独立性说明和只供机器评分的隐藏 oracle。objective/scope 机械拒绝中英文 hypothesis/method/plan、预期结果及科研方案词，且声明不含指定算子序列或 seed 重复；所有场景、公开投影和 oracle 分层内容寻址并交叉绑定。
+  - 240 个 cell 采用单场景四臂区组和四条循环平衡序列。调用方必须显式提供 runner-only `randomization_seed`，不存在可公开反推的默认 seed；SHA-256 seeded permutation 保证每个 challenge 内每条序列恰用三次、每个 arm 在每个 run position 恰出现三次。公开 blinded manifest 仅含 opaque cell ID、场景、公开场景 hash、位置和单次 draw，不含 seed、arm、oracle 或 outcome；独立 runner-only manifest 才包含 arm 映射。
+  - 冻结唯一确认性终点 `objectively_confirmed_terminal_success`、唯一主对比 A4 `adaptive_sovereign` 减 A3 `adaptive_derived_only`、双侧精确 McNemar、alpha 0.05、SESOI 风险差 0.25；Holm 只用于 secondary。运行失败、缺失制品和零可审计动作都固定计 0，全部 60 对保留且禁止插补；父 v1 60 cells 仅为工程 pilot，不进入 v2 确认性检验。superiority、innovation、publication 在协议、分析与两个 manifest 中均为 false，execution_started=false、result_cell_count=0。
+  - 稳定 API 为 `build_adaptive_loop_benchmark_execution_bundle(..., *, randomization_seed: int)`、`build_adaptive_loop_benchmark_execution_protocol(..., *, randomization_seed: int)` 与 `write_adaptive_loop_benchmark_execution_protocol(output_dir, ..., *, randomization_seed: int)`；writer 采用 canonical JSON、exclusive create 和字节相同才允许幂等复用，runner 映射写入独立 `runner-only/` 子目录。
+- 验证：
+  - `poetry run pytest -q tests/unit/research/test_adaptive_loop_benchmark.py tests/unit/research/test_adaptive_loop_benchmark_design.py tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py --no-cov` → `13 passed in 2.30s`。
+  - `poetry run pytest -q tests/unit/research --no-cov` → `300 passed in 122.29s`。
+  - `poetry run ruff check src/autoresearch/research/adaptive_loop_benchmark_execution_protocol.py tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py` → `All checks passed!`；`poetry run ruff format --check ...` → 两文件已格式化。
+  - `poetry run mypy src/autoresearch/research/adaptive_loop_benchmark_execution_protocol.py tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py` → `Success: no issues found in 2 source files`；`py_compile` 与定向 `git diff --check` 通过。
+  - 对抗测试覆盖嵌套 public/oracle/protocol hash、blinded/runner manifest hash 篡改、write-once 不同字节拒绝、60 个场景/公开 hash/独立 key/四轮内容全唯一、每类 12、240 opaque cells、完整位置平衡以及公开 JSON 中 arm 值、seed、oracle、outcome 的缺失。首轮 no-leak 测试发现公开清单的否定型字段名仍含 `hidden_oracle` 字样（`2 failed, 5 passed`），随后改为中性 `private_scoring_rules_absent` 并复验全绿；这是已解决的本地开发问题，没有泄漏运行数据。
+  - 使用仅限验证的 runner seed `27132026` 构建但未写入正式运行目录：scenario panel hash `6fbf55a90148f4b155f562dcf8b6d1bec2532a468b4c5ef035b6762196f9fb4b`，analysis hash `7b26abc0112a3ef346158962f52dfd7696feda326d18382f811927dca746cc22`，blinded manifest hash `9fbb5c1e188dfeba4fe742d69b8d13a40029591f4c80b795f08d0d544f8f48fa`，runner assignment hash `562a21ae59bd361450762c64f44b3bcf5c419b92a4b56304ef9880ea18ce7567`，execution protocol hash `a213bc2286cabede56687fc5ab1979d4305ff7f59bf3389b8e287f89f1260ec2`。
+- 问题新增或更新：无；没有修改共享 `Problem.md`。首次 Mypy 发现 float 不能作为 `Literal` 参数，两项均改为带范围与精确冻结 validator 的 float 后复验全绿；盲字段命名问题同样已在本轮闭合，不构成遗留 blocker。
+- 后续：主 Agent/runner 必须通过显式模块路径导入稳定 API，使用与验证 fixture 不同且只保存在 runner-only 制品中的实际随机 seed，并把 `scenario.public.stimuli` 按 turn 逐条暴露，绝不能把 `hidden_oracle`、runner assignment 或 seed放进模型上下文。并行新增的 `adaptive_loop_benchmark_receipts._require_frozen_protocol()` 目前只接受父 v1 hash；接线层不得把 v2 hash硬塞给旧合同，也不得只留 v1 而丢失 v2 cell谱系，应新增同时绑定 parent v1、execution protocol、blinded/runner manifest 与 blinded cell ID 的桥接 attestation。任何 runner、模型配置、工具 replay、终态评分实现和 240-cell 执行均需另行验证；本轮没有生成正式预注册文件、cell 结果、科学优越/创新结论、发表或提交授权，也没有 staging/commit。
+
+---
+
+## 2026-08-10 02:18:25 +08:00 - Codex subagent `/root/execution_contract_v2` - Task 270 正式候选 declaration v2 / audit v3 生成接线
+
+- 用户请求/活动任务：严格限定在 official candidate generation/revision 层，把正式候选的 Qwen prompt 与源码合同升级到 declaration v2、alignment audit v3 和 restricted dispatcher；保留最多三次 schema/topology repair 及逐次实计，不允许编排器事后注入代码，不接 runner、cell、报告或提交。
+- 变更文件：
+  - `src/autoresearch/competition/official_development_search.py`
+  - `tests/unit/competition/test_official_development_search.py`
+  - `Agent.md`
+- 变更摘要：
+  - 新增内部 `formal-prospective-source-contract-v2` 投影，向 Qwen 同时给出 exact `prospective-candidate-execution-declaration-v2` Python assignment、所需 `candidate-plan-alignment-audit-v3`、runtime payload key、三条 plan/intervention/pair identity guard 的精确路径/比较/失败动作、intervention-key configuration selector、不同 control/treatment helper、unknown-arm raise 和所有 public hook direct-return dispatcher 约束。合同明确 declaration 禁止 alias/传参/容器/Store/Del，`if False` 不计，且 orchestrator 不得注入或改写源码。
+  - generation 与 revision 共用同一 restricted-dispatcher instruction；Qwen 必须在 `source_lines` 中自行输出完整 declaration、guards、selector、helpers、raise 和 hooks。持久化源码仍逐字来自最终接受 interaction，没有事后模板拼接、补 declaration 或修代码。
+  - 仍将 schema 与 topology repair 合并在最多三个 logical model turns 中。每次调用前写入 hash-bound logical-turn registration，随后由既有 `_call_and_record` 保留真实 interaction；反例验证三次失败严格对应三次模型调用和三条 attempt registration，没有免费 repair。
+  - repair 冻结首轮已出现的六个科研叙事字段，并从首轮 source 建立科学方法签名。正式 prospective 签名只排除被 audit v3 严格限制的 dispatcher/public-hook 拓扑胶水，control/treatment helper bodies 继续纳入；因此可修复 same-helper 路由，但 schema repair 或 topology repair 若改 hypothesis、科学运算或 helper body 会以 `REPAIR_SCIENTIFIC_NARRATIVE_DRIFT` / `TOPOLOGY_REPAIR_METHOD_DRIFT` 失败关闭。repair prompt 只允许改 declaration、三 guard、selector call sites、unknown raise 和 hook dispatch。
+  - 新增对抗测试覆盖 `if False` dead selector、declaration alias/修改、同 helper、hook bypass、unknown-arm fallback、v1 declaration 降级、保留 audit v2 降级、schema/topology repair 科研叙事漂移，以及 valid same-helper topology repair。所有旧声明/旧正式审计均被新强类型链拒绝。
+- 验证：
+  - 测试先行的首轮为 `3 failed, 43 passed`，精确暴露缺失 v2 source-contract 元数据、same-helper 修复被旧签名误判，以及 revision prompt 未说明 v3 拓扑；另一个单测证明旧 schema repair 会在第二次调用接受改写后的 hypothesis。实现后均闭合。
+  - `poetry run pytest tests/unit/competition/test_official_development_search.py -q --no-cov` → `47 passed in 3.73s`。
+  - `poetry run pytest tests/unit/competition/test_plan_execution_contract.py tests/unit/competition/test_official_development_search.py -q --no-cov` → `83 passed in 5.34s`。
+  - `poetry run ruff check src/autoresearch/competition/official_development_search.py tests/unit/competition/test_official_development_search.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/official_development_search.py tests/unit/competition/test_official_development_search.py` → `Success: no issues found in 2 source files`；`py_compile` 与定向 `git diff --check` 通过。
+- 问题新增或更新：无；未修改共享 `Problem.md`。没有 CFG 兼容性 blocker：本层刻意使用冻结 audit v3 的可判定 top-level dispatcher，而不扩展为通用 CFG。正式旧候选会失败关闭，需要由 Qwen 在新 interaction 中重写，不能由编排器迁移。
+- 后续：正式 cell builder/runner 仍需在另一个明确授权任务中为每个 frozen cell 拆出两个新 arm spec，按臂传入只读 `prospective_execution_binding` 并执行前后重验 source/spec/data/contract/atom/pair/arm hashes；完整双臂结果闭合前不得计算 effect 或进入 report/submission。本轮未运行任何正式 cell，未生成实验结果、科学证据、创新或发表/提交授权，也未 staging/commit。
+
+---
+
+## 2026-08-10 02:26:31 +08:00 - Codex subagent `/root/adaptive_benchmark_v2_protocol` - Task 271.3 v3 隔离与可识别性红队修正
+
+- 用户请求/活动任务：主 Agent在接线前指出上一版四轮场景存在两个 P0：控制器保留最近八轮时，第一轮关键记录到第四轮终态仍直接可见，无法区分 A3 派生记忆与 A4 主权原始召回；同时普通 execution protocol 直接内嵌 hidden oracle，`controller_visible=false` 只是声明而不是访问隔离。要求在原两文件边界内修复、使旧 schema/hash 失败关闭、重跑完整 research 回归，并只能追加修正日志。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_execution_protocol.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py`
+  - `Agent.md`（仅追加本修正条目，未改写上一条历史记录）
+- 修正摘要：
+  - 将 execution/public stimulus/public scenario/blinded manifest/runner manifest/analysis contract/hidden-scoring manifest 全部升级为独立 v3 schema；旧 `adaptive-loop-benchmark-execution-protocol-v2` payload 即使保留旧 hash 也因 Literal、缺失字段和 extra-forbid 失败关闭。上一条记录中的 v2 execution hash `a213bc2286cabede56687fc5ab1979d4305ff7f59bf3389b8e287f89f1260ec2` 明确废弃，不得接线、执行或作为预注册身份。
+  - 每个 60 场景从 4 个扩为 12 个逐轮注入。turn 1—3 承载冻结问题材料；turn 4—11 是八条内容寻址、中性、独立且不重复任何 private-scoring required/forbidden token 的干扰记录；turn 12 才发送终态请求。每条注入有自己的 canonical `stimulus_hash`、`injected_exactly_once=true` 和 `injected_before_turn_action=true`，场景再绑定全部十二条精确字节。
+  - 机器规则固定 `latest_scoring_relevant_turn_index=3`、`terminal_turn_index=12`、`non_sovereign_recent_window_turns=8`，并交叉验证所有评分 fact 只来自 turn 1—3、required/forbidden token 在早期材料存在且在 turn 4—12 完全不存在。终态与最晚相关轮相隔 9，严格大于当前控制器八轮窗口；因此原始早期刺激不会由 runner 特殊删除，而是按统一时序自然退出 A3/A4 都共有的直接 prompt 窗口。
+  - 移除 protocol 内的 `IndependentScenario(public + hidden_oracle)`。公开 v3 protocol 现在只含 `public_scenarios[60]` 和中性命名的 `private_scoring_manifest_hash`；独立 `AdaptiveLoopBenchmarkHiddenOracleManifest` 才含 60 个 machine oracle，并固定 `runner_and_post_seal_evaluator_only=true`、controller/盲 evaluator reveal 前不可访问、全部 cell output 封存后才可 reveal、初始 barrier 关闭。
+  - writer 只在根目录写 public execution protocol 和 blinded cell manifest；runner assignment 与 hidden-scoring manifest 分别写入 `runner-only/`。runner assignment、public protocol 和 hidden manifest 形成双向 hash 闭包；公开 protocol/blinded/public-scenario 的实例 JSON 与 Pydantic JSON Schema 均扫描证明不含 `oracle` 类型、`required_terminal_tokens`、`forbidden_terminal_tokens`、`expected_terminal_state` 或随机 seed。blinded manifest 仍不含 arm 标签或 arm 值。
+  - 唯一主终点、A4−A3、双侧精确 McNemar、alpha 0.05、SESOI 0.25、secondary-only Holm、失败/缺失/零动作计 0、pilot/confirmatory 分界与所有 superiority/innovation/publication=false 保持冻结；analysis 新增 recent-window expiry 与 sealed-output 后 reveal 两个不可关闭的合同位。
+- 验证：
+  - v3 专项：`poetry run pytest -q tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py --no-cov` → `9 passed in 3.73s`。
+  - v1/design/v3 联动：`poetry run pytest -q tests/unit/research/test_adaptive_loop_benchmark.py tests/unit/research/test_adaptive_loop_benchmark_design.py tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py --no-cov` → `15 passed in 3.59s`。
+  - 完整 research 单元：`poetry run pytest -q tests/unit/research --no-cov` → `305 passed in 123.64s`。
+  - 聚焦 Ruff → `All checks passed!`；Ruff format → 两文件已格式化；Mypy → `Success: no issues found in 2 source files`；两个文件 `py_compile` 通过。
+  - 反例明确覆盖：把有效场景退回 terminal turn 4/仅四条刺激会被 v3 public scenario 拒绝；篡改任一中性注入由 stimulus hash 拒绝；旧 v2 execution schema 拒绝；public protocol/public scenario/blinded 实例与 schema 全量扫描无 private scoring；hidden manifest 仍通过 hash 在任何结果前被 public protocol 和 runner assignment 双重绑定；manifest 与 write-once 篡改继续失败关闭。
+  - 使用仅限验证的 runner seed `27132026`，新 v3 execution hash `cfe042f2061f89e3d8a56d1a39fe65a056fd88ab11d7912165a926b67991d6a3`，public panel hash `d580e5e85a6e171b918cb6c7c6cc7bfddeed60c28606864cba00b107f4d877f0`，private scoring manifest hash `d163f7d1c265c0330281fb19b098ee4f01e174a73b451fb31f1ec2715984a4c6`，analysis hash `fede5ba95d602e40076291c7e0b81e7eb8e13daba6bf050b82f2bbb94abc7933`，blinded hash `b4959ecca30356684f6bfbe00070ad496614d4c39bf79aa8a045634cd15d41a2`，runner assignment hash `0e9a87a5a79ad362bb6b4c8c1154755825c9feb8d8c8a5d7fd6004496e9d36de`。公开 protocol 与 blinded canonical JSON 的 `oracle` 子串检查均为 false。
+- 问题新增或更新：无；未修改共享 `Problem.md`。两个 P0 都在接线和产生结果前由 schema、访问分层、窗口不等式及反例测试闭合，没有留下需要外部输入的 blocker。
+- 后续：runner 只能把 `protocol.public_scenarios[*].stimuli` 依次注入控制器；完整 bundle、`runner_only_scoring`、随机 seed 与 runner assignment 都不得成为模型或 reveal 前盲 evaluator输入。现有并行 receipts 仍只绑定父 v1 hash，接线层必须增加 v1 + v3 execution + public panel + private scoring + blinded/runner manifest + cell ID 的联合 attestation，不能降级。实际随机 seed 应区别于验证 fixture 并只存在 runner-only 制品。当前没有写正式预注册目录、运行模型或网络、执行 240 cells、生成结果、证明科学优越/创新、授权发表/提交、staging 或 commit。
+
+---
+
+## 2026-08-10 02:43:20 +08:00 - Codex subagent `/root/adaptive_benchmark_v2_protocol` - Task 271.3 v3 公开刺激上下文适配器
+
+- 用户请求/活动任务：在不修改 `adaptive_sovereign_loop.py`、召回、审计、回执、CLI 或包导出的边界内，新增最窄的 v3 public scenario + blinded cell 到 `AdaptiveExternalTurnContext` 适配器；逐轮只能注入当前公开刺激，必须先写主权原始记忆，严格保持十二轮顺序，跨 cell/scenario/step、重复写入、篡改和任何 private-scoring 泄漏都要失败关闭；不得接收隐藏评分对象、调用模型、网络或生成结果。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_context.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_context.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增稳定 API `AdaptiveLoopBenchmarkPublicContextAdapter(*, public_scenario: AdaptiveLoopBenchmarkPublicScenario, blinded_cell: AdaptiveLoopBenchmarkBlindedCell, raw_memory_store: RawMemoryStore)`；provider-compatible 方法为 `contexts_for_turn(*, seed: AdaptiveResearchSeed, snapshot: AdaptiveResearchLoopSnapshot, branch: AdaptiveResearchBranch) -> tuple[AdaptiveExternalTurnContext]`，类型和运行时都固定恰好一个上下文。本模块只显式导入 public scenario/stimulus 与 blinded cell，不导入或接受 hidden-scoring 类型，也不导入 LLM/runner/result 合同。
+  - 构造时深拷贝并重新校验 v3 public scenario 与 blinded cell，逐次重算 scenario/stimulus canonical hash、冻结对象 fingerprint、seed/snapshot/branch 一致性和原始 seed binding；seed 的中文 objective/scope 必须逐字等于公开场景。context identity 的 canonical payload 同时绑定 `blinded_cell_id`、`scenario_id`、`public_scenario_hash`、`stimulus_id/hash/turn`、loop 与 project，`context_id` 是该 payload 的 SHA-256，`source_ref` 再通过 loop 既有规范绑定该 ID 与 step。
+  - 每轮先检查当前 source ref 从未出现在 append-only raw store，再用 `capture_text(..., source_kind=tool_output)` 保存 `stimulus.payload_cn` 精确 UTF-8 字节；持久化验证通过后才调用 `AdaptiveExternalTurnContext.create(...)`。同一 adapter 重复 snapshot 和同一 store 中另一个 adapter 重放当前 source ref 都失败，原始记录损坏也阻断；意外构造失败不会把未验证上下文送进控制器。
+  - turn 2—12 前机械重放全部既有 event：每个历史 step 必须恰有一个由同一 cell/scenario/stimulus identity 派生的 context，raw bytes/source provenance/context hash 均一致，并且 messages 中该 context projection 恰好出现一次。缺轮、跳步、换 cell、换场景、换 seed、改 stimulus/hash、改 raw bytes 或结束后第十三轮全部拒绝。
+  - 对源 stimulus、identity payload、输出 context 和历史消息投影执行递归 no-leak 扫描，拒绝 `oracle*`、`required_*`、`forbidden_*`、`expected_terminal*`、assignment 字段和四个 runtime assignment 值。目标类型继承的 `contains_required_operator=False` 仅作为明确 allowlist 的安全否定声明保留；它不能为 true，且不会出现在投给模型的外部 context message projection 中。
+  - 十二轮 diagnostic-double 集成证明每轮仅有当前 stimulus；turn 12 的 controller messages 中已无 turn 1 精确字节，`recent_external_feedback` 机械只含 turn 4—11，因此没有 runner 特殊删上下文。该测试只走本地 completion double，不调用网络或真实模型，也不声称通用 autonomy audit 已通过。
+- 验证：
+  - 最终专项：`poetry run pytest -q tests/unit/research/test_adaptive_loop_benchmark_context.py --no-cov` → `4 passed in 4.44s`。覆盖 capture-before-context 顺序、exact raw bytes、identity/source-ref 重算、输出/消息递归 no-leak、十二轮严格顺序、八轮窗口退出、跨 cell/scenario/step、隐藏对象误传、同实例/重启重复写入、public hash/internal object/raw blob 篡改与生产 AST 无 hidden-scoring import。
+  - 联动：`poetry run pytest -q tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py tests/unit/research/test_adaptive_loop_benchmark_context.py tests/unit/research/test_adaptive_sovereign_loop.py --no-cov` → `30 passed in 13.27s`。
+  - 完整 research 回归：`poetry run pytest -q tests/unit/research --no-cov` → `313 passed in 129.58s`。其后仅把字符串 no-leak marker 从具体私有键扩为所有 `required_* / forbidden_* / expected_terminal*` 并把返回注解收紧为单元素 tuple；最终 4 项专项与全部静态门已重新通过。
+  - 最终 Ruff → `All checks passed!`；Ruff format → `2 files already formatted`；Mypy → `Success: no issues found in 2 source files`；两个文件 `py_compile` 通过，定向尾随空白扫描无输出。
+  - 验证 fixture `randomization_seed=27132026` 的首个公开场景为 `scn-delayed-relevance-01`，public scenario hash `1ae5c852ed303c80a21899e11d0d61784edb36721ac1c504e6f6b2e0d3ced62b`，cell `cell-687873002ce23bd466fe92ef2a41219e`，turn-1 stimulus hash `7cd84542f7fca30718404fa23eb3be15d17bc31b40786858784940842b2e4616`；在测试 loop/project 下 identity hash 为 `55063beef05cbd39f7f3c9e449123dee69556ae4e91e3ac4c635d185a4f6e5f6`。
+- 问题新增或更新：无；未修改共享 `Problem.md`。开发中首次十二轮测试恰逢共享 loop 的 registration 接线中间态，出现缺少 `model_call_registrations` 的一次预期外部失败；已立即告知主 Agent、没有越界修改共享 loop，待其声明稳定后原命令与完整 research 回归全部通过，因此未留下 blocker。
+- 后续：主 Agent可通过显式模块路径把该 adapter 接入每个 v3 blinded cell 的 loop；runner 仍须单独完成父 v1 + v3 execution/public/scoring/blinded/assignment/cell 联合 attestation、四臂能力隔离、预算/回执/终态封存和 reveal barrier。adapter 不接收 runner-only assignment 或 hidden scoring，也不评分、不执行 240 cells、不证明科学优越/创新、不授权发表/提交；本轮未 staging、未 commit。
+
+---
+
+## 2026-08-10 03:04:30 +08:00 - Codex subagent `/root/adaptive_benchmark_receipts` - Task 271.3 v3 240-cell 回执与揭盲屏障
+
+- 用户请求/活动任务：只在既有 receipts 源文件、对应单测和本日志边界内，把旧的父 v1/seed-repeat 回执底座升级为以 `adaptive_loop_benchmark_execution_protocol.py` v3 为唯一正式身份的 240-cell fail-closed 证据链；逐 cell 联合绑定父 v1、execution、public panel、blinded、runner assignment、private-scoring 六个 hash 及 blinded/scenario/public/run-position/runner-only arm/sequence；逐调用保留 pre-call/transport/失败成本；完整 240 个终态写一次重放之前不得揭露 hidden scoring，揭盲后也只生成评分输入而不执行评分、模型、网络或科研。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_receipts.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_receipts.py`
+  - `Agent.md`（仅追加本修正条目；未改写 02:04:11 的历史 v1 回执记录）
+- 变更摘要：
+  - 新增 `AdaptiveLoopBenchmarkCellExecutionBinding` 与 runner-only `AdaptiveLoopBenchmarkReceiptBridge`。bridge 内嵌并重验 public execution protocol、blinded manifest 和 runner assignment manifest，但不复制 machine oracle；240 个 binding 按官方 blinded 顺序逐个携带六个协议 hash、opaque cell、独立 scenario/public hash、run position、单次 draw、runner-only sequence/arm 和自身 hash。固定路径 writer/loader 逐字比对协议 writer 已封存的三个非评分制品；旧 `*-v1` receipt、`challenge_kind + random_seed` 身份、v1 seed repeat 均因 schema Literal/必填联合身份/extra-forbid 无法进入 v3。
+  - `ArmRuntimeAttestation` 现在直接绑定 bridge leaf，trajectory 由完整 cell-binding hash 派生，四臂能力仍从父 v1 精确重算；raw audit 与 controller-visible memory 使用不同 ID 和不同 manifest hash。换 cell、换 arm、换 sequence 或修改任一联合 hash 都改变 binding/trajectory，并在 bridge membership、runtime identity 或重放处失败关闭。
+  - 新增 `ProviderPreCallAnchor`，在 transport 前绑定 reservation、请求原文 hash、Qwen/diagnostic 轨、model 和 provider request ID；`ExternalTransportAnchor` 再记录外部边界、adapter、transport/HTTP/raw provider response 与 request/response ID。`ProviderAttemptReceipt` 对 visible output、reasoning、usage、error 和 failure phase 分别寻址：live Qwen 只有存在匹配外部 anchor 才 formal eligible；无 anchor 只允许明确 preflight failure；diagnostic-double 不能携带外部 ID/HTTP/transport 且永不 formal。成功和各阶段失败均可记录。
+  - 统一 `BudgetReservation`/`BudgetLedgerEntry`/`BudgetLedger` 保留 main、repair、skill-routing、temporary-agent、verifier、tool、mechanical 与 walltime；每项 reservation 恰好一项 settlement，开始后的失败完整保留请求/工具 lane 和实际 walltime，声明 total/failed-total 必须由明细重算。`MechanicalChallengeTransitionReceipt` 从 official public scenario 派生并一次性提交恰好 12 个 stimulus hash，terminal turn 固定 12，model/network count 恒 0，不能成为 provider 或科研证据。
+  - 新增写一次 `CellRuntimeEvidenceBundle`、逐项前向哈希 `CellJournalEntry`、`CellJournalReplay` 和 `TerminalEnvelope`。固定 cell 路径只允许 runtime bundle、journal、terminal 三类制品；日志严格要求 attestation 首项以及 reservation→pre-call→transport（若有）→attempt/mechanical→settlement 的一一覆盖与偏序，删除、插入、重排、跨 cell/arm/path 或隐藏成本均拒绝。terminal 只能由磁盘上的完整 runtime bundle 和 journal 重新构造后写一次封存，且不含 oracle、required/forbidden token、expected terminal、score 或 result。
+  - 新增全局 `AdaptiveLoopBenchmarkTerminalSetSeal`：固定扫描官方 240 个 cell 目录，逐 cell 重新加载 budget/provider transport/arm/mechanical、重放 journal、重建 terminal，并拒绝缺失、额外路径或替换。仅在该 240-cell seal 已存在且 fresh replay 完全相同时，`build_blind_reveal_package` / `write_blind_reveal_package_once` 才首次从固定 runner-only hidden-scoring 路径加载 oracle，生成 content-addressed `AdaptiveLoopBenchmarkRevealAuthorization` 与 240 个 `AdaptiveLoopBenchmarkEvaluatorCellScoreInput`；这些 post-seal evaluator-only 制品明确 `scoring_not_executed=true`、`score_fields_absent=true`、`scientific_result_generated=false`，不会调用模型或产生科研结果。
+  - 稳定接线 API 为：`build_adaptive_loop_benchmark_receipt_bridge` / `write_adaptive_loop_benchmark_receipt_bridge_once` / `load_adaptive_loop_benchmark_receipt_bridge`；`build_arm_runtime_attestation`；预算、`build_provider_pre_call_anchor`、`build_external_transport_anchor`、`build_provider_attempt_receipt`、`build_mechanical_transition_receipt` builders；`build_cell_runtime_evidence_bundle` / `write_cell_runtime_evidence_once`；`build_cell_journal_entry` / `write_cell_journal_entry_once` / `replay_cell_journal`；`build_terminal_envelope` / `write_terminal_envelope_once`；以及 `write_benchmark_terminal_set_seal_once`、`build_blind_reveal_package`、`write_blind_reveal_package_once`。全部通过模块显式导入；未修改 CLI 或 `__init__`。
+- 验证：
+  - receipt 专项（含真实落盘的 240-cell 全链）：`python -m pytest tests/unit/research/test_adaptive_loop_benchmark_receipts.py -x -q` → `26 passed in 64.38s`。全链为每 cell 写 runtime evidence、9 项 journal、terminal，第一 cell 模拟 anchored response-validation failure；随后 240-cell 全量 fresh replay、global seal 和 post-seal reveal 均通过，仍没有 score/result。
+  - v3 protocol 联动：`python -m pytest -q tests/unit/research/test_adaptive_loop_benchmark_execution_protocol.py tests/unit/research/test_adaptive_loop_benchmark_receipts.py --no-cov` → `35 passed in 30.12s`。
+  - 完整 research 回归：`python -m pytest -q tests/unit/research --no-cov` → `317 passed in 138.93s`。
+  - `python -m ruff check src/autoresearch/research/adaptive_loop_benchmark_receipts.py tests/unit/research/test_adaptive_loop_benchmark_receipts.py` → `All checks passed!`；`ruff format --check` → `2 files already formatted`。
+  - `python -m mypy --ignore-missing-imports --follow-imports=silent src/autoresearch/research/adaptive_loop_benchmark_receipts.py tests/unit/research/test_adaptive_loop_benchmark_receipts.py` → `Success: no issues found in 2 source files`；两个文件 `py_compile` 通过，尾随空白扫描无输出。
+  - 对抗覆盖联合 hash/bridge leaf/runner arm 篡改、旧 v1 降级、raw/visible plane alias、fake provider、diagnostic 冒充、缺 pre-call/anchor、失败成本减记、机械回执冒充、journal 删插重排、跨 cell/path、write-once 冲突、239/240 early reveal、运行期 private-scoring no-leak、extra hidden field 及 post-seal score/result absence。fixture seed `27132026` 的 bridge hash 为 `ab7e132c84792d1da6e1770e66ddf2923726720fa856c4299394fae904b65f3d`；首 cell binding hash 为 `14f2288550d523001d05e4153d721d80572c1a5ed852e3147098b1f006a89256`。
+- 问题新增或更新：无；按任务要求未修改共享 `Problem.md`。开发期先发现 ledger 的 Counter 比较误用了 mapping、Windows write-once 文件无法直接篡改以及 240-cell 测试重复解析大 bridge 导致偏慢；均在本轮改为正确一一计数、不同 official bundle 固定路径反例和“写入期轻量字节核验、global seal/reveal 前完整解析重验”，最终专项/联动/完整 research 与静态门全绿。一次不带项目环境的直接 `python -c` 因未安装 editable package 报 `ModuleNotFoundError`，随即用 `poetry run python` 复验 fixture hash 成功，不影响生产、测试或交付。
+- 后续：runner 可按上述稳定 API 接线，但必须先用 execution-protocol writer 和 bridge writer 封存 official artifacts，逐 cell 先写 runtime bundle、再追加 journal、再写 terminal；只能在全部 240 cell（含失败 cell）封存后写 terminal-set seal，之后才可调用 reveal API。当前模块仍不执行 240 次模型调用、不评分、不证明科学优越/创新、不授权发表/提交；没有 staging、commit，也没有修改 loop、context adapter、protocol、CLI、`__init__` 或 `Problem.md`。
+
+---
+
+## 2026-08-10 03:06:46 +08:00 - Codex subagent `/root/execution_contract_v2` - Task 271.3 四臂能力隔离与轨迹回放审计
+
+- 用户请求/活动任务：在不接 runner、protocol/context/receipts、CLI、报告、提交或正式 cell 的边界内，为父 v1 四臂协议新增机械派生、内容寻址的运行能力计划和基于实际轨迹的 realization audit；通用循环只增加向后兼容的删减型算子目录 hook，不调用模型或网络，不生成结果。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_loop.py`（仅新增并随后释放的 `OperatorCatalogProvider` hook；同文件后续 P0 修复由主 Agent完成）
+  - `src/autoresearch/research/adaptive_loop_benchmark_arm_adapters.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 通用 `run_adaptive_research_loop(..., operator_catalog_provider=None)` 默认路径原样保留机械目录；provider 只能返回保持机械顺序的非空子序列，新增不可用算子、重复、重排、空目录或非字符串均在模型调用前失败关闭。该 hook 已独立验稳并释放，此后未再修改 loop 或其既有测试。
+  - 新增内容寻址 `BenchmarkArmRuntimePlan`，每次构造和消费都重新对照 `build_adaptive_loop_benchmark_protocol()` 的父 v1 hash 与精确 arm spec。A1/A2 固定十二轮 `decompose_uncertainty → adversarial_critique → mutate_workflow_proposal` 四次循环且每轮只暴露一个算子；A1 关闭 Skill/临时 Agent/分支/Dreaming/控制器主权原始召回，A2 只开放动态零或多个 Skill。A3/A4 共享同一非干预配置 hash、开放自适应基础目录、分支/Skill/临时 Agent 能力；唯一 bundled 主干预差异为 A4 开放 `consolidate_dreaming` 和控制器主权原始召回，A3 删除该算子。原始审计回执在四臂均固定保留。
+  - 新增 `BenchmarkArmAdapter` 作为删减型 catalog provider；冻结臂按 snapshot step 机械给出单一算子，超出十二轮或算子机械不可达即拒绝；A3 只删除 Dreaming，A4 保留完整机械目录。plan 在 adapter 构造时重新做 schema/hash/父协议精确校验，不能用重算 hash 或 `model_copy` 伪造能力标签。
+  - 新增内容寻址 `BenchmarkArmRealizationAudit`，不信 arm 标签，而是逐轮重放 interaction task 的实际 `available_operators`、proposal operator、Skill 独立消息与目录、branch 创建、temporary batch、Dreaming 选择和主权 recall selection 路径/hash/event 绑定，并扫描孤儿 selection 制品。A1/A2 非冻结算子、分支状态变化、临时 Agent 或 Dreaming 均失败；A1 额外拒绝 Skill；A3 任意 Dreaming 暴露/选择/selection 制品失败；A4 只证明能力实际开放，`actual_sovereign_recall_use_verified` 永远为 false，真实迟到信息使用必须由后续 runner receipt 另证。所有审计明确 `scientific_result_generated=false`。
+- 验证：
+  - `python -m pytest tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py -q --no-cov` → `9 passed in 7.72s`。
+  - `python -m pytest tests/unit/research/test_adaptive_sovereign_loop.py tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py -q --no-cov` → `29 passed in 14.66s`，包含主 Agent最新 registration/raw-transition P0 修复后的 loop 联动回归。
+  - `python -m ruff check src/autoresearch/research/adaptive_loop_benchmark_arm_adapters.py tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py` → `All checks passed!`；`ruff format --check` → `2 files already formatted`。
+  - `python -m mypy --ignore-missing-imports --follow-imports=silent src/autoresearch/research/adaptive_loop_benchmark_arm_adapters.py tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py` → `Success: no issues found in 2 source files`；adapter `py_compile` 通过。
+  - 确定性反例覆盖：hook 新增算子、冻结顺序/step 篡改、重算 plan hash、A1 偷开 Skill、A2 注入 temporary batch、A3 孤儿 Dreaming selection artifact、A3/A4 非主干预配置差异、固定臂 generic autonomy 必红、A4 仅有能力标签但未实际 recall，以及无 hook 与 identity hook 的 snapshot/messages 字节和行为完全相同。
+- 问题新增或更新：无；按任务要求未修改共享 `Problem.md`。一次默认递归 Mypy 暴露仓库既有 `requests` stub 与其他模块 `no-any-return` 问题；本任务自身一处测试 helper 的 `Any` 返回已修复，并以上述项目惯用 scoped Mypy 命令复验全绿。没有调用真实 Qwen、网络或外部数据。
+- 后续：runner 必须显式导入本模块，按 runner-only arm assignment 选择 plan/adapter，并把 plan hash 与 execution v3、receipt bridge/cell binding、模型/预算/工具配置及最终 snapshot hash 一同写入 runtime attestation；A1/A2 必须跑满十二轮，A3/A4 允许早停但由 runner 按冻结协议计 0。A4 是否真正召回并使用迟到信息只能由 provider transport、Dreaming selection、raw binding、逐轮 context 和 terminal receipt 的联合证据证明，不能从本 audit 的能力可用或 arm 标签推断。本轮未运行正式 cell、未评分、未生成科研结果、未证明优越性/创新、未授权发表/提交，也未 staging 或 commit。
+
+---
+
+## 2026-08-10 03:22:39 +08:00 - Codex subagent `/root/qwen_transport_trace` - Task 271.3 Qwen 外部 HTTP transport trace
+
+- 用户请求/活动任务：仅修改 LLM client、其专项测试和本日志，为 Task 271.3 的真实 Qwen pilot 提供向后兼容、失败关闭且不保存 secret/body/header 值的 HTTP transport trace；必须在发送前绑定 canonical request bytes 与 client request ID，成功和失败均保留可计账哈希，Ollama 本地路径不得冒充正式外部 Qwen；不得联网、不得修改 research/competition/CLI/Problem，也不提交。
+- 变更文件：
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - `run_llm_json_completion` 保留全部旧参数和返回类型，只追加可选 `transport_preflight_hook` 以及以下划线命名的测试专用 `_http_opener` / `_request_id_factory`。客户端用排序、无多余空白、UTF-8、拒绝 NaN 的 canonical JSON bytes 作为真实 HTTP body；先生成 `request_id`、构造并同步回调 `LLMTransportPreflight`，回调成功后才建立 `Request` 和调用 opener。hook 还临时收到同一 canonical bytes，runner 可在网络前调用 receipt pre-call builder；这些 bytes 不进入 preflight 或 trace。
+  - 新增冻结、`extra=forbid`、内容寻址的 `LLMTransportPreflight`、`LLMHTTPTransportTrace`、`LLMTransportFailureTrace`。成功 trace 联合绑定脱敏 endpoint、OpenAI-compatible/Ollama adapter、external/local scope、stdlib/injected transport、请求 SHA/大小、HTTP status、allowlist 响应头名称及规范化/脱敏值集合 SHA、原始响应 body SHA/大小、provider response ID、visible UTF-8 SHA、reasoning UTF-8 SHA、usage canonical JSON SHA、transport/HTTP metadata SHA 与自身 SHA；`verify_completion_payload` 重新绑定返回对象，任意 body/header/output/hash 篡改均失败关闭。
+  - transport 仅保存哈希和安全元数据：不保存 Authorization/API key、request/response body、Cookie/Set-Cookie 或完整响应头值；HTTP 错误消息也不再嵌入 provider body，只报告 status 和“body 仅按 SHA-256 保留”。endpoint 去除 userinfo/query/fragment；client API key 和 `sk-*` 模式从可能的 transport reason 中脱敏。response header 只允许 `content-type/content-length/date/request-id/x-request-id/x-dashscope-request-id` 参与规范化哈希。
+  - 只有默认 stdlib `urlopen` 成功读到外部 endpoint 的 HTTP response 才能令 `formal_external_anchor_eligible=true`；显式注入 opener 的测试 trace 永远不声明边界，loopback/private/local 与 Ollama native adapter 永远 `local_service` 且 formal=false。普通手造或旧 test-double `LLMJsonCompletionResult` 默认 `transport_trace=None`，旧 dict-returning monkeypatch 路径继续工作。
+  - `LLMClientError` 向后兼容新增 `transport_preflight`、`transport_trace`、`transport_failure_trace`、`raw_response_body_sha256`：pre-hook 失败证明尚未 transport；URL/socket/timeout 失败证明已尝试但未收到 response，默认 stdlib 外部 transport attempt 可生成无 HTTP metadata 的 anchor，而 injected test opener 不得冒充边界；HTTP error 绑定 status/header/body/provider ID；2xx 后 UTF-8/JSON/provider shape/visible JSON 失败仍保留已完成 HTTP trace，供预算结算和失败回执使用。
+  - runner 接线约束：在 preflight hook 中以 `preflight.request_id` 作为 `provider_request_id`，把 callback 的 canonical bytes 直接交给 `build_provider_pre_call_anchor`；成功后仅接受 `trace.formal_external_anchor_eligible=true` 且 request ID/SHA 与 pre-call 完全一致的 trace。由于安全契约不保存完整 raw body，runner 应用 trace 的预哈希字段直接 `ExternalTransportAnchor.create(...)`：`adapter_id/request_payload_sha256/transport_metadata_sha256/http_metadata_sha256/raw_provider_response_body_sha256/http_status_code/provider_response_id` 一一映射；attempt 的 exact bytes 则来自 `result.response_text.encode('utf-8')`、`(result.reasoning_text or '').encode('utf-8')` 与 client canonicalized `result.usage`。不能把 injected/local/untraced result 送入 formal receipt。
+- 验证：
+  - 客户端专项：`poetry run pytest -q tests/unit/llm/test_client.py --no-cov` → `41 passed`。新增覆盖 preflight-before-opener 与 exact sent bytes、client request header、成功字段/三类 output hash、默认 stdlib 与 injected 的 formal 分界、preflight callback 阻断、body/header/trace/result 篡改、HTTP 429、injected 与默认 stdlib URL transport failure、2xx 非 JSON、秘密不落 trace/error、Ollama local、手造 result 无 trace、旧 untraced dict 兼容。
+  - LLM 全组：`poetry run pytest -q tests/unit/llm --no-cov` → `51 passed in 2.24s`。
+  - `poetry run ruff check src/autoresearch/llm/client.py tests/unit/llm/test_client.py` → `All checks passed!`；`poetry run ruff format ...` → `2 files reformatted`，随后 format/check 状态稳定。
+  - `poetry run mypy --ignore-missing-imports --follow-imports=silent src/autoresearch/llm/client.py` → `Success: no issues found in 1 source file`；client/test 的 `py_compile` 均通过；`git diff --check` 无输出。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。一次把既有宽松 test module 也纳入 strict Mypy 时暴露其原有未注解 fixture/object helper 问题，本任务新增 helper 的具体类型已收紧；生产 client 的最终 scoped Mypy 全绿，不构成运行或交付 blocker。按“不要联网”要求未执行 live smoke，也未读取或输出任何 key。
+- 后续：主 runner 仍须把 pre-call hook 的写一次回执、成功/失败 trace、预算 settlement 与 cell journal 串成同一顺序链，并在 opt-in pilot 中以真实 `config.yaml`/`.env`（不在命令行或日志打印 key）调用默认 opener；只输出 request ID、status 和各 SHA，不输出 completion/body/header。真实 pilot 通过前，当前单测只能证明 transport 合同与篡改检测，不能证明 Qwen provider 身份、模型质量、科学结果、自循环优越性或可发表性。本轮未 staging、未 commit，现释放 client/test 文件边界。
+
+---
+
+## 2026-08-10 03:24:58 +08:00 - Codex subagent `/root/adaptive_benchmark_cell_runner` - Task 271.3 单 cell 诊断执行器
+
+- 用户请求/活动任务：只新增单 cell runner 源文件、对应单测并追加本日志；把 v3 公开 scenario、blinded cell、runner-only binding、四臂 runtime plan、public-context adapter、通用循环和 v3 receipts 组合为十二轮本地诊断入口。不得导入/读取隐藏评分、调用模型或网络、评分或生成科研结果；诊断轨永远不可正式使用，模型自报 Qwen 字符串不得替代外部 transport 证据。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_cell_runner.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_cell_runner.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增内容寻址 `BenchmarkCellRunSpec`，逐字绑定 sealed receipt bridge hash、public scenario、blinded cell、runner-only cell binding、`BenchmarkArmRuntimePlan`、loop seed/policy、彼此分离的初始 raw/controller plane manifest hash，以及 cell runner、generic loop、context、arm adapter、receipts 五个实际源码 SHA-256。构造时从 bridge 重放精确 public scenario/cell/binding，拒绝跨 cell、跨 scenario、换 arm、非十二轮预算或篡改 plan/hash；执行模块没有 HiddenOracle 类型导入，也没有 scoring 输入参数。
+  - 新增 `run_diagnostic_benchmark_cell(...)`：只接受带 `diagnostic_only: Literal[True]` 标记的 injected completion；逐轮通过 `AdaptiveLoopBenchmarkPublicContextAdapter` 先写 raw 再注入唯一公开刺激，通过 `BenchmarkArmAdapter` 接入 generic loop 的删减型 `operator_catalog_provider`，跑满十二轮后重新加载 canonical final snapshot，重验 12 个 event、12 个 external context、12 个磁盘/raw model-call registration 及 messages hash。诊断环境只暴露 A4 所需的 Dreaming 能力边界但拒绝实际外部执行；临时 Agent同样只暴露能力、不得执行。
+  - completion wrapper 在每次 injected 调用前机械构建 diagnostic `BudgetReservation` 与 `ProviderPreCallAnchor`，返回后保存 exact request/output/reasoning/usage hash 和 `ProviderAttemptReceipt`。即使 completion 把 `provider/model` 字段写成 `qwen/qwen3-max`，receipt 仍固定属于 `diagnostic_double`，无 transport anchor、`formal_eligible=false`。十二轮成功后再加入一项 exact-public-stimuli mechanical receipt，闭合 13 项 reservation/settlement、真实偏序 journal、runtime bundle 和 write-once terminal；terminal 始终不评分、无科研结果、无发表权限。
+  - 新增内容寻址 `BenchmarkCellRunArtifact` 与 raw/controller final manifests。artifact 内嵌最终 snapshot、event/context/loop-registration/request hashes、terminal action 原始 UTF-8 JSON 及 raw record hash、arm realization audit、完整 runtime evidence、journal replay 和 terminal。raw manifest要求该 loop 的 61 个预期 source ref 完全闭合且 action-registration blob 逐字匹配；controller manifest绑定 terminal snapshot与每轮 event/interaction/messages/proposal/context/registration。A4 `actual_sovereign_recall_use_verified` 被固定为 false，能力暴露不能冒充实际使用。
+  - 对抗单测覆盖四臂各十二轮 deterministic diagnostic smoke、fake-Qwen 不可晋级、跨 cell/arm、少于十二轮、HiddenOracle 误传与生产 AST 无导入、删除 context record、删除 call-registration 文件、A3 orphan recall artifact 导致 arm audit 红、budget settlement 删除、terminal 冲突、未标记 completion、重算 artifact hash 后换 binding。四臂 smoke 只是本地过程诊断，明确不是 240-cell 运行或科研结果。
+- 验证：
+  - runner 专项：`poetry run pytest -q --no-cov tests/unit/research/test_adaptive_loop_benchmark_cell_runner.py` → `9 passed in 35.05s`。
+  - loop/context/arm 联动：`poetry run pytest -q --no-cov tests/unit/research/test_adaptive_loop_benchmark_cell_runner.py tests/unit/research/test_adaptive_loop_benchmark_context.py tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py tests/unit/research/test_adaptive_sovereign_loop.py` → `43 passed in 55.81s`。
+  - 最后测试修正后定向复验：`poetry run pytest -q --no-cov tests/unit/research/test_adaptive_loop_benchmark_cell_runner.py::test_less_than_twelve_turns_has_no_terminal` → `1 passed in 3.01s`。
+  - `poetry run ruff format --check ...` → `2 files already formatted`；Ruff check → `All checks passed!`；scoped Mypy → `Success: no issues found in 2 source files`；两个文件 `py_compile` 通过；`git diff --check` 无输出。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。开发中首次使用带 arm 名称的 loop ID 被 public-context private-value 防漏门正确拒绝，改为内容哈希身份；manifest 首次对嵌套 contract 直接 canonicalize 被 JSON 类型门拒绝，改为先转 JSON payload；测试中的预期错误文字和 enum 输出路径随后校正。以上均在本轮闭合，无剩余运行 blocker。
+- 后续：正式 live runner 可以新增 sibling wrapper 复用相同 public context、arm plan、generic loop、final manifests 与 v3 receipt/journal/terminal机械结构，但不能放宽或参数化本入口的 `diagnostic_only` 和 `execution_track=diagnostic_double`；live sibling 必须定义独立 typed spec/artifact，并在调用前落 external preflight，再把默认 stdlib transport trace 的 request ID、exact request SHA、HTTP/response-body hashes 接入 `ExternalTransportAnchor`，否则 fail closed。A4“实际主权召回使用”仍缺独立 `SovereignRecallUseReceipt`：至少联合绑定 turn 4—11 的 Dreaming selection、predecessor snapshot、从 turn 1—3 raw context 选出的 record/payload hash、确定性 memory-audit hash、Dreaming feedback进入后续 provider request的消息投影、turn 12 terminal action对该 record ID/事实的实际消费，以及逐轮 context exposure与外部 provider anchor；这些证据未闭合前 `actual_sovereign_recall_use_verified` 必须保持 false。本轮未 staging、未 commit、未联网、未调用真实模型、未产生 240-cell 结果，现释放两个新增文件边界。
+
+---
+
+## 2026-08-10 03:38:29 +08:00 - Codex subagent `/root/qwen_transport_trace` - Task 271.3 transport trace P0/P1 fail-closed 修正
+
+- 用户请求/活动任务：根据 transport red-team 反例，立即撤销“进程内 `urlopen` 足以证明外部边界或 formal eligibility”的错误证据等级；只修改 client、专项测试并追加本日志。成功/失败/URLError 均必须固定 external=false、formal=false，schema 明确 process-local-only；全局 opener 替换不得自证；provider response ID 不得明文持久化；endpoint 必须拒绝 userinfo/query/fragment 且记录值逐字等于实际 Request URL；不得伪造 TLS 证明，正式资格等待独立签名 gateway。
+- 变更文件：
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+  - `Agent.md`（仅追加本纠错条目；03:22:39 的 v1 记录作为历史保留，本条明确取代其中 external/formal/ExternalTransportAnchor 接线主张）
+- 变更摘要：
+  - `LLMTransportPreflight`、`LLMHTTPTransportTrace`、`LLMTransportFailureTrace` 全部升级为 v2 schema，新增不可放宽的 `process_local_integrity_only: Literal[True]` 与 `independent_signed_gateway_attestation_present: Literal[False]`；成功和失败合同的 `external_process_or_service_boundary_crossed`、`formal_external_anchor_eligible` 均改为 `Literal[False]`。代码中已不存在从 stdlib、目标 host、HTTP status 或 transport attempt 推导 external/formal=true 的分支。
+  - 捕获模块导入时的原始 `urlopen` 引用；调用时如果全局 `urllib.request.urlopen` 已被替换，显式记录 `transport_implementation=replaced_global_urlopen`。未替换 stdlib、替换后的全局 opener、显式 injected opener、HTTP 2xx、HTTPError、URLError/timeout/socket failure 全都只生成本进程内容完整性记录，不能生成正式 provider 证据。`transport_scope=external_service` 仅描述目标地址分类，不再代表边界已被证明。
+  - provider response ID 从两个持久化合同中删除明文字段，替换为对 provider 原始 ID UTF-8 bytes 的 `provider_response_id_sha256`；HTTP metadata hash 同步只绑定该 SHA。响应 body 仍只保留 SHA/大小，visible/reasoning/usage/request/header integrity hashes 原样保留。
+  - endpoint 由“静默剥离敏感部分”改为失败关闭：任意 userinfo、query 或 fragment 在 Request 构造前直接拒绝；scheme/host canonicalize 后，`Request` 必须使用 `preflight.endpoint`，并在 opener 前逐字检查 `request.full_url == preflight.endpoint`。OpenAI-compatible 与 Ollama endpoint builders 统一走同一验证器。
+  - `run_llm_json_completion` 的旧参数、默认调用、手造/diagnostic result `transport_trace=None` 和 request/response integrity API 保持兼容；但此前要求 `trace.formal_external_anchor_eligible=true` 并直接构造 `ExternalTransportAnchor` 的接线已被安全撤销。当前 trace 只能用于预算、重放和篡改检测；正式 runner 在独立签名 gateway 存在前必须 BLOCKED，不能用 client 自签 trace 代替。
+- 验证：
+  - `poetry run pytest -q tests/unit/llm --no-cov` → `56 passed in 2.07s`。覆盖被替换的全局 opener 成功/URLError 反例、即使标记未替换 stdlib 的 success/failure factory 仍 external/formal=false、四个证据等级字段伪造拒绝、v1 downgrade 拒绝、provider ID 明文 extra field 拒绝且序列化中不存在原 ID、userinfo/query/fragment 三类 endpoint 拒绝、canonical endpoint 与实际 Request URL 一致，以及既有成功/失败/hash/secret/Ollama/旧调用回归。
+  - `poetry run ruff check src/autoresearch/llm/client.py tests/unit/llm/test_client.py` → `All checks passed!`；Ruff format 后稳定。
+  - `poetry run mypy --ignore-missing-imports --follow-imports=silent src/autoresearch/llm/client.py` → `Success: no issues found in 1 source file`；client/test `py_compile` 均通过；`git diff --check` 无输出。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。本修正本身是对红队 P0/P1 的代码闭合，不声称已获得第三方身份、TLS peer、网关签名或正式 provider 证明。未联网、未运行或修改真实 benchmark receipts、未 staging、未 commit。
+- 后续：若需要 formal Qwen 资格，应新增独立进程/服务的签名 gateway 协议，由 gateway 对 request hash、response-body hash、provider/model identity、endpoint/TLS peer 与时间/nonce 进行不可重放签名，并由不同信任边界的 verifier 验签；在此之前 client v2 trace 必须保持 process-local-only，任何 runner 或 receipt 看到 `independent_signed_gateway_attestation_present=false` 都应失败关闭。
+
+---
+
+## 2026-08-10 03:42:12 +08:00 - Codex subagent `/root/receipt_formal_failclosed` - Task 271.3 receipt formal P0-2/P0-3 fail-closed 修正
+
+- 用户请求/活动任务：根据 transport red-team P0-2/P0-3，只收紧 benchmark receipts 与其专项测试并追加本日志；同一进程提供的任意 request/response bytes、自洽 HTTP trace、adapter 名称和自报 Qwen/provider/model/request/response ID 均不得生成 `formal_eligible=true`，旧 v3 formal 制品必须加载失败；保留 process-local 哈希完整性用途并保持 diagnostic runner 兼容。不联网、不改 client/runner/protocol/`Problem.md`。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_receipts.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_receipts.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 保留 `ExternalTransportAnchor` 历史类名与所有 runner builder API，但把证据语义降为不可放宽的进程内完整性回执：`process_local_only=true`、`independent_external_signature_verified=false`、`external_process_or_service_boundary_crossed=false`、`formal_eligible=false`。builder 不再仅凭收到任意 bytes/HTTP 元数据就无条件宣称跨越外部服务边界。
+  - pre-call、transport 和 attempt 显式记录 provider/model/request/response ID 只是未验证元数据；它们仍参与一致性和篡改检测，但不再承担身份认证。`ProviderAttemptReceipt.formal_eligible`、`TerminalEnvelope.formal_eligible`、`CellTerminalCommitment.formal_eligible` 与 post-seal evaluator 的 `runtime_formal_eligible` 全部收紧为 `Literal[False]`；terminal 同时声明仅有 process-local integrity 且独立签名 gateway 尚未验证。
+  - 旧 v3 formal attempt/terminal 的 `formal_eligible=true`、旧 transport anchor 的 `external_process_or_service_boundary_crossed=true` 即使重算全部自哈希也会在 schema validation 失败；已封装的 240-cell reveal 流仍可机械处理非正式 terminal，但不会把它提升成正式科研证据。未来只有另行实现并验证独立外部签名 transport gateway 后，才能设计新的正式 schema，不能放宽本版字段。
+  - 新增零网络任意 bytes、自造 trace、HTTP `200/418/599`、任意 adapter、自报 Qwen/model/request/response ID、model metadata 与 pre-call 不匹配、旧 v3 formal 制品重哈希等反例；所有合法 process-local 轨迹仍保留 request/output/reasoning/usage/HTTP/response-body 哈希以供预算和篡改审计。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/research/test_adaptive_loop_benchmark_receipts.py tests/unit/research/test_adaptive_loop_benchmark_cell_runner.py` → `40 passed in 73.36s`（31 个 receipts + 9 个 diagnostic runner；最终代码状态）。
+  - 两个旧 v3/metadata 定向反例 → `2 passed in 1.93s`。
+  - `poetry run ruff format --check ...` → `2 files already formatted`；Ruff check → `All checks passed!`。
+  - scoped Mypy → `Success: no issues found in 2 source files`；两个文件 `py_compile` 通过；`git diff --check -- <receipts> <tests>` 无输出。
+- 问题新增或更新：无；按任务要求未修改共享 `Problem.md`。本修正不证明真实网络、TLS peer、provider/model 身份或正式 Qwen 执行；它只消除了原回执把进程内哈希自证误升为正式证据的漏洞。
+- 后续：实现独立运行、独立密钥和防重放 nonce/时间绑定的签名 transport gateway，并由不同信任边界 verifier 验签后，另起新 schema 接入 formal 资格；在此之前 live pilot 只能算 transport/预算/回放诊断，不能进入确认性统计或发表证据。本轮未联网、未 staging、未 commit。
+
+---
+
+## 2026-08-10 03:48:05 +08:00 - Codex `/root` - Task 271.3 前沿记忆、自适应双环与最严自循环核验收口
+
+- 用户请求/活动任务：调研模型记忆、Agent 记忆、自修改与自主科研前沿，把成熟机制或本项目创新候选高效融入 OB 主权记忆；探索阶段保留自由度，晋级/执行/发表阶段才严格；证明系统究竟能否从一次目标输入自行循环，而不是由 Codex逐条提示、代写科研内容或为某个记忆问题硬编码；继续使用独立 `skills/*/SKILL.md` 和由当前主 Agent分配、归档后身份消失的临时 Agent。
+- 主 Agent变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_loop.py`
+  - `src/autoresearch/research/adaptive_sovereign_recall.py`
+  - `src/autoresearch/research/adaptive_memory_loop_audit.py`
+  - `src/autoresearch/research/adaptive_autonomy_audit.py`
+  - `tests/unit/research/test_adaptive_sovereign_loop.py`
+  - `tests/unit/research/test_adaptive_sovereign_recall.py`
+  - `tests/unit/research/test_adaptive_memory_loop_audit.py`
+  - `tests/unit/research/test_adaptive_promotion_verifier.py`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/frontier/agent-memory-self-loop-frontier-2026-08-10.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`（仅追加本条；并行 Agent各自已追加其限定文件日志）
+- 变更摘要：
+  - 以前沿一手论文核验二手文章：模型内记忆与 Agent 外部主权记忆不是替代关系；KV cache 是输入产生的推理状态而非预训练时焊死参数表；NAMM、Doc-to-LoRA、Memory Decoder、TF-Engram 等反证“冻结模型原则上无法外挂记忆”；APEX-MEM、AgeMem、LongMemEval、MemEvoBench 等共同支持“私有只追加原始层 + 可重建派生层 + 有预算工作记忆”，并反对把全量原文无条件塞入每轮上下文。完整来源、局限与工程映射写入 OB 前沿笔记，未把摘要当全文新颖性证明。
+  - 通用循环严格重放模型/Skill调用前预约、失败调用预算、external context 原始 UTF-8 与实际 messages、强类型 event transition、snapshot 状态/计数和召回成员；Dreaming audit 从 predecessor snapshot 重算 selection，generic autonomy 对未有独立环境谱系的 context/provider 保守判红。开放探索仍可自由分支、类比、批判、零 Skill、临时 Agent、Dreaming、放弃或停止；只有模型主动申请 promotion 才进入来源/证伪/对照/预算/独立评审门，执行与发表仍在循环权限外。
+  - live 首次运行真实暴露 Qwen 适配矛盾：task 只列八个可用算子，但全量 provider JSON Schema仍允许十三个，Qwen 选择 `retrieve_evidence` 后被零外部预算门拒绝；失败响应、3034 字符 reasoning 与调用预约已保留。修复为每轮机械收窄 `ResearchOperator` enum，并让 task、provider schema 与调用前 registration 绑定同一 hash；没有改写模型科研散文或硬编码记忆答案。
+  - 同一 live 测试复跑成功：只给一次中文目标与范围，Qwen 两次动态 Skill 路由分别选择创新三角审查、再选择因果可识别性+创新三角审查，自主动作是 `branch_hypothesis → adversarial_critique`，共四次模型调用、零中途用户科研消息，198.41 秒后 `paused_budget`。原样制品保留于 ignored `runs/manual-live/task2713-adaptive-schema-v2-live-smoke/`；42 个文件、15 条 raw record 均重验，final snapshot hash `b1008c3e8967f05ba323571609765c7bb4f912c9b70382be1965897d433af47c`。这只证明功能性两轮自循环，不证明科学正确、记忆收益或不可伪造外部身份。
+  - 并行完成 60 独立场景×4 配对臂、十二轮公开刺激、隐藏评分隔离、exact-McNemar 主检验、四臂能力 adapter、v3 receipt/journal/terminal/reveal barrier 和四臂各十二轮 diagnostic runner。随后独立红队证明普通进程内 `urlopen`、任意 bytes 与自报 Qwen 可自造旧 formal anchor；立即把 client 与 benchmark receipt 全部 fail-closed 为 `process_local_only=true`、`boundary=false`、`formal=false`，provider response ID 只留 SHA，旧 formal 制品拒绝。最终 128-token live HTTP smoke 返回 200，同时正确保持 `external=false/formal=false`，trace hash `c7a4d11179acb36cb839b060a2147e3e1681c782add8506dea3ea13579512076`。
+- 验证：
+  - `poetry run pytest -q tests/unit/llm --no-cov` → `56 passed in 2.17s`。
+  - `poetry run pytest -q tests/unit/research --no-cov` → `343 passed in 219.06s`。
+  - 动态 Schema 最终专项 `poetry run pytest -q tests/unit/research/test_adaptive_sovereign_loop.py --no-cov` → `21 passed in 9.63s`；任务、provider schema 与 registration hash 一致反例已覆盖。
+  - 聚焦 Ruff → `All checks passed!`；最终 Ruff format → `8 files already formatted`；十个关键生产模块 scoped Mypy → `Success: no issues found in 10 source files`。并行模块另有 LLM 56 项、receipts+runner 40 项及各自 Ruff/Mypy/py_compile/diff-check 记录。
+  - live 命令 `RUN_LIVE_ADAPTIVE_LOOP=1 ...test_real_qwen_selects_skills_and_runs_without_intermediate_user_prompts`：第一次 `AdaptiveResearchLoopError: model selected an operator whose branch or resource budget is unavailable`，定位并通用修复后复跑 `1 passed in 198.41s`。最终 ignored run 重新加载 snapshot并逐条验证 15 个 raw records成功。
+- 问题新增或更新：更新 `P-20260810-118` 的旧 60-cell/剩余阻断描述；扩展 `P-20260810-119`，记录动态 Schema live 失败/修复、功能性两轮 Qwen smoke、四臂 diagnostic runner、进程内 transport formal 自证 P0 及 fail-closed 修复。配置探针首次误用不存在的包级 `load_config` 导出而 `ImportError`，随即改用 `ConfigParser` + `.env` 键存在性检查，确认 `qwen-dashscope/qwen3.7-max` 与凭据可用且未输出密钥。
+- 后续：Task `271.3` 继续未完成，不 staging、不 commit。必须先实现仓库外独立密钥、nonce/时间绑定和 verifier 的签名 transport gateway，再新增 formal live sibling runner 与 `SovereignRecallUseReceipt`，证明 turn1—3 raw 被 turn4—11 Dreaming 选中、进入后续真实请求并被 turn12 动作实际消费；随后跑不进入确认性统计的十二轮 pilot。只有 pilot稳定后才冻结 runner-only seed、执行 240 cells与盲化计分；正式 prospective control/treatment 双臂执行、完整计划谱系重放和人工计划外部签名仍是独立红灯。当前没有科学结果、因果记忆收益、创新通过、发表或提交授权。
+
+---
+
+## 2026-08-10 04:08:48 +08:00 - Codex subagent `/root/signed_transport_gateway` - Task 271.3 独立签名 transport gateway 信任边界
+
+- 用户请求/活动任务：关闭普通 client 进程内 HTTP trace、自报 provider/model 和自洽哈希可伪装正式 Qwen 外部执行的 P0 边界；新增独立 Ed25519 transport gateway 协议、严格外部信任锚、时钟/nonce 防重放以及可从仓库外密钥运行的最小 one-shot HTTPS worker。限定不修改 client、benchmark receipts、runner、包根或共享 `Problem.md`，不提交。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_transport_gateway.py`
+  - `src/autoresearch/research/adaptive_transport_gateway_worker.py`
+  - `tests/unit/research/test_adaptive_transport_gateway.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增 `AdaptiveTransportRequestCommitment`：调用前绑定 exact request UTF-8 bytes SHA/大小、顶层 `messages` 规范哈希、body 中逐字匹配的 model、provider/model、规范 public HTTPS URL/origin、128—256 bit nonce、UTC 秒时间、cell/trajectory/reservation/pre-call 身份与哈希；HTTP、userinfo/query/fragment、localhost、私网/保留 IP、非 FQDN、未在外部 allowlist 的 origin 和 body/model 不一致均在 transport 前失败关闭。
+  - 新增 HTTP response 与 pre-response transport failure 两类 canonical gateway receipt。成功路径绑定 final URL/method/status、global connected IP、TLS1.2/1.3、证书和/或 SPKI SHA、受限同源 307/308 redirect chain、完整 raw response body SHA/大小、仅哈希的 provider response ID、response JSON 顶层 exact model/UTF-8 SHA/与 pre-call model 的机械一致性，以及与 client 实际返回语义一致的 trimmed visible output、bounded reasoning 和 canonical usage SHA；2xx response model 缺失、空值、空白变体或不逐字相等全部在 receipt 构建前失败关闭，正式路径不从 artifact 自推 alias。失败路径绑定 exact observed request、失败阶段、哈希化 error type/message和当时可得的连接/TLS证据，不持久化错误明文。
+  - 新增 canonical `SignedAdaptiveTransportGatewayReceipt` 与唯一验签入口。Ed25519 detached signature覆盖 domain-separated canonical receipt；PEM 必须是单一 canonical Ed25519 SPKI，Base64 长度、字母与 pad bits 严格重编码校验。验签必须由调用方显式传入仓库外 trusted public-key fingerprint、gateway build/source hashes、origin allowlist、可信 UTC clock和 verifier-owned持久 nonce ledger；无默认值，也没有 artifact→trust helper。签名 envelope 本身不含 `formal=true`；只有验签成功才返回 `VerifiedAdaptiveTransportGatewayAttestation`，并区分正式 transport evidence与完整 provider completion。旧 client v2 trace、unsigned dict和 process-local hash均不能作为 verifier 输入。
+  - 网关端与 verifier 端分别使用原子 `O_EXCL` 持久 nonce 账本：worker 在 DNS/连接前预约；verifier 在全部签名、谱系、origin、build/source、TLS、时间检查后一次性消费。重复 nonce、stale/future receipt、跨 cell/trajectory/model/origin/request重放、重算 JSON 自哈希但未重签全部拒绝。
+  - verifier nonce entry现明确为 v3 本地 create-once anti-replay integrity 记录，额外绑定 signed envelope、receipt、commitment、原始 verified attestation 和观察时间。它由调用方可写、没有独立签名，因此不是独立 acceptance 或身份根；formal transport的依据只能是外部 gateway Ed25519签名及外部 trust anchors。终局使用只读 `replay_verify_adaptive_transport_gateway_attestation`：重新验 gateway签名、所有外部 trust anchors、expected commitment和最初验签时刻的freshness，再逐项核对本地ledger entry；不按终局当前时间误判stale、不再次消费nonce，也不单信attestation自哈希。
+  - 新增独立 one-shot worker：canonical stdin → 系统 CA/hostname 验证的 HTTPS POST → canonical typed stdout；worker禁止全部 redirect并要求 global peer IP，同时签入实际 certificate/SPKI。成功 stdout 是 `AdaptiveTransportGatewayWorkerOutput` v2，只含 signed receipt 和同一次 raw response机械解析的 exact provider model、visible/reasoning/usage；wrapper逐项重验model与四类哈希等于 signed receipt，故主循环无需也不得再发第二次 provider 请求。HTTP非2xx与transport failure的 completion固定为空。私钥只允许从 worker-only 环境变量或继承文件描述符二选一加载为 canonical Ed25519 PKCS8，API key同样仅在worker环境；request/raw-response body、provider ID、密钥和API key不进入输出。`--print-trust-manifest` 输出协议/worker源码、自身Python可执行文件、OpenSSL与cryptography版本派生的 build/source hashes，供运维在运行前外部 pin。worker不生成密钥，协议/verifier生产模块不导入私钥类型或提供签名入口。worker nonce ledger root必须由独立 launcher固定并持续复用，研究 runner/artifact不得为每次调用选择新root；环境变量只是部署接线，不是允许artifact轮换防重放根的授权。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/research/test_adaptive_transport_gateway.py` → `43 passed in 1.35s`（response-model v3最终代码状态）。覆盖可信签名正例、HTTP 429、无响应失败、自签/错信任根、无默认 trust、HTTP/localhost/private/unallowlisted、request body/model mismatch、2xx response model缺失/空/不同/空白变体、跨 cell/trajectory/model/origin/request、重算 receipt hash未重签、stale/future/immediate replay、错 build/source、Base64 pad bits、非规范/多 PEM、redirect、private peer/missing TLS、旧 v2 trace、非规范 JSON，以及 worker 成功/失败零网络 transport double、nonce预约、worker response-model mismatch失败、same-response completion直接喂loop、completion文本或model重哈希仍与signed receipt不符、密钥/API/raw body不泄漏。另覆盖终局重复只读replay不消费nonce、自重哈希attestation拒绝和被重哈希篡改的本地anti-replay entry拒绝。
+  - 下游回归 `poetry run pytest -q --no-cov tests/unit/research/test_adaptive_sovereign_recall_use.py` → `9 passed in 30.25s`；证明新增 exact model字段没有破坏 signed recall-use 与 post-run replay接线。
+  - 聚焦 Ruff → `All checks passed!`；scoped Mypy覆盖 gateway、worker、formal live runner、sovereign recall use四个生产模块 → `Success: no issues found in 4 source files`；三个限定文件 `py_compile` 通过；Ruff format check为 `3 files already formatted`；聚焦 `git diff --check` 无输出。
+- 问题新增或更新：按任务边界未修改共享 `Problem.md`。实现中先发现下游 A4消费证明还需要 signed `request_messages_sha256` 与 visible/reasoning/usage hashes，已在公开 API 稳定前补齐；formal live runner又明确需要无 HTTP response 的签名失败，已用独立 failure receipt 闭合，不把失败误作 completion。接线前最后审计发现裸 signed receipt只有输出哈希、主循环无法取得同一次response文本；若另跑client会成为第二次请求。现已新增 same-response typed worker output并逐字段闭合哈希，反例覆盖重算wrapper但与signed receipt不符。只读红队随后发现 P1：2xx response JSON可自报另一model仍获 completion资格；现以success receipt/completion exact model双重签入及commitment逐字匹配闭合。红队也证明本地ledger在同一写权限下可自造自洽条目；本轮没有伪造“独立acceptance signer”，而是把其语义严格限定为anti-replay integrity，并保留外部gateway签名为唯一formal transport身份依据。首次静态检查发现错位类型注解、import排序和两个 Mypy窄化问题，全部修复并复验。没有运行外网或真实 Qwen，因此当前只证明协议、worker过程和对抗反例，尚未获得真实独立签名 live receipt。
+- 后续：主 Agent需让 formal live runner以独立进程/服务调用 worker，先从受控部署外部 pin signer fingerprint和 `--print-trust-manifest` 的 build/source hash，并由同一个独立launcher固定、持久化 verifier ledger与worker request ledger根，研究runner不得轮换root；随后跑排除在确认性统计外的十二轮 Qwen pilot。Python进程签名只能证明受信密钥持有者的声明，不是 TPM/TEE measured boot；build/source hash必须由部署者预先 pin，不能从当前 receipt自锚。本地anti-replay entry仍不是独立acceptance signer；worker的零网络测试 double不属于正式证据。A4实际召回消费、240-cell、盲评分、科学收益与发表资格仍未证明。本轮未 staging、未 commit、未联网、未生成或保存任何私钥。
+
+---
+
+## 2026-08-10 04:34:00 +08:00 - Codex subagent `/root/sovereign_recall_use_receipt` - Task 271.3 A4 主权召回实际使用独立证据
+
+- 用户请求/活动任务：新增独立、失败关闭的 `SovereignRecallUseReceipt`，从真实十二轮 A4 轨迹机械证明第1—3轮同 cell 公开原始记录被第4—11轮 Dreaming 从八轮窗口外选中，完整反馈进入后续 provider action request，且第12轮原始模型动作以结构化字段实际消费同一记录；绑定 cell/arm/trajectory/snapshot/event/context/selection/raw/transport 全链，A1—A3、诊断 transport、缺门或篡改不得正式通过。限定只新增生产模块、专项单测并追加本日志，不改 loop、CLI、包根或 `Problem.md`，不提交。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_recall_use.py`
+  - `tests/unit/research/test_adaptive_sovereign_recall_use.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增内容寻址 `SovereignRecallUseReceipt` 及上下文、Dreaming、选中记录、signed gateway 四类证据合同。审计重新加载 canonical 十二轮 final snapshot，重放 cell/scenario/runtime-plan 和 arm realization；逐轮核对冻结 public stimulus、context identity/hash、只追加 raw record/payload exact bytes，并单列第1—3轮记录与终轮年龄。
+  - 对每个第4—11轮 `consolidate_dreaming`，从事件唯一 artifact path 加载 selection，重验 proposal/branch/step、predecessor snapshot 是 final trajectory 的精确前缀，并复用 deterministic memory-loop audit。只有同 cell 早期 context 且在 Dreaming 当时已经离开最近八轮窗口的记录才进入实际使用候选；selection、record/payload/excerpt、feedback、predecessor 文件和 memory-audit hashes 全部写入回执。运行目录中的孤儿 selection 单独判红。
+  - 后续请求证明不从自由文本猜测：逐字段重建完整 Dreaming feedback 投影（含结构化 `memory_exposures`），要求它原样存在于至少一个后续 action task；再把该 event 的 exact messages hash、model-call registration、外部 Ed25519 signed gateway commitment/receipt/attestation 和只读 post-run replay绑定。终局不再次消费 nonce，也不按十二轮结束时间重判早期 receipt stale；本地 replay ledger只承担 anti-replay integrity，绝不称为独立签名或身份根，正式 transport依据仍是外部 gateway签名与外部 pin。
+  - 第12轮从 sovereign raw response record读取 duplicate-free UTF-8 JSON，要求逐字等于 retained v2 proposal；消费必须由 `memory_consumption_claims` 的 Dreaming step、selection hash、record ID、payload hash、excerpt hash五键命中，并令中文事实是所签 excerpt 的精确片段。能力标签、`source_refs`或正文子串不能替代结构化声明。十二份 gateway证据还逐轮绑定 request bytes/messages、provider/model、visible/reasoning/usage/raw response hashes，以及 v3 provider response exact model值和UTF-8 hash。
+  - 语义失败与证据矛盾分开处理：跨 cell/arm/trajectory、重哈希篡改、签名/replay/raw不一致直接抛 `SovereignRecallUseAuditError` 且不产回执；自洽但缺 gateway、未选早期记录、缺第12轮声明或属于 A1—A3则产内容寻址 `actual_sovereign_recall_use_verified=false` 回执。只有 A4 arm实现、memory transport、八轮外早期选择、可观察消费链、十二份外部签名 action和签名消费链全部为真且无孤儿制品时才可 `actual=true`；`scientific_result_generated`、因果记忆收益、benchmark优越性、创新、执行/发表授权永久为 false。
+- 验证：
+  - 专项最终状态：`poetry run pytest -q --no-cov tests/unit/research/test_adaptive_sovereign_recall_use.py` → `9 passed in 30.63s`。覆盖 diagnostic无签名、完整 A4 signed正例、孤儿 selection、早期 context未选、反馈未进入 signed request、第12轮无结构化消费、跨 cell/arm、重算 selection hash后替换、真实 A3轨迹永不通过；正例同时断言 gateway v3 response model值/hash exact绑定。
+  - 联动回归：`poetry run pytest -q --no-cov tests/unit/research/test_adaptive_sovereign_recall_use.py tests/unit/research/test_adaptive_memory_loop_audit.py tests/unit/research/test_adaptive_sovereign_recall.py tests/unit/research/test_adaptive_sovereign_loop.py tests/unit/research/test_adaptive_loop_benchmark_context.py tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py tests/unit/research/test_adaptive_transport_gateway.py` → `95 passed in 62.35s`。
+  - `poetry run ruff format --check ...` → `2 files already formatted`；Ruff check → `All checks passed!`。生产模块 Mypy → `Success: no issues found in 1 source file`；专项测试以 `--follow-untyped-imports` Mypy → `Success: no issues found in 1 source file`；两文件 `py_compile` 通过；scoped `git diff --check` 无空白错误（仅提示共享 `Agent.md` 工作树的 CRLF→LF 转换）。
+- 问题新增或更新：无；按限定未修改 `Problem.md`。首次真实 A4 fixture 暴露既有 hash-rich Dreaming findings 被“中文比例”误拒，主 Agent已把机械反馈与模型科研散文的中文门分离后闭合；首次直接对 tests 路径跑 strict Mypy因本地包无 `py.typed` 被视为 untyped，改用 `--follow-untyped-imports` 后发现并修正消费声明测试类型，最终全绿。没有运行外网或真实 Qwen，因此单元测试临时 Ed25519 key只验证审计器正反逻辑，不证明正式 live provider、科学收益或可发表成果。
+- 后续：formal live runner应在 A4 终局要求本审计 exception-free、receipt存在且 `actual_sovereign_recall_use_verified=true`；A1—A3应禁止/省略该 receipt。runner外层仍须以 `live_qwen_provider`、独立 worker/signer来源、固定外部 trust pins及完整 formal artifact硬门拦截 diagnostic；局部 unit-style signed receipt不得把整个运行提升为confirmatory。下一步先跑不进入确认性统计的真实十二轮 A4 pilot，再冻结240-cell正式执行。本轮未 staging、未 commit。
+
+---
+
+## 2026-08-10 04:50:20 +08:00 - Codex subagent `/root/formal_live_runner` - Task 271.3 formal signed live cell runner
+
+- 用户请求/活动任务：新增与 diagnostic runner 严格隔离的 formal live cell runner sibling；在任何 provider 调用前封存 bridge/cell/arm/budget/source/trust，逐轮使用独立 Ed25519 gateway 的 exact same-response completion 与即时验签，失败调用同样结算；A1—A3不要求主权召回使用，A4终局必须有 `SovereignRecallUseReceipt.actual_sovereign_recall_use_verified=true`。限定不修改 diagnostic runner、普通 client、旧 receipts、generic loop、CLI、包根或 `Problem.md`，不联网、不跑真实模型、不提交。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_benchmark_live_runner.py`
+  - `tests/unit/research/test_adaptive_loop_benchmark_live_runner.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增内容寻址 `FormalBenchmarkCellRunSpec`、逐调用 `FormalGatewayCallEvidence`、预算/manifest/terminal 与完整 run artifact。入口逐字重载 sealed receipt bridge并绑定公开 scenario、blinded cell、cell binding、四臂 runtime plan、十二轮 seed/policy、分离 raw/controller memory plane、十二次 main-model预算、runner/loop/context/arm/receipt/gateway/recall-use源码哈希，以及调用者提供的 public-key/build/source/origin/model trust policy；每次调用前重验 spec文件、disk bridge、source inventory和transport track，任何漂移在 gateway 调用前失败关闭。
+  - generic loop先写 `AdaptiveActionModelCallRegistration`，runner才建立预算 reservation和 gateway commitment；commitment的 pre-call ID/hash逐字等于 registration，reservation另行绑定。call evidence自包含 exact messages、messages SHA、canonical worker request及其exact provider request bytes/base64/hash、commitment、signed receipt、即时 accepted attestation、worker stdout hash和completion hash；artifact再机械闭合 registration→reservation→request→gateway→event raw response/reasoning→budget settlement→post-run replay→terminal，不能用自报 Qwen、diagnostic completion或旧 process-local trace替代。
+  - 只消费 `AdaptiveTransportGatewayWorkerOutput.completion`，不二次调用普通client。成功路径显式要求 signed receipt与same-response completion的顶层 provider model、UTF-8 SHA和match flag逐字等于预封存 Qwen model；即时 verifier以调用者传入的 key/build/source/origin pins、可信clock和local anti-replay ledger验签并消费nonce，终局使用只读post-run replay，不按终局时间误判stale、不二次消费nonce。本地ledger只声明anti-replay integrity，绝不声明独立acceptance。
+  - 外部调用抛错、非规范/未签stdout、签名HTTP失败、transport失败、model mismatch和签名响应验证失败全部保留typed call evidence并结算一次main-model请求；只有十二轮、十二份provider completion、arm realization、manifest和全部签名replay闭合才可生成terminal。A1—A3强制无recall-use receipt；A4调用正式recall-use审计，缺Dreaming早期选择、后续signed request暴露或turn12五键structured claim时保留`actual=false` receipt但无terminal，完整链才有terminal。
+  - 零网络签名test double只能走 `zero_network_signed_test_double`，terminal与artifact永久`formal_eligible=false`。同时在trust policy、spec、terminal和artifact明确：Python API不能证明调用者的pins确由仓库外operator取得，`test_only=False`本身也不是外部provenance；`formal_eligible`至多表示“在所提供pins下签名链成立”，真实pin来源仍是部署/操作者信任假设，没有伪造第二套签名系统。
+  - artifact loader对external track强制调用者重新提供out-of-band expected policy与原local anti-replay ledger，并逐份重放签名后才加载；test-only artifact只允许结构性加载且保持non-confirmatory。模块不加载/生成/接受私钥，不导入diagnostic runner，不加载hidden oracle，不评分、不生成科学结果或发表授权。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/research/test_adaptive_loop_benchmark_live_runner.py` → `9 passed in 25.76s`；覆盖A3十二轮signed正例、A4 actual-use正例、A4仅暴露能力未实际消费反例、unsigned/HTTP 429/model mismatch三类失败计费、bridge与source hash在provider前阻断、以及生产模块无私钥/diagnostic/hidden-oracle路径。
+  - 最终联动 `poetry run pytest -q --no-cov tests/unit/research/test_adaptive_loop_benchmark_live_runner.py tests/unit/research/test_adaptive_transport_gateway.py tests/unit/research/test_adaptive_sovereign_recall_use.py tests/unit/research/test_adaptive_sovereign_loop.py tests/unit/research/test_adaptive_loop_benchmark_arm_adapters.py tests/unit/research/test_adaptive_loop_benchmark_cell_runner.py` → `102 passed in 104.92s`。
+  - `poetry run ruff check <runner> <test>` → `All checks passed!`；`poetry run ruff format --check <runner> <test>` → `2 files already formatted`；scoped Mypy → `Success: no issues found in 2 source files`；两文件 `py_compile` 通过；两个untracked新文件以 `git diff --no-index --check -- NUL <file>` 检查无空白错误，`Agent.md` scoped `git diff --check`仅有现存CRLF→LF提示。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。初始专项fixture误用了不存在的arm枚举且memory claim类型过宽，首轮5例失败/Mypy 5项，改为冻结的 `ADAPTIVE_DERIVED_ONLY` 和typed `ModelMemoryConsumptionClaim`后全部复验通过；首次format check报告两个新文件需格式化，机械格式化后复验稳定。
+- 后续：本轮只用单元测试内临时Ed25519 key与零网络gateway double验证协议和runner E2E，因此没有证明真实外部gateway部署、真实Qwen十二轮执行、pins的仓库外来源、scientific correctness、记忆因果收益、四臂优越性、创新性、240-cell结果或发表资格。下一步由独立launcher固定私钥、worker request nonce ledger和public trust manifest，操作者在runner外pin fingerprint/build/source/origin/model，再跑不进入确认性统计的十二轮pilot；通过后方可冻结runner-only seed并执行240 cells。本轮未 staging、未 commit。
+
+---
+
+## 2026-08-10 05:42:23 +08:00 - Codex 主 Agent `/root` - Task 271.3 前沿融入、Qwen 修复适配与十二轮真实自循环审计
+
+- 用户请求/活动任务：调研模型记忆、Agent 主权记忆、自修改和科研自循环前沿并高效融入；严格度必须按环节变化，不能用统一严门消灭创新；核实当前系统是真正从一次目标自主循环，还是由 Codex 逐条发科研指令、代写或针对单一问题硬编码；研究计划与科研散文由配置 Qwen 中文生成，学科方法放入独立 `skills/*/SKILL.md`，临时 Agent 由当前阶段主 Agent 分派。Task `271.3` 继续保持未完成，禁止夸大发表或提交状态。
+- 主 Agent 变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_loop.py`
+  - `tests/unit/research/test_adaptive_sovereign_loop.py`
+  - `tests/live/test_adaptive_loop_benchmark_live.py`
+  - `skills/agent-memory-evaluation/SKILL.md`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/frontier/agent-memory-self-loop-frontier-2026-08-10.md`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/strategies/steerable-memory-dependence-shadow-candidate-2026-08-10.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 精读并核验模型原生记忆与 Agent 外部记忆的边界，补入 SteeM 可调记忆依赖、MemCon 上下文控制、经验跟随错误传播、Mem2ActBench 实际动作使用、Fine-Mem 证据锚定、Memory Provenance Laundering、执行谱系和 Causal Agent Replay 等一手来源。结论固定为：主权原始层全量只追加，派生/工作层允许选择、压缩、失效和重建；外部记忆不会因模型内记忆进步而失去主权、迁移和审计价值。
+  - `agent-memory-evaluation` Skill 增加“低依赖发散—高保真复核—污染回退”的方法，内容保持独立 Skill 消息，不进入本体主提示。OB 新增 `shadow_only` 的“可调记忆依赖与反局部循环”策略候选：它不规定第几轮必须 Dreaming，只定义非强制多样性债务、记忆依赖档位和外部终点评价；禁止覆盖冻结 v3 协议或在线提升生产。
+  - 对 v3 真实失败逐份重放三次 Qwen 原始响应。根因不是科研内容错误，而是首答把本轮 external context 的 raw binding 误报为此前 Dreaming 消费；旧 repair 又同时冻结该错误声明，并把中文弯引号变成 ASCII 引号误判为科研改写。修复后，主提示明确 external context 不是 memory exposure；repair 期科研字段仍冻结，但只允许引号排版等价；memory claims 只能逐字保留首答原项或保守撤回，不得新增/改写。冻结基线经 canonical JSON 深拷贝，避免进程内可变列表漂移；所有原始响应、reasoning、预约和失败回执仍保留，编排器不合并或代写科研散文。
+  - 协调并独立复核子任务的 Ed25519 gateway v3、same-response completion、provider exact-model 绑定、A4 actual-use receipt 和 formal live runner。普通 client trace继续固定 process-local/nonformal；正式路径只在调用者提供仓库外 pins、独立 worker signer、global peer和持久 nonce root时条件成立。
+- 真实运行结果：
+  - signed pilot `task2713-adaptive-benchmark-a4-live-pilot-v1` 在首事件前正确失败：当前 VPN/TUN 把 `dashscope.aliyuncs.com` 解析到 RFC 2544 `198.18.0.35`，gateway 拒绝非全球 peer；一次预约已计费、零事件、未放宽网络或签名门。
+  - v3 behavior pilot 在第三轮暴露上述 repair 矛盾，三次 Qwen response/reasoning均原样留存；没有把失败覆盖成成功。
+  - 修复后的 v4 `task2713-adaptive-benchmark-a4-behavior-pilot-v4` 用一个冻结中文目标/范围完成十二轮真实 `qwen3.7-max` 动作，12 次调用全部一次通过，零中途人工科研散文、零编排器科研散文、最短 reasoning 1842 字符。轨迹为 `decompose_uncertainty×4 → branch_hypothesis → adversarial_critique×4 → decompose_uncertainty×2 → promote_branch`；终轮晋级因来源不可追溯与无真实外部反馈被确定性门拒绝。snapshot hash `8e05f684e813a53139b63eb5785ac5217a066a100c867a1d28942ee21ef39388`，arm audit hash `3e0ce11648307c42cb16351ba1041626a293669f8a29a74cc60f2e11237698e0`，capability matrix 为真。
+  - 同一 v4 轨迹 Dreaming 次数、selection artifact 和结构化记忆消费均为零，live pytest按预先判据失败，`actual_sovereign_recall_use_verified=false`。因此当前只能证明功能性十二轮自循环和“探索自由、晋级严格”，不能证明主动长期记忆使用、外部正式身份、记忆因果收益、科学正确、创新或可发表性。
+- 验证：
+  - 修复定向：`poetry run pytest tests/unit/research/test_adaptive_sovereign_loop.py -q --no-cov` → `25 passed`；新增错误声明保守撤回/引号等价正例和实质科研改写反例。
+  - 最终联动：loop、recall、recall-use、context、arm、diagnostic runner、formal runner、gateway 共 `111 passed in 116.96s`。
+  - `poetry run ruff check` 聚焦文件 → `All checks passed!`；聚焦 Mypy → `Success: no issues found`；Ruff format check、`py_compile` 通过。
+  - `poetry run python -X utf8 .../quick_validate.py E:\\AIResearch\\skills\\agent-memory-evaluation` → `Skill is valid!`；当前 Skill SHA-256 `d67d9c48712635e03a3aee57900fe7fb19178bd8e0147f7ecd682f8ca82f153e`。
+  - 普通 `tests/live/test_adaptive_loop_benchmark_live.py` 在无 opt-in 环境时 `2 skipped`；真实 v4 opt-in为预期负结果 `1 failed`，失败点仅为 `dreaming_operator_count == 0`，不是结构、预算或能力矩阵错误。
+  - generic `adaptive_sovereign_loop.py` 搜索 Task ID、benchmark、A4、卫星/0.8毫秒和固定轮次强制语句为零命中，证明未把本场景特例写入本体。`git diff --check` 退出 0，仅报告共享工作树既有 CRLF/LF提示。
+- 问题新增或更新：更新 `P-20260810-120` Skill hash；把 `P-20260810-121` 更新为 gateway/recall/formal runner 已代码解决；新增 `P-20260810-122`，记录 signed 网络阻断、v3 repair 根因、v4 十二轮功能性成功与 Dreaming 实际使用失败。
+- 后续：不得因为看到 v4 结果而修改冻结 v3 benchmark、隐藏 oracle 或主效应。先对可调记忆依赖策略做冻结轨迹/全新开发场景影子比较；仅在外部任务终点改善、实际消费增加、污染不升且预算匹配时另起预注册。真实 signed pilot需移到不把 provider 映射到 `198.18.0.0/15` 的独立网络/launcher并由操作者外部固定 trust pins。240-cell、正式 prospective control/treatment runner、盲化评分、创新全文审查和竞赛提交仍未完成；本轮未 staging、未 commit。
+
+---
+
+## 2026-08-10 06:02:56 +08:00 - Codex subagent `/root/formal_live_runner` - Task 271.3 通用算子多样性与可调记忆影子候选
+
+- 用户请求/活动任务：只新增通用、内容寻址、与现有 `OperatorCatalogProvider` 兼容的可调记忆/算子多样性候选和专项测试；候选只能观察分支局部算子家族重复、距长期记忆复核的结构轮数和机械目录，不能读取任务文本、系统名、benchmark、hidden oracle、run root、环境变量、时间、随机数或未来轨迹，不能增加/重排能力、指定唯一动作、强制 Dreaming、改变冻结臂或宣称生产、正式、科学、创新收益。纯 shadow 不得影响轨迹；显式 development evaluation 若应用候选，必须在返回目录前写入不可覆盖的逐轮回执。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_operator_steering.py`
+  - `tests/unit/research/test_adaptive_operator_steering.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增内容寻址 policy、去文本 `AdaptiveOperatorSteeringStructuralObservation`、snapshot/branch/hash 绑定输入、确定性 decision 和独立 shadow audit。宽 provider 接口中的 seed/snapshot/branch 只用于一致性校验与结构投影；核心目录逻辑只读取 zone、当前分支已发生的算子序列、距最近记忆复核的轮数及机械可用算子，不保存完整 seed/snapshot/branch，也不按任务 ID 或 hash 查表。
+  - 候选仅在开放探索中、当前分支短视野内省家族达到连续重复阈值时提出抑制；无长期债务时只抑制重复过的内省算子，有长期债务时才提出抑制饱和内省家族。晋级、放弃、停止永远保留；目录始终非空、顺序不变且不添加能力。若基线机械上允许，则至少保留四个继续科研动作、三个继续科研家族；Dreaming 存在时至少保留三个非 Dreaming 科研动作及两个非记忆家族。所有下限或非唯一性不满足时整目录 identity fallback；并机械保证 `decide(M)-{Dreaming} == decide(M-{Dreaming})`，Dreaming 的出现不会引发额外删除。
+  - `ShadowAdaptiveOperatorCatalogProvider` 只记录 candidate、实际返回 baseline；`DevelopmentAdaptiveOperatorCatalogProvider` 明确为 nonconfirmatory/production=false，实际返回 candidate 前先用 canonical decision-hash 文件名封存 policy、结构输入、M、candidate、O、suppressed IDs、`controller_intervened` 和固定中文机械原因。回执父目录必须预先存在，`xb` write-once 冲突、错误文件名、旧 schema、非 canonical JSON、hash或确定性重放篡改均失败关闭。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/research/test_adaptive_operator_steering.py` → `9 passed in 2.96s`。覆盖 shadow不干预、development应用前回执与冲突拒绝、无新增/重排/唯一动作、分支局部重复、长期债务、非探索区identity、选择/家族下限、窄目录与singleton fallback、Dreaming非干涉、policy disabled、替换目标/范围/任务绑定不改变结构目录逻辑、确定性hash/audit、旧schema/篡改拒绝及额外run-root/execution-track参数拒绝。
+  - 聚焦 `ruff check` → `All checks passed!`；聚焦 Mypy → `Success: no issues found in 2 source files`；`ruff format --check` → `2 files already formatted`；两文件 `py_compile` 通过；两个untracked文件分别以 `git diff --no-index --check -- NUL <file>` 检查无空白错误。
+- 问题新增或更新：无；按任务限定未修改 `Problem.md` 或任务/计划文档。首轮专项测试有三例共享 fixture 报错，唯一根因是测试 double 使用了不在 `LLMJsonCompletionResult.reasoning_transport` Literal 白名单中的 `test-reasoning`；改为允许的 `dashscope_enable_thinking` 后九例全绿。首次 Mypy仅报告两个故意传入禁止关键字的反例静态错误，改由显式 `Any` 调用保留运行时拒绝语义后全绿。
+- 后续：本轮只交付 shadow/development 候选机制及确定性测试，没有接入生产循环、没有执行新 live pilot、没有比较任务结果，也没有证明 Dreaming、长期记忆、科学质量或创新收益。下一步只能在冻结 v4 retained snapshot或全新开发场景上运行 shadow audit；若要应用，必须使用 development provider的逐轮write-once回执并保持 nonconfirmatory，不能回写冻结 v3 protocol/arms。任何生产采用、确认性评估或正式主效应仍需另行预注册和外部审批。本轮未 staging、未 commit。
+
+---
+
+## 2026-08-10 07:48:18 +08:00 - Codex 主 Agent `/root` - Task 271.3 Qwen 通用契约适配与 v6 自循环证据收口
+
+- 用户请求/活动任务：继续调研记忆、修改与自主科研前沿并融入 OB；严格度只在证据晋级、执行和发表处上升，开放探索不能被统一严门扼杀；以真实 Qwen 运行回答系统能否从一次目标自行循环，还是由 Codex 逐条指令、代写科研散文或针对单一记忆问题特殊化处理。研究内容保持中文模型生成，学科方法来自独立 Skill，临时 Agent 只能由当前环节主 Agent 分配并在归档后消失。
+- 主 Agent 变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_loop.py`
+  - `src/autoresearch/research/adaptive_capabilities.py`
+  - `src/autoresearch/research/adaptive_sovereign_recall.py`
+  - `src/autoresearch/research/adaptive_skill_router.py`
+  - `tests/unit/research/test_adaptive_sovereign_loop.py`
+  - `tests/unit/research/test_adaptive_capabilities.py`
+  - `tests/unit/research/test_adaptive_sovereign_recall.py`
+  - `tests/unit/research/test_adaptive_skill_router.py`
+  - `tests/unit/research/test_adaptive_promotion_verifier.py`
+  - `tests/live/test_adaptive_operator_steering_live.py`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/frontier/agent-memory-self-loop-frontier-2026-08-10.md`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/strategies/steerable-memory-dependence-shadow-candidate-2026-08-10.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 把检索动作从自由散文中推断查询的脆弱契约升级为 `adaptive-research-action-draft-v3`：检索时由 Qwen 自行输出 3—10 个互异 ASCII 学术短语，每项 1—4 个技术词，中文动作正文只说明目的；系统只确定性连接和校验，不抽取、截断或代写。检索 query 可进入 environment，Dreaming excerpt anchor改从所有命中词中选稀有且较长的 token，仍由内容和算法 hash确定，不依赖场景特判。
+  - Skill selection 升 v2，只保留权威 `selected_skill_ids`，空数组就是零 Skill；删除容易与空列表矛盾的冗余 `no_skill_required`，同时保留旧 v1 artifact 的严格历史回放。provider response schema不再发送其不支持的 `uniqueItems`，本地模型 validator继续拒绝重复，机械语义门没有放松。
+  - 所有 repair 继续冻结模型科研散文和科学判断；结构化查询、零 Skill 和 provider Schema 方言属于接口收敛，不由 Codex生成假设、机制、检索结论或计划。新增/更新反例覆盖过长查询、逗号串、重复 Skill、旧 v1 矛盾布尔、Schema v2、历史 proposal v1/v2 与 action-v3重放。
+  - 前沿 OB 与策略候选补入全量原始层、可重建派生层和预算工作层的分工，以及 A-MEM/AgeMem/FluxMem/LongMemEval/EvoMemBench/MINJA/MEXTRA/APEX-MEM 等证据边界。外部记忆不因模型内记忆进步而失去主权、迁移、权限和审计价值；“全量保留”不等于“每轮把全量原文塞进上下文”。策略继续 `shadow_only`。
+- 真实运行证据：
+  - v1—v3 分别保留长自然语言查询、重复长响应和逗号串查询的 Qwen 失败；v4 保留 reasoning/空选择均表示零 Skill、但冗余否定布尔相反的失败；v5 保留 provider 因 `uniqueItems` 返回 HTTP 400 且未产生科学响应的失败。所有目录和预约原样保留，没有覆盖或删除负证据。
+  - fresh v6：`runs/manual-live/task2713-adaptive-operator-steering-development-pilot-v6/` 从一次冻结中文目标/范围自主完成 15 轮，15 次 Skill 路由加 15 次动作共 30 次 Qwen 调用，最短 reasoning 2731，2 次外部动作、3 个由当前主 Agent 自主派发的临时 Qwen；归档后所有 runtime identity 撤销、内容保留。人工和编排器科研散文计数均为零。
+  - Qwen 自主从拆解/反驳转向分布式缓存一致性类比、建立分支、并行派发 3 个子任务、申请晋级；严格门返回 `negative_result` 后，模型自行生成 8 个结构化检索短语，检索仍为负后主动放弃旧分支，再提出多通道不确定性阈值新分支。最终预算暂停快照 hash 为 `4871ac139be2775c69b066b78922cf47a975d7f7845b73896ed7d5cc5add3167`。
+  - development steering 只读去文本 zone、分支内算子历史、距记忆复核结构轮数和机械目录，不读目标正文、系统名、benchmark、hidden oracle、run root、环境变量、时间、随机数或未来。15 轮仅 2 次非强制干预，均只移除饱和内省动作并保留 10 个原序选项，从未指定或强迫 Dreaming。特例扫描对 v6 run ID、目标机制、缓存类比、检索短语和 TUN 地址为零命中。
+  - v6 同样保留严格负结论：零 Dreaming、零窗口外 selection、零结构化记忆消费；memory audit hash `3949648dff9be950f61d6be252c00e3080bbc2ba8c22df6ea4da3c6204a39b08` 的 transport/older-window/exposure/causal-benefit全为 false，opt-in live pytest只在冻结 `controller_memory_transport_verified is True` 成功判据处失败。因此证明的是更强功能性自循环、动态 Skill、临时 Agent和负反馈改道，不是主权记忆收益、科学正确、创新或可发表。
+- 验证：
+  - fresh v6 opt-in真实命令：`$env:RUN_LIVE_ADAPTIVE_OPERATOR_STEERING='1'; $env:ADAPTIVE_OPERATOR_STEERING_LIVE_RUN_ID='task2713-adaptive-operator-steering-development-pilot-v6'; poetry run pytest tests/live/test_adaptive_operator_steering_live.py -q -s` → 运行 1646.84 秒后 `1 failed`；失败点仅为上述冻结 memory transport正判据，15轮轨迹、预算暂停、Skill独立消息、零人工计划和15份write-once steering receipt均已先通过。
+  - 完整 adaptive unit 回归使用 PowerShell 显式文件列表收集 17 个文件、190 项：`190 passed in 172.42s`。首次尝试直接把 `test_adaptive_*.py` 交给 pytest 因 PowerShell 不做 Bash 式通配符展开而未收集目标，已按 `Problem.md` 记录并改用 `Get-ChildItem | Sort-Object`，不是产品失败。
+  - 聚焦 Ruff → `All checks passed!`；四个生产模块 Mypy → `Success: no issues found in 4 source files`；四模块 `py_compile` 通过。无 opt-in 的 live 文件 → `1 skipped in 1.45s`。全工作树 `git diff --check` 退出 0，仅报告既有 CRLF/LF转换提示。
+  - 通用生产模块对 `task2713-adaptive-operator-steering-development-pilot-v6`、缓存类比、多通道阈值、v6检索短语和 `198.18.0.35` 的 `rg` 扫描输出 `NO_SCENARIO_SPECIAL_CASE_HITS`。
+- 问题新增或更新：新增 `P-20260810-123`，记录 v1—v5 的检索/Skill/Schema 无意义修复循环、通用 contract reduction、v6成功和长期记忆继续判负；`P-20260810-122` 的 signed network与实际 Dreaming阻断仍保持开放。
+- 后续：Task `271.3` 继续未勾选、未 staging、未 commit。不得为通过测试强制 Dreaming，也不得在看见 development结果后回改冻结 v3 benchmark或隐藏 oracle。若继续评估 strategy，只能在全新开发场景做同预算 baseline/candidate影子对照，并分开报告算子多样性、实际主权记忆消费、污染与外部任务终点；真实 signed Qwen身份仍需独立网络/launcher和仓库外 trust pins。240-cell盲测、因果记忆收益、科学正确、创新全文审查、正式成对实验、发表和竞赛提交均未完成。
+
+---
+
+## 2026-08-10 10:32:53 +08:00 - Codex 主 Agent `/root` - Task 271.3 原生/主权记忆综述核验、v12 自主 Dreaming 与协议证伪
+
+- 用户请求/活动任务：精读用户提供的“模型原生记忆将淘汰应用层 Agent 记忆”文章，调研记忆与自修改前沿并高效融入 OB；系统要在开放探索中保留自由，在晋级、执行和发表时严格；核实 Qwen 是否能从一次目标自行循环，而不是 Codex 逐条代写或针对单一问题硬编码。研究内容须由 Qwen 中文生成，方法学放独立 Skills，临时 Agent 只能由当前阶段主 Agent 分派并归档消失。Task `271.3` 继续未完成。
+- 主 Agent 变更文件：
+  - `src/autoresearch/research/adaptive_sovereign_loop.py`
+  - `src/autoresearch/research/adaptive_sovereign_recall.py`
+  - `tests/unit/research/test_adaptive_sovereign_loop.py`
+  - `tests/unit/research/test_adaptive_sovereign_recall.py`
+  - `tests/live/test_adaptive_operator_steering_live.py`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/frontier/agent-memory-self-loop-frontier-2026-08-10.md`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/strategies/steerable-memory-dependence-shadow-candidate-2026-08-10.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`（仅追加本条）
+- 前沿核验与架构结论：
+  - 一手《Memory for Large Language Models》聚焦模型级参数化/激活记忆，并没有证明 Agent 外部记忆即将整体淘汰；TF-Engram 与冻结模型持久记忆还是外接能力的直接反例。LongMemEval、EvoMemBench、AgeMem、Forget to Improve、MINJA、SPORE、Memory Provenance Laundering 等又反驳“全量留存就应全量活跃使用”。OB 因此固定三层：私有原始层只追加全量保留；Dreaming/索引层可删可重建；工作层按任务、年龄、来源、权限和预算选择性暴露。
+  - SteeM/MemCon/PM-Bench/APEX-MEM/Useful Memories 与科研 Agent 证据被并入前沿笔记和 `shadow_only` 策略候选。开放发散允许零 Skill、低记忆依赖和未验证猜想；复核与冲突消解可提高记忆依赖；污染时允许 fresh-start。只有证据晋级、资源执行、人工授权和发表处失败关闭，不能用统一严门扼杀假设空间。
+- 通用 Qwen/循环修复：
+  - 中文门不再按单个拉丁字母惩罚技术标识，而按有界 Latin word-run 计负载；仅无效 `action_body_cn` 允许交回同一配置 Qwen 重写，算子、理由、信息增益、假设、来源和授权字段冻结，修复前后回执均保留。系统没有替 Qwen 写科研散文。
+  - 历史工作流提案改为带 `authored_step_index`、`age_in_turns` 和明确时态边界的强类型投影，解决旧“本轮/下一轮”在未来回放时伪装成当前指令；原文仍永久保留。
+  - raw action/Skill 预约从内容哈希路径加载后按 typed attempt/call index 排序再连续重放，避免合法多尝试被文件系统哈希顺序误判。召回相关度改用排序 token 的 `math.fsum`，跨四种 `PYTHONHASHSEED` 的独立进程 selection hash 一致。
+  - live 测试不再强迫选择 `agent-memory-evaluation`；每轮 Skill 路由仍真实计费，Qwen 可选零个或别的 Skill，选中内容只能作为独立只读消息注入。实际记忆成功继续由 raw→Dreaming→后续请求→结构化消费判据约束。
+- 真实运行与严格结论：
+  - v9/v10 各完成 15 轮、30 次模型调用；v9 由 Qwen 当前主 Agent 自主分派并归档 3 个临时 Qwen，v10 自主检索一次，均没有强迫 Dreaming。
+  - v11 因 harness 把普通函数传给要求 `contexts_for_turn` 的接口，在任何 provider byte 前失败关闭；改为强类型终轮边界 provider 后运行 fresh v12。`task2713-adaptive-operator-steering-delayed-relevance-pilot-v12` 从一次冻结中文目标/范围完成 12 个动作、12 次 Skill 路由和 27 次总模型调用，状态 `stopped_by_model`；轨迹自主经历拆解、分支、对抗、在第 7 轮选择一次 Dreaming、第 8 轮接收精确反馈、重构问题并最终停止。snapshot hash 为 `24d2d173ea434f8704f5269906ec779cdcba9e5ed40febdbce0de30edf051a1d`。
+  - Dreaming 精确选择 8/19 条记录并进入下一次真实请求，但 8 条都仍在最近历史，终轮没有结构化消费声明；审计 hash `7286fb8fb748f99164b075c8037db77f79ad513e5970e0d046cca13f763b4498` 正确保持 transport/causal/science/innovation 为 false。这证明真实功能自循环和近程 Dreaming 传输，不证明长期主权记忆收益。
+  - v12 同时证伪冻结 v3 的确认性设计：第 3 轮重复第 1 轮数值并把它写入可跨窗口持久的工作假设，所以模型可绕过 raw recall。v3 字节保留为历史证据，但 240-cell 执行资格撤销；后继协议必须另起预注册，冻结高熵早期面板、受限工作状态、不重复终轮键，并分开评分任务正确性、raw recall、下一请求暴露、结构化消费和外部终点。
+- 验证：
+  - 聚焦回归：`61 passed, 1 skipped in 33.58s`。
+  - PowerShell 显式收集全部 `test_adaptive_*.py` 加默认关闭 live：`197 passed, 1 skipped in 180.07s`。
+  - 聚焦 Ruff `All checks passed!`；聚焦 Mypy `Success: no issues found in 3 source files`；五个相关文件 Ruff format 后复核为已格式化，`py_compile` 通过。
+  - 通用生产代码扫描 v12 run ID、snapshot/audit hash、场景 D01/D03、`0.8 ms` 与 satellite 关键词为 `NO_V12_SCENARIO_SPECIAL_CASE_HITS`。
+  - opt-in v12 live 耗时 1468.81 秒并按预冻结记忆成功判据失败；失败结果和审计被保留，未降低门禁、未伪造成阳性。
+- 问题新增或更新：新增 `P-20260810-124`，纠正二手文章对模型原生记忆综述的外部记忆淘汰论；新增 `P-20260810-125`，记录 v8—v12 Qwen 适配、近程 Dreaming 阴性、v3 可识别性失效、raw 预约顺序与 hash-seed 重放修复及所有影响本任务的失败命令。
+- 后续：Task `271.3` 保持未勾选、未 staging、未 commit。不能启动旧 v3 的 240 cells，也不能以一次 Dreaming 次数、测试绿或自报 Qwen 代替记忆因果证据。下一合法步骤是先冻结 successor delayed-relevance protocol，再在全新开发场景做同预算 A3/A4 盲比较；真实 signed Qwen 身份仍需独立网络/launcher与仓库外 trust pins。科学正确、创新全文审查、正式成对实验、可发表结果和竞赛提交均未完成。
+---
+
+## 2026-08-10 11:12:00 +08:00 - Codex 主 Agent `/root` - Task 271.3 delayed-memory successor v1 可识别协议与自由/严格边界
+
+- 用户请求/活动任务：继续调研并融入记忆、自修改与自主科研前沿；开放探索不能被统一严门扼杀，证据晋级、执行和发表必须严格；核实系统是否由 Qwen 从一次目标自行循环，而不是 Codex 逐条代写或为单一问题硬编码。研究内容保持中文模型生成，学科方法经独立 Skills，临时 Agent 由当前环节主 Agent 分派并归档消失。当前子任务是在 v12 证伪旧 v3 记忆基准后，先建立不看新结果的可识别 successor 协议；没有授权执行全量实验。
+- 使用的方法 Skill：按 `experimental-design` 的 randomization/blocking 约束把独立 replicate 定义为合成 scenario、四臂全部在 scenario 内随机化；按 `statistical-power` 的 effect-size/simulation guidance 以采用成本预先固定 SESOI，而不是用 pilot 结果倒推样本量。这直接把旧“模板×seed”伪重复改为 140 个独立场景块，并冻结 exact McNemar 功效敏感性。
+- 变更文件：
+  - `src/autoresearch/research/adaptive_loop_memory_benchmark_successor.py`
+  - `tests/unit/research/test_adaptive_loop_memory_benchmark_successor.py`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/frontier/agent-memory-self-loop-frontier-2026-08-10.md`
+  - `autoresearch-vault/projects/ai_researcher_system/knowledge/strategies/steerable-memory-dependence-shadow-candidate-2026-08-10.md`
+  - `Problem.md`
+  - `Agent.md`（仅追加本条）
+- 协议实现：
+  - 新增独立 successor v1，不改历史 v3 bytes。五个合成领域各 28 个独立场景，共 140 scenario blocks；每个场景内随机化固定流水线、线性模型循环、自适应无主权记忆、自适应主权记忆四臂，共 560 blinded cells。四个 Latin allocation sequence 在每个领域精确各出现 7 次，另用独立 secret assignment seed 生成隐藏全局运行顺序。
+  - 每场景 13 轮：第 1—3 轮各 64 个随机地址—22 字高熵值，共 192 对；第 4—11 轮为中性间隔；第 12 轮才选择并释放查询地址；第 13 轮请求精确值。答案只在早期面板出现一次，后十轮不重复；查询选择在第 12 轮前未知。公开 commitment 不含直接 payload SHA、seed、oracle、查询地址、答案或 arm，私有 stimulus 与 oracle 分别加入 256-bit nonce 后内容寻址，修复从 192 个候选枚举公开 SHA 的泄题路径。
+  - 普通工作状态统一冻结为 2,048 UTF-8 bytes，但允许 Qwen 自主采用任何压缩、编码、分支或停止策略。初版把“合法预算内出现答案明文”判失败会人为压低 A3 并扼杀工作记忆创新，红队后改为只严格要求完整投影、容量和禁止见到溢出后截断；明文存在只作诊断。A4/A3 的非记忆配置 hash 精确相等，Dreaming 和具体 Skill 都不强制，开放探索语义不变。
+  - 主要终点冻结为“终值精确正确且完整普通工作状态投影受预算约束”；A4−A3 使用场景配对双侧 exact McNemar、alpha 0.05、预先按采用成本定义风险差 SESOI 0.25。缺失/失败/无效 cell 计零，不删除不完整配对；所有 A4-only 胜例必须另有 early raw→Dreaming selection→下一真实请求→结构化消费，才可解释为记忆收益。0.25—1.00 discordance 的 0.01 密集网格最低功效位于 1.00，为 `0.809086452293`。
+  - bundle validator 逐 scenario/turn/blinded cell/assignment 重做 public-private join，拒绝交换场景承诺后重算局部自哈希。writer 在任何写入前预检 public/private 五个目标且使用 exclusive create；公开和 runner-private 目录必须不嵌套。bundle、release helper 与片段 audit 固定声明：同进程构建不证明未来内容隔离，声称的前序号不证明前轮完成，片段不证明完整终态 prompt，也不是 formal execution/science/innovation/publication evidence。
+- 最终确定性 fixture：bundle `d6285932929e569a81434ec26641cb9b53feb86e37de01062ce9ed2fbffc906a`；public preregistration `d6ef98c921a4edd15282d726e03353a5e5d8ceab63f29e5c902060817aab86e7`；private stimuli `55019229c9d6b0614b50334e98481e4d937fa1d678eed2e6d3d370c46c3a2994`；oracle `145a3ceef93d2cc4244226b7366bb1141e25271e7528dc033434e10810379e70`；blinded cells `26eb2a866a2c76831fdebcb6a2a0f024ce1723a76fc0b4db078236d304be2514`；assignment `885c5e9246c4d575e12267661b9b151ec9b447826cd4e0f9776201d9efc161a2`。完整内存 bundle 约 6,547,239 UTF-8 bytes，只用于测试编排，禁止作为公开制品。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/research/test_adaptive_loop_memory_benchmark_successor.py` → `12 passed in 17.93s`。覆盖独立单位/配对随机化、公开泄漏、192 facts/容量、13-turn non-repeat、功效、四臂平衡、逐轮 release 降级声明、普通状态自由压缩、物理分树/write-once、哈希/数值/强制动作篡改、跨场景 commitment 串换、secret seed 与写前 preflight。
+  - 12 个 benchmark/context/arm/receipt/diagnostic+formal runner/loop/recall/use/successor 文件联合 → `137 passed in 181.79s`。
+  - 聚焦 Ruff → `All checks passed!`；聚焦 Mypy → `Success: no issues found in 2 source files`；Ruff format 已应用。scoped `git diff --check` 与两个 untracked 文件的 `git diff --no-index --check` 无空白错误，仅报告共享 `Agent.md`/`Problem.md` 既有 CRLF→LF warning。
+  - 无网络、无真实 Qwen 调用、无 560-cell 执行、无揭盲、无科学结果。
+- 失败与修正：SciPy 功效探针因环境缺包报 `ModuleNotFoundError`，改用纯 Python exact binomial-mixture；第一版全枚举功效计算超时并手动中断，改为按 discordant count 的二项混合。首版 builder 混淆“地址早期存在”与“查询选择后发”而自拒绝，已修；首版测试用子串 `arm` 误击安全字段，改为递归精确 key。首次静态检查清理 Sequence import/float Literal 等类型问题；交叉绑定补丁首次 Mypy 的 Optional 局部变量冲突已用独立变量名修复并全绿。
+- 问题新增或更新：新增 `P-20260810-126`，记录 successor 设计已解决项、同进程保密/完整 prompt/跨树原子性/13-turn runner 未闭合边界和所有影响任务的失败命令；`P-20260810-125` 继续保留 v3 撤销与 v12 阴性证据。
+- 后续：Task `271.3` 继续未勾选、未 staging、未 commit。下一合法实现是只读 public leaf 的 13-turn context adapter、从第一轮开始的完整普通状态 projector、独立逐轮 release service/受保护 production secrets、successor 专用 signed formal runner 与揭盲屏障；先跑不用于调阈值的 fresh pilot，再请求人类是否承担 560-cell 成本。当前不能声称主权记忆收益、完整 AI Scientist 独立科研、创新成立、成果可发表或竞赛要求已满足。
+
+---
+
+## 2026-08-11 12:17:04 +08:00 - Codex 子 Agent `/root/prime_agent_architecture` - 最小持续科研 Harness 闭环
+
+- 用户请求/活动任务：在不触碰当前 live plan 链、CLI、`official_lineage.py` 或 `Problem.md` 的前提下，把 Prime Agent/pi 的持续会话思想落实为可复用最小科研协调器；要求持久 goal/task 队列、claim-before-run、complete/fail 幂等、格式失败与科学失败分流、只把已完成任务交给既有 `TaskContext` 压缩，并把科学失败连接到既有 shadow/promotion/rollback 能力。不得另造科学执行器，也不得伪装自进化已经晋升。
+- 使用的 Skill：读取 `pi-agent` 主 Skill 及 sessions、compaction、session-format、security 参考；采用 JSONL 持久状态、当前任务与已完成历史分离、显式 claim/lease 和“本地 harness 不是安全沙箱”的边界。该 Skill 促使实现保留当前任务原文、只输出完成任务记录，并避免把项目 trust 或本地循环误报为执行隔离。
+- 变更文件：
+  - `src/autoresearch/runtime/continual_research_harness.py`
+  - `tests/unit/runtime/test_continual_research_harness.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增内容哈希链的 append-only JSONL journal，从事件重放持久 goal/task 状态；重复目标/任务、重复 claim、重复 complete/fail 保持幂等，不兼容重复和 journal 篡改失败关闭。任务必须先取得带 TTL 的 claim 才能交给外部 executor；过期 claim 可由新 worker 恢复，沿用稳定 `execution_key`，迟到旧 claim 不能覆盖新状态。
+  - 复用现有 `LocalScheduler`/`queued_task` 注册一次队列步，复用 `write_runtime_heartbeat` 记录 claim、完成、格式修复、科学失败和 idle 进展。`run_once` 只编排调用者提供的 `TaskExecutor`，不实现科研推理、实验或论文生成，因此没有第二套科学执行器。
+  - 成功后复用 `RawMemoryStore` 与 `capture_completed_task_conversation`，先把完整 Qwen 请求、响应、reasoning 和 usage 写入私有只追加原始记忆，再追加 terminal event；公开的 `completed_task_records()` 只返回现有 `CompletedTaskConversation`，claimed/queued/format/scientific-failed 当前任务均不会进入 `TaskContext` 摘要输入。
+  - 格式错误进入有限 `FORMAT_REPAIR` 重试且明确 `counts_as_scientific_failure=false`，不产生方法论失败提案；科学失败才形成 task-local `pending_shadow` proposal。proposal 只绑定现有 `run_shadow_evaluation`、`promote_strategy_to_gray_release` 和 `evaluate_strategy_rollback` 符号，固定禁止修改 safety、permission、citation、publication policy。由于单条失败记录不足以构造合格 StrategyCard、ReplayCase、金集和人工批准，本轮没有调用晋级 API，也没有宣称 promotion/monitor/rollback 已执行。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/runtime/test_continual_research_harness.py` → `5 passed`；覆盖完成记录边界与重载、claim/complete/fail 幂等、格式/科学失败分流、过期 claim 恢复和迟到结果拒绝、现有 scheduler/heartbeat 接入、journal 篡改失败关闭。
+  - 联动 `poetry run pytest -q --no-cov tests/unit/runtime/test_continual_research_harness.py tests/unit/runtime/test_heartbeat.py tests/unit/test_scheduler.py tests/unit/knowledge/test_raw_memory.py tests/unit/llm/test_task_context.py` → `36 passed in 9.96s`。
+  - `poetry run ruff check src/autoresearch/runtime/continual_research_harness.py tests/unit/runtime/test_continual_research_harness.py` → `All checks passed!`；`poetry run ruff format --check ...` → `2 files already formatted`；`poetry run mypy src/autoresearch/runtime/continual_research_harness.py` → `Success: no issues found in 1 source file`。
+- 问题新增或更新：无；按父任务明确边界未修改 `Problem.md`。首轮专项测试 5 项均因事件哈希输入仍含 Python `datetime` 而失败；这被分类为持久化格式问题而非科研失败，改为 UTC JSON 字符串后 5 项与 36 项联动全部通过。
+- 后续：这是可复用且可恢复的最小持续协调闭环，不等于 live 科研计划链已经切换到它，也不证明科学正确、创新性、论文可发表或完整竞赛提交。下一步由主 Agent 在安全窗口把现有科学 executor 作为回调接入并持续注册 scheduler step；只有外部流程补齐 StrategyCard、ReplayCase、golden tests、shadow record、人工批准与 monitor reward 后，既有晋级/回滚 API 才可从 `pending_shadow` 继续。未 staging、未 commit。
+
+---
+
+## 2026-08-11 12:20:35 +08:00 - Codex 子 Agent `/root/qwen_flexible_schema` - 正式计划闭环通用柔性表现层门
+
+- 用户请求/活动任务：消除 Qwen 因同义表达、短但完整中文或不足固定 200 字 reasoning 而整轮失败的问题；只放松表现层，引用、类型、target、预算、证据、执行安全、谱系和派生逻辑继续严格。不得针对某个题目写词语特判，不修改 `Problem.md`、`official_lineage.py` 或 prospective atom 模块，不提交。
+- 变更文件：
+  - `src/autoresearch/competition/system_plan_ideation.py`
+  - `src/autoresearch/competition/system_plan_preexperiment.py`
+  - `src/autoresearch/competition/system_plan_review.py`
+  - `src/autoresearch/competition/system_authored_plan.py`
+  - `tests/unit/competition/test_system_plan_ideation.py`
+  - `tests/unit/competition/test_system_plan_preexperiment.py`
+  - `tests/unit/competition/test_system_plan_review.py`
+  - `tests/unit/competition/test_system_authored_plan.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 四个正式计划阶段的自然中文字段不再以 8/10/20/30/120 字任意下限代替质量判断；统一要求 `strip()` 后非空且至少含一个 CJK 表意字符，并继续执行原有中文比例检查。空白、纯标点和英文散文仍拒绝，短而清楚的中文可通过。
+  - 启用系统所选方法 Skill 时，Qwen 的 thinking/reasoning 仍必须开启并保留回执，但只要求非空，不再强迫 200 字填充；空 reasoning 继续失败关闭。提示词与接收门同步，避免 Qwen 按旧长度契约无意义扩写。
+  - 真实预实验 `results` 的动态响应 schema 从 120 字改为非空；后续仍必须逐字等于上游 `plan_results_zh`，数字溯源、原始证据行、未测量处理效应声明和完整实验边界均未放松。
+  - 方向引用数量与互异性、目标/事实/方法 token、prospective 身份哈希、评审布尔门、可执行预算、结果盲规则、计划谱系逐字绑定、引用目录范围和所有执行安全字段保持原逻辑。未让编排器改写任何科学选择，也未添加题目词语特判。
+- 验证：
+  - `python -m pytest -o addopts='' tests/unit/competition/test_system_plan_ideation.py tests/unit/competition/test_system_plan_preexperiment.py tests/unit/competition/test_system_plan_review.py tests/unit/competition/test_system_authored_plan.py -q` → `122 passed in 5.77s`。
+  - 聚焦 Ruff（四生产模块与四测试文件）→ `All checks passed!`。
+  - 标准聚焦 Mypy 已运行；依赖遍历因仓库既有 `requests` stubs 缺失及七个无关模块的既有 `no-any-return` 共 12 项失败。隔离外部导入并保留当前模块检查：`python -m mypy --follow-imports=skip --ignore-missing-imports --disable-error-code=no-any-return ...` → `Success: no issues found in 4 source files`。当前改动未产生新的类型错误。
+- 问题新增或更新：无；按父任务明确边界未修改 `Problem.md`。测试过程中一次对已落盘回执的空字符串篡改先触发回执哈希失败，测试随后改为直接驱动真实空-reasoning 接收路径，没有降低 provenance 门。
+- 后续：本轮没有实现 reviewer 的额外局部格式修复循环；现有 plan review 仍是独立 reviewer 调用，长度/reasoning 纯表现层失败已消除。若后续需要，可在不改作者科学内容的前提下增加有界 reviewer-only schema repair。未 staging、未 commit。
+
+---
+
+## 2026-08-11 13:09:30 +08:00 - Codex 子 Agent `/root/qwen_flexible_schema` - 正式计划链机械字段本地可重放投影
+
+- 用户请求/活动任务：让正式 plan/resume 链不再要求 Qwen 复写 SHA/hash、稳定 ID、引用/目标允许集合或可由既有门禁严格合取的布尔值；Qwen 只负责科研选择、科学门禁判断和结果解释。fresh 与 retained/replay 必须走同一投影函数，未知 identity/shape 失败关闭，原始模型回执保持不变，artifact 保存确定性投影。不得修改 distributed、prospective、official、CLI 或 `Problem.md`，不得提交。
+- 变更文件：
+  - `src/autoresearch/competition/system_plan_ideation.py`
+  - `src/autoresearch/competition/system_plan_preexperiment.py`
+  - `src/autoresearch/competition/system_plan_review.py`
+  - `src/autoresearch/competition/system_authored_plan.py`
+  - `tests/unit/competition/test_system_plan_ideation.py`
+  - `tests/unit/competition/test_system_plan_preexperiment.py`
+  - `tests/unit/competition/test_system_plan_review.py`
+  - `tests/unit/competition/test_system_authored_plan.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 方向作者响应只选择 `prospective_atom_id` 并撰写科研字段；接收器根据冻结 allowlist 投影 candidate schema version、atom/intervention hash、origin、targets、facts 与完整目录引用。未知 atom 立即失败。fresh 接收与 hash-valid rejected receipt resume 均调用同一个 `_project_portfolio_payload`，评审 resume 同样复用 `_project_review_payload`。
+  - 五方向评审仍由 Qwen 决定九个科学门、findings、文献比较和入选方向；编排器仅按数组位置附加 `direction_index`，并由是否选择方向推导 `portfolio_ready`。独立反方审查仍由 Qwen 决定九个门、findings/revisions；编排器绑定当前 selected index 并从严格合取推导 `survives_adversarial_review`。既有单调否决保护改为在投影后数据上运行，没有放宽科学否决。
+  - 预实验 Qwen 只输出中文可行性解释、局限与计划结果段；schema version、原始证据行数组、由真实 cell 状态决定的 feasibility status，以及两个“未测量/未完成”布尔值由已验证 raw result 投影。逐字证据行、禁止新增数字、预实验边界和 Qwen reasoning 门继续严格。
+  - 最终计划 Qwen 只在 attestation 内新写中文 `continuity_explanation`；全部上游方向/atom/资源/引用身份由正式 lineage binding 投影。`results` 从上游真实预实验的 Qwen-authored `plan_results_zh` 原样复用；v2 `required_intervention_identity` 由编排器规范化为唯一声明。计划正文、行内引用选择、实验设计、科学门和 findings 没有被编排器代写。
+  - 各 Qwen-facing JSON schema 已移除上述机械字段。模型若仍返回旧式机械字段，原始 `receipt.parsed_payload` 原样保留；canonical artifact 只保存由冻结输入确定的投影。测试同时覆盖机械字段完全省略、错误复写被规范投影、未知 atom 失败、lean receipt 跨 resume 重放，以及 receipt/artifact 分离。
+- 验证：
+  - `python -m pytest -o addopts='' tests/unit/competition/test_system_plan_ideation.py tests/unit/competition/test_system_plan_preexperiment.py tests/unit/competition/test_system_plan_review.py tests/unit/competition/test_system_authored_plan.py -q` → `122 passed in 7.75s`。
+  - 聚焦 Ruff（四生产模块与四测试文件）→ `All checks passed!`。
+  - 标准聚焦 Mypy 已运行；依赖遍历只剩仓库既有七个无关模块的 `requests` stubs 缺失与两个既有 `no-any-return`，共 12 项。隔离外部导入并沿用仓库现有 no-any-return 边界：`python -m mypy --follow-imports=skip --ignore-missing-imports --disable-error-code=no-any-return ...` → `Success: no issues found in 4 source files`。
+  - 运行 schema 探针核对 portfolio/review/prosecution/preexperiment/critical-review 六组机械字段交集均为空；方向评审的 `direction_index` 也不再暴露给 Qwen。
+- 问题新增或更新：无；按父任务明确边界未修改 `Problem.md`。首次聚焦测试有 11 项旧测试仍期待“Qwen 复写机械字段错误就拒绝”，已按新契约改成验证 raw receipt 保真与 artifact 确定性投影；另有一处测试局部变量遗漏，修正后全部通过。标准 Mypy 的 12 项既有依赖错误未写入 `Problem.md`，因为本任务禁止修改该文件且它们与本次四模块改动无关。
+- 后续：未修改 live v5 所在 distributed、prospective、official 或 CLI；这些模块审计出的剩余机械字段仍保持只读清单，等待主 Agent 在 live 进程结束后的独立授权。当前改动不证明科学判断正确、创新成立、预实验处理效应成立或论文可发表。未 staging、未 commit。
+
+---
+
+## 2026-08-11 13:11:17 +08:00 - Codex 子 Agent `/root/prime_agent_architecture` - 持续计划闭环与严格制品完成信封
+
+- 用户请求/活动任务：在不修改 `official_lineage.py`、共享 competition CLI、`Problem.md`，且不启动或干扰正在运行的 v17/v5 计划链的前提下，将最小持续科研 Harness 接入既有正式计划阶段；要求一次独立命令持久认领，根据磁盘 checkpoint 选择 `run_plan_stage` 或 `resume_plan_from_retained_routing`，格式失败最多三次，科学失败只进入 `pending_shadow`，partial/锁/网络等操作性失败不得伪装成科研失败；只有真实中文计划、真实预实验、独立批判审查和模型作者回执全部验证后才登记完成记忆。
+- 变更文件：
+  - `src/autoresearch/runtime/continual_research_harness.py`
+  - `src/autoresearch/competition/continual_plan_loop.py`
+  - `src/autoresearch/competition/continual_plan_cli.py`
+  - `tests/unit/runtime/test_continual_research_harness.py`
+  - `tests/unit/competition/test_continual_plan_loop.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 扩展持续 Harness，新增 `VerifiedArtifactBinding`、`VerifiedModelReceiptProjection`、`ArtifactCompletionEnvelope` 和 `complete_artifact_task`。完成信封逐个绑定文件 SHA、只追加 raw-memory record 与最终模型回执原始 JSON；只有所有 raw binding 仍可复核且回执投影逐字段等于原始字节时，才把实际模型 messages/response/reasoning/usage 投影为既有 `CompletedTaskConversation`。重放时重新验证信封哈希和完成记录绑定，重复同一完成幂等，不同完成失败关闭。
+  - 新增 `OPERATIONAL_WAIT`/`ResearchFailureKind.OPERATIONAL` 与 `retry_after`。格式失败仅计有限修复次数，科学失败才产生 task-local `pending_shadow`；partial checkpoint、锁超时、网络中断、缺失制品和其他不确定异常均为 operational，不创建 refinement proposal。当前任务原文继续保存在 queue journal，只有 terminal completed 记录可进入现有 TaskContext 压缩。
+  - 新增 competition plan-loop sibling，不另造科学执行器或科研提示词。磁盘状态严格分为 fresh、五件 retained routing、complete、partial：fresh 在现有 exclusive lineage lock 内调用 `run_plan_stage`；retained 只调用现有 `resume_plan_from_retained_routing`；complete 只复核并补登记；partial 停在 operational。最多三次格式续跑；新产生且带有效模型回执的 rejected critical review 才能被分类为科学失败。
+  - 默认完成加载器复用正式系统计划验证器，并额外验证 final plan receipt、预实验 artifact 与每个 raw cell 字节/哈希/result、预实验解释 receipt、已接受 critical review 与其 receipt、resume manifest 及正式计划路径/哈希。全部计划、预实验、原始 cell、评审、回执和 manifest 先写入主权 raw memory，再生成完成信封；任一缺失、篡改或来源歧义都保持未完成。
+  - 新增独立 `python -m autoresearch.competition.continual_plan_cli`，从配置/环境路径调用上述 sibling，输出结构化报告和稳定退出码；没有注册或修改共享 Typer CLI，也没有执行任何 live lineage 命令。
+- 验证：
+  - 专项与相关回归联合：`poetry run pytest -q --no-cov ...` → `129 passed in 18.02s`。覆盖持久 claim/恢复/幂等、精确回执与全制品 raw binding、三次格式上限、partial/锁/网络 operational 分流、retained-only resume、新有效拒稿评审进入 pending shadow、成功记忆复用、缺失真实制品拒绝伪成功，以及既有 heartbeat/scheduler/raw memory/TaskContext、模型回执、正式计划、预实验、评审和 routing resume 回归。
+  - `poetry run ruff check`（五个相关源/测试文件）→ `All checks passed!`；`poetry run ruff format --check ...` → `5 files already formatted`；`poetry run mypy`（三个生产模块）→ `Success: no issues found in 3 source files`。
+  - `poetry run python -m autoresearch.competition.continual_plan_cli --help` → exit 0，证明独立模块入口可加载；只运行帮助与测试，没有触发 provider、实验或 v17/v5。
+- 问题新增或更新：无；按父任务明确边界未修改 `Problem.md`。静态检查发现并清理两个未使用测试 import 与 union 风格；没有遗留影响本任务的失败命令。
+- 后续：本轮形成的是可持久恢复、真实调用既有正式计划链且严格登记成功的最窄功能闭环；没有自动执行正式实验、发表、提交、shadow 晋级或策略回滚，也没有声称科学正确、创新成立或论文可发表。科学 refinement 仍须现有 StrategyCard/ReplayCase/golden/shadow/人工晋级/monitor/rollback 链处理。未 staging、未 commit。
+
+---
+
+## 2026-08-11 16:16:40 +08:00 - Codex 子 Agent `/root/question_pdf_input` - 《Science》125问题首题确定性输入适配
+
+- 用户请求/活动任务：从用户显式提供的 `C:\Users\Z\Downloads\sjtu-booklet.pdf` 只读提取《Science》125个问题中的第一个问题，为“直接输入问题→生成中文研究计划”的交付优先链提供稳定输入；要求精确中英文、物理/书内页码、源文件哈希和提取证据全部可追溯，哈希与 ID 由程序计算，不调用网络或 Qwen，不修改现有核心。
+- 使用的 Skill：`pdf`；依其文本提取规则检查当前 Poetry 环境与本机工具。环境没有 `pypdf`、`pdfplumber`、`PyPDF2`、PyMuPDF 或 pdfminer，但存在 TeX Live 自带 Poppler `pdftotext`，因此采用显式探测、只读、保留布局的 UTF-8 文本层后端；文本层为空、异常或不是预期版本时明确失败，绝不静默猜题。
+- 变更文件：
+  - `src/autoresearch/competition/contest_question_input.py`
+  - `tests/unit/competition/test_contest_question_input.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：新增冻结 `ContestQuestionInput` v1 与 `extract_first_science_125_question` API。适配器校验 PDF 文件头，单次提取全册并按换页符确定物理页，在 `Mathematical Sciences` 栏目后定位首个问句，再与 2021 版首题逐字核对。英文为 PDF 原文 `What makes prime numbers so special?`，中文采用仓库内冻结的确定性翻译“素数为何如此特别？”，并明确区分提取与翻译来源；输出物理 PDF 第 7 页、书内第 5 页、原始证据行、源文件 SHA-256、页面文本 SHA-256，以及由源哈希/页码/英文问题计算的稳定 ID。未把 PDF 路径或问题写死进主链，调用者必须显式传入源 PDF。
+- 验证：
+  - `poetry run pytest -o addopts='' -q tests/unit/competition/test_contest_question_input.py` → `5 passed`；覆盖确定性谱系、重复提取稳定、异常/图片型文本层、缺少 `pdftotext` 和非 PDF 输入。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run ruff format --check ...` → `2 files already formatted`；`poetry run mypy --follow-imports=skip src/autoresearch/competition/contest_question_input.py` → `Success: no issues found in 1 source file`。
+  - 真实 PDF live smoke 成功：首题英文 `What makes prime numbers so special?`，中文“素数为何如此特别？”，物理页/书内页 `7/5`；源 SHA-256 `4bda50e8e3c90f8968f1bfd72ded4d9587ae80cd40ba66656a12c93abcf8e576`，稳定问题 ID `science125-q001-d3a6861ef6c09218`。无网络、无模型调用、无外部写入。
+- 问题新增或更新：无；本任务发现的是可清晰处理的本地可选后端差异，不构成仓库 blocker，未修改 `Problem.md`。
+- 后续：主 Agent 可把该返回对象直接作为计划生成器的题目 seed；本模块只提供可追溯输入，不代写研究计划，也不声称该数学问题已有可执行预实验或创新结论。未 staging、未 commit。
+## 2026-08-11 16:18:57 +08:00 - Codex 子 Agent `/root/direct_plan_render` - 榜题中文研究计划直接渲染与真实 PDF
+
+- 用户请求/活动任务：交付优先地复用既有模块，把上游系统生成的中文研究计划结构化 payload 直接渲染为榜题要求字段齐全的 JSON、Markdown、TeX 和可打开 PDF；清除长度、中文比例、枚举、机会覆盖、ID/hash 输入与科学评分等机械审理，不修改既有模块或 CLI，不伪造 PDF。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_render.py`
+  - `tests/unit/competition/test_contest_direct_plan_render.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增纯展示边界 `validate_contest_plan_payload`、`render_contest_plan_markdown`、`render_contest_plan_tex` 与 `materialize_contest_direct_plan`。只检查截图模板必需内容存在：题目、摘要、问题、思路、技术、Source/Target、方法、实验、Baselines、Metrics、结果和参考论文；不检查篇幅、措辞、机会格、枚举、模型 ID 或科学得分。
+  - Markdown 与 `ctexart` TeX 使用中文章节并保留上游原文；TeX 对 `%`、`&`、下划线等字符和 URL 做正确转义。PDF 构建复用 `autoresearch.research.plans.compile_research_plan_pdf`，编译失败或缺少 TeX 时明确报错且不产生占位 PDF。
+  - 程序计算 source payload 与各制品 SHA-256，稳定输出 `research-plan.json/.md/.tex/.pdf` 及 `research-plan-manifest.json`。同 payload 且制品哈希一致时幂等返回；默认保护既有不同制品，显式 `overwrite=True` 才替换，manifest 最后发布。
+  - PDF 发布前调用 `pdftotext` 验证标题与“待研究问题 / 实验结果 / 参考论文”真实可提取，避免只凭 `%PDF` 文件头伪装成功。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_render.py` → `8 passed in 6.44s`。其中真实调用本机 TeX Live 生成中文 PDF，再以 `pdftotext` 验证“暗物质”“实验结果”“参考论文”可提取，并核对 manifest 中四类制品 SHA-256。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run ruff format --check ...` → `2 files already formatted`。
+  - `poetry run mypy src/autoresearch/competition/contest_direct_plan_render.py` → `Success: no issues found in 1 source file`。
+  - `git diff --check -- ...` → 通过；没有空白错误。
+- 问题新增或更新：无。未修改 `Problem.md`；本机 `xelatex`、`latexmk`、`pdftotext` 与 `pdfinfo` 均可用，真实 PDF 冒烟通过。
+- 后续：父任务可把最终 Qwen payload 直接传给 `materialize_contest_direct_plan`，输出目录指向当前 lineage 的 `plan/`。本模块不生成或修改任何科学内容，也不证明参考文献真实性或研究质量；这些由上游生成与本次交付人工复核承担。未 staging、未 commit。
+
+---
+
+## 2026-08-11 16:31:26 +08:00 - Codex 子 Agent `/root/direct_plan_core` - 一次调用中文研究计划生成核心
+
+- 用户请求/活动任务：为“直接输入《Science》125 问题首题→输出榜题模板中文研究计划”的交付优先链新增独立 one-shot Qwen 生成核心；不得修改既有 official/ideation/preexperiment/CLI，不设置篇幅、枚举、机会覆盖或多轮格式审理，不由编排器代写科学内容；程序只负责字段形状规范化、锁定参考文献投影、ID/hash/status 与持久化。预实验上下文允许缺失，但不得伪造已执行结果。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan.py`
+  - `tests/unit/competition/test_contest_direct_plan.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增 `generate_contest_direct_plan`：读取既有 provider-neutral `config.yaml/.env` 并调用 `run_llm_json_completion` 恰好一次；Qwen 自主生成 Problem Statement、Rationale、Technical Details、Datasets、Source、Target、Paper Title、Paper Abstract、Methods、Experiments、Baselines、Metrics 与 Results。无预实验输入时提示必须明确“尚未执行”，只能写预期结果与证伪判据；有输入时只能复述上下文实际存在的结果。
+  - 接收门只要求必要字段非空且报告正文含中文；英文技术名、数据集名、公式与论文标题合法。不设字符下限、中文比例、枚举、方向数量、机会格覆盖或科学重写循环。常见中英文字段名、嵌套 datasets/experiments 形状由程序规范化；若已返回内容仅有 JSON fence/尾逗号等问题，只对同一响应做一次本地解析修复，不再次调用模型。
+  - 参考文献采用 caller 锁定 catalog：Qwen 只选目录编号，最终完整条目由程序投影；无效/遗漏选择作为格式问题回退到锁定目录，无法注入目录外虚构文献。schema、document type、稳定 plan ID、状态、输入/响应/制品 hash 与 generation call count 全部由程序计算。
+  - 提供 `contest_direct_plan_template_payload` 对接已有交付渲染器，并提供 JSON/Markdown 持久化、加载校验及中文模板 Markdown 渲染 API。结果明确标注为《科学假设与研究计划》，不冒充已完成论文。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_contest_direct_plan.py -q --no-cov` → `5 passed in 1.38s`；覆盖单调用、程序哈希/ID、锁定引用投影、嵌套形状规范化、一次本地 JSON 修复、无/有预实验上下文与中文模板字段。
+  - `poetry run ruff check src/autoresearch/competition/contest_direct_plan.py tests/unit/competition/test_contest_direct_plan.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/contest_direct_plan.py tests/unit/competition/test_contest_direct_plan.py` → `Success: no issues found in 2 source files`。
+- 问题新增或更新：无；未修改 `Problem.md`。测试首次有一条提示词断言与“提供文献”分支措辞不一致，修正断言后全部通过，不影响实现。
+- 后续：父任务已完成与问题提取、JSON/Markdown/TeX/PDF 渲染及直接 CLI 的集成并报告联合测试通过。本子任务未调用 live Qwen、未编造研究计划内容、未修改旧链、未 staging、未 commit。
+
+---
+
+## 2026-08-11 17:06:39 +08:00 - Codex 子 Agent `/root/direct_skill_router` - 题目后自主 Skill 元数据路由
+
+- 用户请求/活动任务：修正直接研究计划链的提示顺序，确保主模型先收到通用科研方法边界，再收到题目与交付要求，之后才由一次配置模型调用查看 Skill 目录元数据并自主选择 Skill；不得预先指定计算数论 Skill，不得向选择器暴露未选 Skill 正文，不得在路由阶段生成研究计划或科研内容。只新增独立 router 与最窄测试，不修改共享 direct-plan core/CLI，供主 Agent 组合。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_skill_router.py`
+  - `tests/unit/competition/test_contest_direct_skill_router.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增稳定 API `route_contest_direct_plan_skills(question, requirements, skill_catalog, ...) -> ContestDirectSkillRoutingArtifact`。输入 catalog 类型 `ContestDirectSkillMetadata` 只允许 `skill_id/name/description/content_sha256`，接口没有 Skill 正文或路径读取参数，因此 selector 不能收到正文。
+  - 路由消息严格为三条：generic system 只说明通用 Skill 路由职责；第一条 user 给题目和交付要求；第二条 user 才给完整 catalog 元数据与 ID-only 输出契约。system prompt 不含“素数”、计算数论或任何具体 Skill ID，也不按目录顺序默认入选。
+  - 配置模型只调用一次并只需返回 `selected_skill_ids`。重复 ID 由程序保序去重；空选择、非字符串或目录外 ID 本地失败且不触发重写调用。响应 schema 避免 Qwen 不兼容的 `uniqueItems`。调用者在返回后才能根据入选 ID 读取精确 `SKILL.md` 正文并注入生成动作。
+  - artifact 包含 selected IDs、对应正文哈希、确定性 selection reason、三条原始 messages、provider/model/call count，以及 catalog/input/messages/model-response/selection/artifact 六类程序哈希；加载时重验题目优先顺序、目录唯一性、ID 子集、正文哈希和全部内容绑定。路由制品明确不是科学证据。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_contest_direct_skill_router.py -q` → `6 passed`；覆盖消息顺序与领域隔离、catalog 中无 content、单次模型调用、重复 ID 本地去重、空/未知选择单次失败、重复 catalog ID 调用前拒绝，以及不按目录顺序预选。
+  - `poetry run ruff check src/autoresearch/competition/contest_direct_skill_router.py tests/unit/competition/test_contest_direct_skill_router.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/contest_direct_skill_router.py` → `Success: no issues found in 1 source file`。
+- 问题新增或更新：无；未修改 `Problem.md`。首次 Ruff 仅报告一处可机械修正的 union `isinstance` 风格，局部修正后全绿，不构成仓库 blocker。
+- 后续：主 Agent 应在 CLI 中扫描 `skills/*/SKILL.md` frontmatter 与程序哈希形成 `ContestDirectSkillMetadata` catalog，先调用本 router；只有收到 artifact 后，才按 `selected_skill_ids` 读取并逐哈希核验选中正文，再作为独立 user message交给 `generate_contest_direct_plan`。本子任务未调用 live Qwen、未生成计划、未 staging、未 commit。
+
+---
+
+## 2026-08-11 17:17:18 +08:00 - Codex 主 Agent `/root` - 首题自主 Skill 路由与中文研究计划交付闭环
+
+- 用户请求/活动任务：以交付优先方式从用户提供的《Science》125 问题 PDF 首题生成高质量中文《科学假设与研究计划》，清除机会格覆盖、篇幅、枚举及多轮格式审查；同时纠正提示架构为“通用系统方法论 → 题目/榜题要求 → 模型自主选择 Skill → 只加载入选 Skill 正文 → 生成计划”，不得由 CLI 预指定计算数论 Skill，ID 与哈希由程序计算。
+- 使用的 Skill：`pdf` 用于源 PDF 读取与真实 PDF 验证；`skill-creator` 用于创建并验证独立项目 Skill。领域方法没有写入 system prompt，而是落在 `skills/prime-structure-computational-number-theory/SKILL.md` 并经题目后路由选择。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan.py`
+  - `src/autoresearch/competition/contest_direct_plan_cli.py`
+  - `src/autoresearch/competition/contest_direct_plan_render.py`
+  - `src/autoresearch/competition/contest_question_input.py`
+  - `src/autoresearch/competition/contest_direct_skill_router.py`
+  - `skills/prime-structure-computational-number-theory/SKILL.md`
+  - `skills/prime-structure-computational-number-theory/agents/openai.yaml`
+  - 对应五份 `tests/unit/competition/test_contest_*.py`
+  - `Agent.md`（仅追加本条；保留各子 Agent 已有条目）
+- 变更摘要：
+  - 新 CLI 从用户 PDF 确定性提取首题“素数为何如此特别？”，扫描 `skills/*/SKILL.md` 但只把 `skill_id/name/description/content_sha256` 元数据交给 Qwen 路由器。路由器先看到题目和中文交付要求，再看到目录；不接收正文、不回答科学问题，只返回入选 ID。程序随后读取并重验选中正文哈希，以独立 user 消息注入 one-shot 计划作者。
+  - 计划作者的 system prompt 仅保留证据优先、可证伪、对照、失败判据和复现等通用方法论；中文、榜题字段、研究计划阶段边界及题目放在 user 要求中；选中 Skill 位于题目消息之后，真实文献、预实验边界和模板请求位于 Skill 之后。科学正文由配置 Qwen 一次生成；格式只做一次本地 JSON 规范化，不进入科学重写或评审循环。
+  - 渲染器输出完整 JSON、Markdown、TeX、真实 PDF 和 SHA-256 manifest；不要求五方向覆盖机会格。无预实验输入时，Results 必须明确“尚未执行预实验”，因此本次交付不伪装实验结果或论文。
+- 验证：
+  - 四模块初始联合回归 `22 passed`；自主路由接线后 `poetry run pytest tests/unit/competition/test_contest_direct_plan.py tests/unit/competition/test_contest_direct_skill_router.py tests/unit/competition/test_contest_direct_plan_cli.py -q` → `15 passed`。相关 Ruff 全绿，Mypy 三生产模块 `Success: no issues found`；项目 Skill 以 `python -X utf8 .../quick_validate.py` 验证为 `Skill is valid!`。
+  - live 命令：`poetry run python -m autoresearch.competition.contest_direct_plan_cli --question-pdf C:\Users\Z\Downloads\sjtu-booklet.pdf --output-dir runs/contest-delivery/science125-question-001-autonomous-skill-final --skills-root skills --config config.yaml --env .env --max-tokens 12000 --timeout-seconds 900` → exit 0。共两次 Qwen 调用：路由一次、计划一次；均为 `qwen-dashscope/qwen3.7-max`，计划没有 JSON 修复。
+  - live 路由在六个项目 Skill 中自主只选择 `prime-structure-computational-number-theory`；路由消息顺序为 `generic_system → research_question_and_delivery_requirements → available_method_skill_catalog_metadata`，`skill_bodies_visible_to_selector=false`。
+  - 最终计划题目为“素数序列局部间隙结构的有限尺度信息论分析：基于密度匹配与置换对照的计算研究”，包含榜题所需问题、思路、技术、数据、Source/Target、标题、摘要、方法、实验、基线、指标、结果与 3 条程序投影的真实来源；PDF 98,433 bytes、`pdftotext` 可提取 3 页中文，且 Results 含“尚未执行预实验”。PDF SHA-256 `acb55b9d2862e41f5404b7f7bfc707ab08d4a00e970fb3a65c3ef36f736e71cc`。
+- 问题新增或更新：无；未修改 `Problem.md`。`pdfinfo` 的当前 shell 调用出现一次本地路径解析提示，但同一 PDF 已由生产渲染器和独立 `pdftotext` 真实读取验证，不影响交付，未扩展工程修复。
+- 后续：当前闭环只交付研究计划，不含预实验或正式实验，不称论文。旧正式谱系、发布签名、自进化 benchmark 等按用户要求不阻塞本次交付。共享工作树包含大量其他 Agent 的未提交改动，本轮未 staging、未 commit，避免混入无关工作。
+
+---
+
+## 2026-08-11 19:32:17 +08:00 - Codex 主 Agent `/root` - 首题临时子 Agent 并行研究建议闭环
+
+- 用户请求/活动任务：继续生成《Science》125 问题首题，并在题目后自主 Skill 路由与最终主 Qwen 之间加入由当前阶段主 Agent 分配的临时子 Agent；临时 Agent 只临时输出内容，归档后身份消失，生成内容与回执保留。不得重新引入机会格、评分表或多轮格式审查，部分失败不能阻断最终研究计划。
+- 变更文件：
+  - `src/autoresearch/competition/temporary_qwen_pool.py`
+  - `src/autoresearch/competition/contest_direct_temporary_stage.py`
+  - `src/autoresearch/competition/contest_direct_plan.py`
+  - `src/autoresearch/competition/contest_direct_plan_cli.py`
+  - `tests/unit/competition/test_temporary_qwen_pool.py`
+  - `tests/unit/competition/test_system_plan_opportunity_distributed.py`
+  - `tests/unit/competition/test_contest_direct_temporary_stage.py`
+  - `tests/unit/competition/test_contest_direct_plan.py`
+  - `tests/unit/competition/test_contest_direct_plan_cli.py`
+  - `Agent.md`（仅追加本条；保留子 Agent 条目）
+- 变更摘要：
+  - 复用已有 `StageControllerBinding/StageDispatchCapability` 与 `run_temporary_qwen_content_batch`，没有另造无生命周期的普通并发调用。当前 direct-plan 主线程签发一次 stage capability，并行派发 3 个一次性 Qwen：候选假设探索、实验/对照设计、反方证据审查。worker 不能再派工、执行、审批、裁决或发布；batch 完成后 capability 撤销，assignment/result/receipt/archive/task-record/manifest 保留，runtime identity 全部 inactive/removed。
+  - 临时 Agent 消息顺序改为通用 system → 题目及显式输入 → 已选 Skill 独立正文 → 专属角色任务。为兼容既有消费者，末条派工仍携带哈希绑定的短输入副本，但 Skill 之前已经完整给出题目。原 pool 与 distributed opportunity 测试同步更新。
+  - 三角色共用宽松输出：只要求一段自由中文 `memo_cn`，可选真实文献目录编号；每个 task `max_attempts=1`。单个或全部 role-level 失败均形成 `degraded` artifact，保留成功 memo 与全部失败归档，不阻断最终主计划；只有 controller、capability、路径或持久化等基础设施契约失败才停止。
+  - 主计划 prompt 在 question 与 selected Skill 之后增加独立 archived temporary advice 消息，明确“可采纳、合并、改写或全部拒绝，不要求逐条覆盖，非证据/非结果/非审批”；精确 memo 内容进入计划输入哈希。最终 Qwen 仍自主决定研究问题与方案，不是投票或机械合并器。
+- 验证：
+  - pool 消息顺序与既有 distributed 路径回归：`24 passed`，Ruff/Mypy 通过。
+  - direct plan + temporary adapter + CLI 聚焦：`16 passed`，Ruff/Mypy 通过；adapter 自身与 pool 联合 `18 passed`（子 Agent 记录）。覆盖 3 个并行身份、全部归档移除、成功内容/回执保留、1/3 与 3/3 失败仍返回 degraded、题目先于 Skill、单 memo 宽松 schema，以及主 Qwen 可完全拒绝建议。
+  - live 命令：`poetry run python -m autoresearch.competition.contest_direct_plan_cli --question-pdf C:\Users\Z\Downloads\sjtu-booklet.pdf --output-dir runs/contest-delivery/science125-question-001-temporary-agents-final --skills-root skills --config config.yaml --env .env --max-tokens 12000 --timeout-seconds 900` → 主进程 exit 0。共 5 个逻辑模型调用：Skill 路由 1、临时 Qwen 3（并行）、最终计划 1；路由仍自主选中 `prime-structure-computational-number-theory`。
+  - live temporary stage `status=complete`、`succeeded=3`、`failed=0`、`all_runtime_identities_removed=true`；三份 memo 与作者回执完整保留。最终题目“素数局部顺序结构的有限尺度统计检验：基于信息论指标的非随机性探测”，Qwen 未发生 JSON 修复；PDF 102,461 bytes、4 页、`pdftotext` 验证题目/结果/参考论文均存在，Results 明确“尚未执行预实验”。PDF SHA-256 `388529a33b7332db1263aa03aacdfcc8cc68a703e2dc4c3da76d1322cd400c40`。
+- 问题新增或更新：未修改 `Problem.md`。XeLaTeX 子进程日志读取线程仍出现一次 Windows GBK 解码 warning，但编译主进程 exit 0，生产渲染器与独立 `pdftotext` 均验证真实 PDF；按交付优先要求未扩展该无损日志工程问题。
+- 后续：当前只生成研究计划，没有运行预实验或正式实验，不把预期判据称作观察结果。若继续后续链，应以本 temporary stage artifact 和计划为输入执行真实小规模预实验，而不是让临时 Agent 声称结果。共享工作树未 staging、未 commit。
+
+---
+
+## 2026-08-11 19:26:29 +08:00 - Codex 子 Agent `/root/direct_temp_pool_adapter` - 首题直接计划的临时 Agent 并行阶段
+
+- 用户请求/活动任务：继续以《Science》125 个问题的首题生成中文研究计划，并在现有直接交付链中加入由当前阶段主 Agent 分配的临时子 Agent；要求三个一次性角色并行形成候选假设、预实验设计和反方审查，完成后运行身份消失而内容与模型回执保留。不得修改 direct-plan 核心或 CLI，且角色失败不得阻断主计划。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_temporary_stage.py`
+  - `tests/unit/competition/test_contest_direct_temporary_stage.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增独立 adapter `run_contest_first_question_temporary_stage`，调用者必须传入当前 `StageControllerBinding` 与不可序列化的 `StageDispatchCapability`；adapter 不签发 controller。程序确定性构造三个不同临时身份，并复用 `run_temporary_qwen_content_batch(max_workers=3)` 一次并发派工；worker 没有工具、再派工、审批、执行、发布或证据晋级能力。
+  - 三个角色分别为候选假设、预实验设计与反方审查，但共用宽松输出契约：只强制一个中文自由段落 `memo_cn`，可选返回锁定文献目录的 `reference_indices`。角色差异只写在任务指令中，不设篇幅、分栏评分或机会覆盖；输入按“通用临时角色 system → 题目与显式输入 → 已选 Skill 正文 → 角色任务/Schema/权限”顺序进入模型。
+  - 可选 `literature_catalog` 只按编号暴露；临时 Agent 不能返回目录外文献文本，交给最终计划主 Agent 的投影又会程序过滤越界编号。所有建议显式标为候选意见而非科学证据、实验结果或最终结论。
+  - 捕获池的 `TemporaryQwenBatchError` 并形成 `status=degraded`：一名或三名内容 worker 失败时仍保留成功输出、失败诊断、既有模型回执、assignment/result/archive/manifest，并让主计划继续；controller/capability 错配、归档缺失或持久化破坏等基础设施错误仍失败关闭。每个角色只调用一次（`max_attempts=1`）。
+  - 高层 artifact 逐项绑定 batch、result、输出哈希、authorship receipt 和 archive 哈希；返回前重新读取三个 archive，确认 `runtime_identity_inactive=true`、`runtime_identity_removed=true`，并确认 dispatch capability 已撤销。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_temporary_stage.py tests/unit/competition/test_temporary_qwen_pool.py` → `18 passed in 2.04s`；覆盖三线程真实重叠、题目先于 Skill、主 controller/capability 绑定、三身份全归档、结果/receipt 文件留存、稳定 artifact 重载、单角色与全角色失败降级、错 controller 拒绝及并行上限拒绝。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run ruff format --check ...` → `2 files already formatted`；`poetry run mypy ...` → `Success: no issues found in 2 source files`。
+  - 初版测试暴露高层 artifact 哈希直接接收 Pydantic 对象及错误类型断言问题；改为序列化后规范哈希并对齐既有 capability 契约。随后测试前置发现文献目录 tuple 不是 canonical JSON 值与一处 Mypy 容器不变性问题，均局部修正后上述回归全绿，未影响共享模块。
+- 问题新增或更新：无；未修改 `Problem.md`。没有 live Qwen 调用，本子任务只验证 adapter 与现有临时池；真实首题运行由父任务在接入当前 CLI 后执行。
+- 后续：主 Agent 可在 Skill 路由完成后，把同一题目、已选 Skill 上下文和锁定参考目录交给本 adapter，再把 `plan_context_payload()` 作为独立候选消息传给最终计划作者。未修改 direct-plan/CLI，未 staging、未 commit。
+---
+## 2026-08-11 19:47:19 +08:00 - Codex 子 Agent `/root/objective_stage_impl` - 双入口研究目标形成与独立评审组件
+
+- 用户请求/活动任务：在当前交付优先链路中新增独立组件：指定科学问题时先并行头脑风暴可证伪假设，再由独立评审智能体筛选或综合；指定研究方向时必须先消费真实检索文献目录，再形成并评审研究目标。保持通用 system prompt、题目/方向先于所选 Skill 正文，放宽机械格式，不让模型生成 ID、哈希或状态；临时候选失败可降级，但独立评审必须成功。
+- 变更文件：
+  - `src/autoresearch/competition/contest_research_objective_stage.py`
+  - `tests/unit/competition/test_contest_research_objective_stage.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增稳定入口 `run_contest_research_objective_stage` 与 `ContestResearchObjectiveStageArtifact`。`specified_question` 和 `specified_direction` 共用“3 个临时 Qwen 并行自由构思 → 1 个使用独立 stage capability 的评审 Qwen”流程；两个 standalone batch 避免任一 brainstorm 失败时 phase session 提前撤权而跳过评审。
+  - 候选只强制一个中文自由 `memo_cn`，可选返回假设、研究目标、证伪条件和真实文献目录编号；不要求五个方向、评分、篇幅或机械覆盖。可选科学字段一旦出现也必须为中文。方法桥接角色同时保留普通工作站最小预实验的数据、对照、主要指标与失败判据建议，因而替换旧临时建议阶段时不会丢失实验设计能力。评审可选择、综合或改写候选，只强制形成中文研究目标与评审意见。所有稳定候选 ID、文献记录 ID、哈希、状态和编号到 ID 的映射均由程序计算，Qwen Schema 不包含 ID/hash/status。
+  - `specified_direction` 不在内容代理内联网，而是强制消费上游检索器提供的 `title/url/retrieved_from/retrieved_at` 目录；目录被去重、编号和哈希。临时代理只能返回目录编号，候选越界引用会被剔除并使阶段降级，评审越界引用或未引用任何方向文献会硬失败。这样可直接接入现有真实检索模块，同时保留来源边界。
+  - 复用 `temporary_qwen_pool` 的 controller/capability、并发、模型作者回执和归档生命周期。题目/方向及真实目录作为第一条 user 输入，之后才逐条注入已选 Skill 正文；通用 system 不含具体学科。全部运行身份归档移除，输出与回执保留；`plan_context_payload()` 只向主计划暴露已评审研究目标、候选、采用文献和非证据边界。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_research_objective_stage.py` → `9 passed`。覆盖问题模式并行构思后独立评审、方向模式真实目录消费、1/3 与 3/3 brainstorm 失败仍进入成功评审、候选越界引用剔除、评审越界硬失败、方向缺目录预派工拒绝、方向评审必须绑定已检索文献、可选科学内容保持中文、方法桥接角色保留普通工作站最小预实验五要素，以及题目先于 Skill 的消息顺序。
+  - 与既有临时池及 direct temporary adapter 联合回归：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_research_objective_stage.py tests/unit/competition/test_contest_direct_temporary_stage.py tests/unit/competition/test_temporary_qwen_pool.py` → `27 passed`。
+  - `poetry run ruff check src/autoresearch/competition/contest_research_objective_stage.py tests/unit/competition/test_contest_research_objective_stage.py` → `All checks passed!`；`poetry run ruff format --check ...` 在格式化后通过；`poetry run mypy ...` → `Success: no issues found in 2 source files`。
+- 问题新增或更新：无；未修改 `Problem.md`。本子任务只实现独立组件与定向测试，没有 live Qwen/真实联网检索；方向模式有意要求调用方先提供真实检索目录。
+- 后续：由主 Agent 将入口接入 direct CLI，在 Skill 路由后签发两组 controller/capability，并把 `artifact.plan_context_payload()` 注入最终研究计划作者。当前未修改 CLI/direct-plan，未 staging、未 commit，避免与共享工作树的主线集成冲突。
+
+---
+
+## 2026-08-11 19:55 +08:00 - Codex 子 Agent `/root/direction_literature_stage` - 指定方向的真实文献检索组件
+
+- 用户请求/活动任务：为研究目标形成阶段补充“指定研究方向 → Qwen 形成检索式 → 真实多源检索 → 可审计文献目录”的独立组件；通用 system 先于方向与要求，主 Agent 已选 Skill 正文再次独立注入。Qwen 只能给出一至四条检索查询，不能生成文献、引用、ID 或哈希；来源失败应局部降级，全部无结果才清晰失败。
+- 使用的 Skill：`literature-review`，用于落实多源检索、完整检索记录、去重、来源与时间溯源以及禁止虚构引用；未把该 Skill 的学科内容写入系统提示词。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_literature.py`
+  - `tests/unit/competition/test_contest_direction_literature.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增稳定入口 `retrieve_contest_direction_literature`。消息顺序固定为通用检索规划 system → 指定方向/交付要求 → 主 Agent 已选 Skill 完整正文与程序 SHA-256。查询格式做本地宽容投影、去重并最多取四条；模型响应中的任何文献字段都会被丢弃，只有 `Mapping[str, search callable]` 返回的 `AcademicPaper` 能进入目录。
+  - 每个来源/查询组合均生成成功、空结果或失败回执，保存查询、来源、时间、数量、错误、原始结果哈希、fetch ID/hash；单源异常不阻断其余来源。所有来源全部为空时抛出携带完整 fetch receipts 的 `ContestDirectionLiteratureError`。
+  - 复用 `deduplicate_papers`，并把同一论文的多个真实检索谱系聚合起来；保留完整摘要及论文元数据，摘要冲突时保留非空最长原文。论文 ID、paper/record/catalog/query/artifact hash 全由程序计算并在重载时重验。
+  - artifact 同时提供人读 `objective_literature_catalog() -> tuple[str, ...]` 和可直接传给 `run_contest_research_objective_stage` 的 `objective_retrieval_catalog() -> tuple[dict[str, Any], ...]`（旧别名 `objective_literature_record_catalog`）。后者保留 title、authors、abstract、doi、真实 URL、retrieved_from/retrieved_at；只有 DOI 时程序使用规范 `https://doi.org/<doi>`，URL 与 DOI 都缺失时不伪造链接并清晰阻断投影。
+  - 新增 `default_contest_direction_searchers()`，默认复用 Arxiv/OpenAlex，Semantic Scholar 仅在配置启用时加入；调用者仍可注入任意 provider-neutral 检索器用于生产扩展和确定性测试。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_contest_direction_literature.py -q` → `7 passed`。覆盖消息顺序与 Skill 精确哈希、Qwen 虚构引用隔离、单源失败降级、全空失败回执、查询格式宽容/四条上限、多源去重与完整摘要、程序 ID/hash 防篡改、无 URL 不伪造，以及 mapping 投影实际通过下游 `_normalize_literature_catalog`。
+  - `poetry run ruff check src/autoresearch/competition/contest_direction_literature.py tests/unit/competition/test_contest_direction_literature.py` → `All checks passed!`；`poetry run mypy ...` → `Success: no issues found in 2 source files`。
+  - 无凭据 live smoke：`default_contest_direction_searchers()` 实际返回 `arxiv/openalex`；分别检索 `prime number distribution`、`limit=1`，两源均真实返回 1 篇，命令 exit 0。
+- 问题新增或更新：无；未修改 `Problem.md`。开发中发现 UTC `+00:00` 与 Pydantic JSON `Z` 表示造成首次 fetch hash 不一致，统一规范时间字节后测试全绿；该问题已闭合，不需留作 blocker。
+- 后续：主 Agent 可直接把 `direction_artifact.objective_retrieval_catalog()` 传给 `run_contest_research_objective_stage(..., mode="specified_direction", retrieved_literature_catalog=...)`。本子任务未修改 CLI/direct-plan/objective-stage，未 staging、未 commit。
+
+---
+
+## 2026-08-11 20:03:31 +08:00 - Codex 子 Agent `/root/objective_stage_impl` - 评审传输超时的一次性新 capability 重试
+
+- 用户请求/活动任务：真实首题运行中 3/3 brainstorm 已成功，独立 reviewer 唯一失败为 `LLMClientError [WinError 10060]` 传输超时。要求做最窄 delivery-first operational retry：只对明确的 transport/timeout/network `LLMClientError` 额外重试一次；必须通过 `issue_stage_controller` 签发同 lineage/stage、`stage_attempt+1` 的新 controller/capability，使用不同 batch ID，并保留失败 batch 与 archive。JSON、Schema、普通 worker 或科学内容错误不得触发自动重写。
+- 变更文件：
+  - `src/autoresearch/competition/contest_research_objective_stage.py`
+  - `tests/unit/competition/test_contest_research_objective_stage.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 保持 `run_contest_research_objective_stage` 调用签名不变。review 第一次失败后只检查已归档 `TemporaryQwenTaskRecord`：`failure_type` 必须精确为 `LLMClientError`，且诊断必须明确包含 WinError 10060、timeout、transport、network、connection 或 request-failed 等传输标记；JSON/顶层对象/Schema/reasoning 等内容标记显式排除。
+  - 符合条件时调用 `issue_stage_controller` 生成新 controller/capability；复用原 review 的 lineage、stage、controller agent、stage input hash 与并发上限，只把 `stage_attempt` 加一。第二次使用新 dispatch/runtime identity 与 `...-attempt-2` batch ID，最多一次；第一次失败和第二次成功各自的 assignment、task record、archive、batch artifact 均保留。
+  - artifact 新增 `review_attempt_controllers`、`review_attempt_batches`、`review_model_call_count` 与组件级 `model_call_count`；`review_batch` 始终指向最后成功 attempt。校验器重验 attempt 顺序、成功/失败关系、controller/batch 绑定、两次 batch ID 不同、两次 controller 不同、lineage/stage/input 不变及 `stage_attempt+1`。`plan_context_payload()` 同步报告程序计算的评审调用次数。
+  - 若第一次不是明确传输错误则直接失败；若第二次仍是传输错误，则抛出携带两个已归档 batch 的 `ContestResearchObjectiveStageError.review_attempt_batches`。不存在提示词重写、JSON 修补或科学内容重试。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_research_objective_stage.py` → `13 passed`。新增覆盖首次 WinError 10060 → 新 capability 第二次成功、失败 batch/archive 进入成功 artifact、格式与普通异常均只调用一次、两次传输错误清晰停止、原始与派生 capability 均撤销、两个 runtime archive 均 removed，以及未知候选编号/非中文科学内容不触发重试。
+  - 联合回归：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_research_objective_stage.py tests/unit/competition/test_contest_direct_plan_cli.py tests/unit/competition/test_temporary_qwen_pool.py` → `29 passed`。
+  - `poetry run ruff check src/autoresearch/competition/contest_research_objective_stage.py tests/unit/competition/test_contest_research_objective_stage.py` → `All checks passed!`；`poetry run ruff format --check ...` 通过；`poetry run mypy ...` → `Success: no issues found in 2 source files`。
+- 问题新增或更新：无；未修改 `Problem.md`。本轮只修复真实暴露的 reviewer 网络超时，不扩大至内容重试、无限重试或通用弹性框架。
+- 后续：主 Agent 可直接重跑首题；CLI 应从 `objective_stage.review_model_call_count`/`model_call_count` 动态报告调用数，而不是继续固定写 1 次 review。未修改 CLI，未 staging、未 commit。
+
+---
+
+## 2026-08-11 20:11:56 +08:00 - Codex 主 Agent `/root` - 首题头脑风暴、独立评审、方向检索与研究计划交付闭环
+
+- 用户请求/活动任务：为指定问题加入“先头脑风暴生成假设、再由独立评审智能体筛选”的组件；为指定方向加入真实相关领域检索并形成研究目标的组件；继续生成《Science》125 问第一个问题的中文研究计划，并说明距离恢复此前全部功能尚缺什么。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_cli.py`
+  - `tests/unit/competition/test_contest_direct_plan_cli.py`
+  - `src/autoresearch/competition/contest_direction_literature.py`（仅机械格式化并复验子 Agent 实现）
+  - `tests/unit/competition/test_contest_direction_literature.py`（仅机械格式化并复验）
+  - `Problem.md`（新增 `P-20260811-127`）
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 首题直出链现为：PDF 首题提取 → Qwen 只看 Skill 元数据自主选择 Skill → 三个临时 Qwen 并行提出可证伪假设、方法/最小预实验桥接和反方挑战 → 独立新 capability 的评审 Qwen 选择或综合研究目标 → 主 Qwen 消费选中 Skill 正文和评审后的目标，一次生成中文研究计划 → 程序渲染 JSON/Markdown/TeX/PDF。系统提示词保持通用；题目在前，所选 Skill 以独立 user 消息随后注入；所有 ID、编号、状态和 SHA-256 由程序生成。
+  - CLI 不再固定假设评审只调用一次，改为按 objective artifact 的实际 brainstorm/review/model-call 数计账。问题模式使用明确标注为 caller-curated 的锁定参考目录，不把投影时间冒充联网检索时间。
+  - 指定方向 sibling 组件已复验：配置模型只生成 1–4 条查询，真实文献只能来自 Arxiv/OpenAlex/可注入检索器返回的 `AcademicPaper`；保留摘要、DOI、URL、来源、时间、失败回执和程序哈希，并可直接投影给研究目标组件。该方向组件尚未接成独立一键 CLI。
+  - 首次 live 在三个 brainstorm 完成后因 reviewer `WinError 10060` 传输超时中断；按 `P-20260811-127` 增加仅限明确网络错误、最多一次、使用新 controller/capability 的重试。格式、Schema、普通异常和科学内容错误不重试，失败 batch 仍完整归档。
+- 验证：
+  - 联合单测：objective、direction literature、direct CLI/core/render/router、question input、temporary pool/agents 共 `79 passed in 8.18s`。
+  - `poetry run ruff check` 覆盖三个生产文件及三个对应测试 → `All checks passed!`；`poetry run ruff format --check ...` → `6 files already formatted`；`poetry run mypy` 覆盖三个生产文件 → `Success: no issues found in 3 source files`。
+  - 方向检索子组件 live smoke：默认 Arxiv 与 OpenAlex 分别真实返回 1 篇文献；未把模型生成文本当作文献。
+  - 首题 live：`poetry run python -m autoresearch.competition.contest_direct_plan_cli --question-pdf C:\Users\Z\Downloads\sjtu-booklet.pdf --output-dir runs\contest-delivery\science125-question-001-objective-review-final-v2 --config config.yaml --env .env --max-tokens 12000 --timeout-seconds 900 --skills-root skills` → exit 0；状态 completed，总调用 6（路由 1、构思 3、评审 1、计划 1），候选数 3，评审选择候选 2，临时身份全部撤销且内容/回执保留。
+  - 输出研究目标为有限尺度素数间隙排列熵/块熵相对密度匹配及置换对照的可证伪检验；主计划标题为《有限尺度下素数间隙序列局部顺序结构的信息论检验计划》。Results 明确“尚未执行预实验”，只写预注册支持/反驳/无法区分判据。
+  - PDF `runs/contest-delivery/science125-question-001-objective-review-final-v2/plan/research-plan.pdf` 可打开、4 页、100688 bytes、SHA-256 `962ce23384207f59d04c037d4bbeed486225a46ad3d7862e2c75eff349aec7df`；pypdf 与 `pdftotext -layout` 均可读取，首屏渲染目视清晰。
+- 问题新增或更新：新增并关闭 `P-20260811-127`。第一次 TTY PowerShell 启动被本机权限拒绝，改用非 TTY 后同命令正常；两次只读核验脚本曾错误把报告中的绝对路径再次 Join，未改任何制品，随后按实际字段复核。
+- 后续：交付优先顺序为：真实素数预实验及指标/日志 → Qwen 根据结果修订计划 → 一次独立科学评审；随后再接通通用方向一键 CLI、80% 上下文压缩/OB 记忆/断点续跑，以及正式实验、论文、自进化和产品界面。当前不把研究计划称为实验结果或论文。共享工作树包含大量其他 Agent 的未提交改动，本轮未 staging、未 commit。
+
+---
+
+## 2026-08-11 23:07:54 +08:00 - Codex 子 Agent `/root/plan_revision_stage` - 真实预实验驱动的一次性研究计划修订组件
+
+- 用户请求/活动任务：在不改 CLI、direct-plan 核心或 renderer 的前提下，实现一个只调用一次配置模型的结果反馈修订组件。组件需接收原始 `ContestDirectPlanArtifact`、程序核验的预实验 artifact/metrics/raw files、原题、要求、已选 Skill 和真实参考目录；Qwen 必须读取真实结果并同步修订主假设、Methods、Experiments、Metrics、Results 与 limitations，保留原始 response/receipt，且输出可直接交给现有 `materialize_contest_direct_plan` 的 flat payload。
+- 使用的 Skill：`scientific-critical-thinking`。据此把探索性预实验观察、统计解释、替代解释和正式实验外推明确分层；阴性或对更强条件零模型不稳健的结果允许收窄、反转或放弃原假设，不得包装为正结果。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_revision.py`
+  - `tests/unit/competition/test_contest_direct_plan_revision.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增稳定入口 `revise_contest_direct_plan(...) -> ContestDirectPlanRevisionArtifact`。输入支持原计划对象/完整 Mapping/JSON/path，以及通用 Pydantic/Mapping/path 形式的预实验 artifact 和 metrics；不依赖尚未冻结的具体预实验类型。消息顺序固定为通用 system → 题目/要求/锁定参考目录 → 每个已选 Skill 的独立 user 消息 → 完整原计划 → 程序核验的 artifact/metrics/log/hash → 一次完整修订合同。通用 system 不含具体数论答案。
+  - 预实验进入模型前先重放 artifact 内部 hash；验证 `status=completed`（若存在）和 `study_phase=exploratory_pilot`（若存在）；重算 `manifest_relative_path/manifest_sha256`、artifact/manifest canonical hash/status 交叉绑定，并逐字节验证 manifest、`evidence_files`、`*_relative_path/*_sha256` 与调用方显式 raw binding。相同路径的冲突 hash 会失败关闭，relative path 不得逃逸预实验根目录。
+  - 已与最终 `contest_prime_preexperiment` schema 对齐：直接消费 `metrics_relative_path/metrics_sha256`、`manifest_relative_path/manifest_sha256`、`evidence_files[] {relative_path, sha256, bytes, kind}` 以及四类 null 的完整 artifact。为避免把 raw/null CSV 全本塞进工作上下文，Qwen 读取完整 artifact、完整 metrics JSON 和 stdout/stderr/metrics 日志正文；大型 raw/null 文件保留真实路径、字节数及 hash 绑定，不把未读内容冒充已读。
+  - Qwen 只调用一次，不做内容重试或格式修订循环。字段大小写、中文别名、Datasets/Experiments 嵌套结构和参考目录编号由本地宽容投影；引用只能来自调用方锁定目录。模型结果新增显式 `main_hypothesis` 与 `limitations`，`flat_payload()` 将其无损折入现有竞赛模板结构。
+  - Results 必须明确标注为“预实验”、逐字使用至少一个预实验中实际出现的数字，并给出替代解释；结果数字不在已核验 artifact/metrics/log 时失败。其他证据性段落也不得新增原计划或真实预实验输入之外的数字。提示明确 exploratory pilot / protocol amendment 不是确认性或预注册主实验；不同 null 回答不同问题，wheel、global permutation、local-block/residue-conditioned 证据不得混并，强对照不支持时必须允许收窄、反转或放弃。
+  - 程序计算 revision ID、input/artifact/file/response hash 和状态；原始 provider response 以 write-once bytes 留存，完整消息、provider/model、raw response、parsed payload、usage 与 reasoning 元数据进入 `ModelAuthorshipReceipt`。未让模型生成 ID、hash 或状态。
+- 验证：
+  - 定向单测：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_revision.py` → `7 passed`。覆盖严格消息顺序和 Skill 独立注入、一次调用、raw response/receipt、flat renderer payload、artifact/raw/metrics hash 篡改、冲突 binding、虚构观测数字、宽容嵌套字段，以及最终 prime manifest schema 无 adapter 消费。
+  - 与真实预实验/原计划/renderer/authorship 联合回归：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_revision.py tests/unit/competition/test_contest_prime_preexperiment.py tests/unit/competition/test_contest_direct_plan.py tests/unit/competition/test_contest_direct_plan_render.py tests/unit/competition/test_model_authorship_context.py` → `30 passed in 11.28s`。
+  - 真实本地小预实验 schema 烟测：用正式 `run_contest_prime_preexperiment` 在五个 50,000 宽区间、每类 199 null draws 上真实运行，再把实际 `ContestPrimePreexperimentArtifact`、`metrics.json`、17 个已核验文件交给修订器；使用 fake completion 隔离外部模型后成功生成 revision、flat payload 与 authorship receipt。该烟测验证真实文件/指标接线，不声称测试了真实 Qwen 内容质量。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run ruff format --check ...` → `2 files already formatted`；`poetry run mypy src/autoresearch/competition/contest_direct_plan_revision.py` → `Success: no issues found in 1 source file`；`py_compile` 与两个新文件的 whitespace check 无错误。
+- 问题新增或更新：无；未修改 `Problem.md`。开发时一个只读 PowerShell 统计命令因管道语法失败、一次数字守卫测试因中文属于 `\w` 暴露正则边界错误，均在本子任务内立即修正且未影响制品；没有外部数据、真实 Qwen 或网络调用。
+- 后续：由主 Agent 把真实 `prime-preexperiment.json` path 和最终参考目录传入本入口，执行一次真实 Qwen 修订，再用 `artifact.flat_payload()` 覆盖式物化 Markdown/JSON/TeX/PDF。随后如用户要求，可另加一次独立科学评审；本子任务未修改 CLI/direct-plan/render、未 staging、未 commit，避免与共享脏工作树及并行预实验实现冲突。
+
+---
+
+## 2026-08-11 23:10:38 +08:00 - Codex 子 Agent `/root/prime_preexperiment_impl` - 首题真实素数间隙探索性预实验
+
+- 用户请求/活动任务：为《Science》125 问首题及现有素数间隙研究目标实现真正执行、真正分析的普通工作站预实验；保存逐区间原始数据、全部零模型抽样、指标、日志、环境、参数和哈希证据，并提供可由 Qwen 读取的结果上下文。只新增独立 runner 与定向测试，不修改 direct CLI、计划生成、渲染或 `Problem.md`。
+- 使用的 Skill：`experimental-design` 与 `statistical-analysis`。前者用于固定五个不相交区间、区分真实独立分析块与伪重复、冻结随机种子及对照；后者用于预先指定单侧经验检验、效应诊断、Holm 校正、有限区间重采样范围及非总体推断边界。方法技能只影响本实验组件，未写入通用主提示词。
+- 变更文件：
+  - `src/autoresearch/competition/contest_prime_preexperiment.py`
+  - `tests/unit/competition/test_contest_prime_preexperiment.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增稳定入口 `run_contest_prime_preexperiment(*, output_dir, parameters=None, source_plan_path=None) -> ContestPrimePreexperimentArtifact`、强校验加载器 `load_contest_prime_preexperiment(path, verify_files=True)` 及 `artifact.plan_context_payload()`。输出目录拒绝覆盖；科学/运行失败时先保存 `failure.json`、stdout/stderr 和失败 manifest 再抛出携带路径的专用错误。
+  - 默认协议在读取结果前冻结：区间 `[10^6,2×10^6)`、`[5×10^6,6×10^6)`、`[10^7,1.1×10^7)`、`[2×10^7,2.1×10^7)`、`[5×10^7,5.1×10^7)`，seed `20260811`，每类 `199` 次 null draw。artifact 明确标记 `exploratory_pilot` / `protocol_amended_before_execution`，绑定原研究计划绝对路径、源文件 SHA-256 和原字节快照；修改原因限定为普通工作站可行性与零模型可识别性，不冒充原草案的确认性执行。
+  - 使用真实 segmented sieve 生成素数和相邻间隙。主指标为 `m=5` modified/tie-aware normalized permutation entropy：相等间隙映射为相同秩，理论归一化使用 ordered Bell number 541，避免普通排列熵任意打破 ties 产生伪顺序。辅指标为四分位符号二阶块熵和 lag-1 mutual information。
+  - 每区间执行四类零模型：局部固定块内置换、全区间置换、按局部段号与连续素数 `(p_i mod 30, p_{i+1} mod 30)` 路径分组的条件置换、以及保持首末端点、每个局部数值段点数和 wheel-210 可容许性的伪素数。残基路径条件置换为主零模型；程序计算可变位置比例并在 `<0.8` 时失败关闭。局部分块和 wheel-210 是必须同时解释的敏感性对照，global permutation 仅作诊断；wheel-210 明确不是充分的素数生成模型。
+  - 每个区间和每类零模型保存 observed-minus-null delta、以 null-draw SD 标准化的模拟诊断、`(b+1)/(R+1)` 单侧经验 p 值、null CI，以及跨五区间 Holm 校正；aggregate 对四类 null 的 p 值再作 Holm 校正。`fixed_interval_resampling_delta_ci95` 明确是 `n=5` 固定 benchmark 区间的描述性重采样范围，不称 population CI。制品禁止把有限计算外推为素数总体定律、黎曼猜想或 Cramér 猜想的证明/反证。
+  - 保存五份逐 gap CSV、五份包含全部 `4×199` draw 的 null CSV、`metrics.json`、`parameters.json`、`environment.json`、空成功 stderr、逐阶段 stdout、runner 源码快照和原计划快照。manifest 对每个文件记录相对路径、字节数、kind 与 SHA-256；artifact 交叉绑定 manifest 文件字节 SHA、规范 manifest hash 和规范 artifact hash。完整性声明诚实限定为 `sha256_tamper_evident_not_externally_signed`，不把无外部签名的哈希冒充不可伪造执行身份。
+  - 引用补入 Bandt–Pompe、Bian modified PE、Gallagher、Granville、Lemke Oliver–Soundararajan 连续素数残基偏差、Banks–Ford–Tao 正式 Inventiones Mathematicae DOI 与 Phipson–Smyth 随机置换 `+1` p 值方法。
+- 验证：
+  - 定向测试：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_prime_preexperiment.py` → `7 passed in 5.49s`。覆盖真实 segmented-sieve 小型五区间运行、四类各 199 draws、modified ties、原始/零模型 CSV 行数与计算一致性、残基可变位置门、source-plan 绑定、context 投影、manifest 全文件重验、篡改检测、失败证据持久化、重叠/不足 draws 拒绝和安全拒绝覆盖。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run ruff format --check ...` → `2 files already formatted`；`poetry run mypy ...` → `Success: no issues found in 2 source files`；`py_compile` 通过。
+  - 默认正式参数 live：`run_contest_prime_preexperiment(..., output_dir='runs/contest-delivery/science125-question-001-objective-review-final-v2/preexperiment/prime-gap-pilot-v2', source_plan_path='.../plan/research-plan.json')` → exit 0，运行 `58.1513s`，五区间共 `312,359` 个 gap，执行 `3,980` 个 null draws。aggregate `delta / raw p / Holm-across-4` 分别为 local `-0.0245798 / 0.005 / 0.02`、global `-0.0250546 / 0.005 / 0.02`、residue-path `-0.00115344 / 0.005 / 0.02`、wheel-210 `-0.00225108 / 0.005 / 0.02`。强约束对照下效应远小于简单置换，必须在 Qwen 修订中显式收缩解释。
+  - 最终 live artifact：`runs/contest-delivery/science125-question-001-objective-review-final-v2/preexperiment/prime-gap-pilot-v2/prime-preexperiment.json`；artifact hash `96d532c9f7dab59c5a328152a20ec8b5911da7caa28a45d95c18cc11d62f6444`；manifest 文件 SHA-256 `0e17856d0689ccde87f7478880e856bd4d5827e65765fd046fc20a44a9cfc72b`。强校验 loader 对最终 live 成功重验全部文件。
+- 问题新增或更新：无；按父任务明确边界未修改 `Problem.md`。开发 smoke 首次暴露 wheel 随机点可越过观测首末端点，第二次暴露 datetime 未先规范为 JSON 字节；两项均在正式 live 前局部修复并由失败证据路径验证。旧 smoke/v1 目录保留为历史开发证据，最终接线只应使用 `prime-gap-pilot-v2`。
+- 后续：主 Agent/集成 Agent 应把最终 artifact 或 `plan_context_payload()` 交给一次 Qwen 结果反馈修订，并由 Qwen 同时报告四类 null、Holm 校正和探索性边界；不得只摘简单置换的较大差异。未 staging、未 commit，共享工作树仍含并行 Agent 的改动。
+
+---
+
+## 2026-08-11 23:20:18 +08:00 - Codex 子 Agent `/root/prime_feedback_integration` - 真实素数预实验到一次 Qwen 反馈计划的独立交付闭环
+
+- 用户请求/活动任务：只新增独立交付入口与定向测试，把现有首题 v2 计划接到“真实素数预实验 → Qwen 读取结果一次反馈修订 → JSON/Markdown/TeX/PDF 物化”；必须复核题目、原计划、Skill 和全部预实验证据哈希，允许复用已完成的 final live pilot 而不重复计算；不得进入正式实验、论文或多轮格式审查，不修改既有 CLI、预实验 runner、修订器或 `Problem.md`。
+- 变更文件：
+  - `src/autoresearch/competition/contest_prime_feedback_cli.py`（新增）
+  - `tests/unit/competition/test_contest_prime_feedback_cli.py`（新增）
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增 `run_contest_prime_feedback_delivery(...)` 与 `python -m autoresearch.competition.contest_prime_feedback_cli`。输入固定消费现有 delivery 的 `question-input.json`、`selected-method-skills.json`、`skill-routing.json` 和 `system-authored-research-plan.json`；输出目录必须不存在或为空，成功后生成 `preexperiment/`（仅新执行时）、`revision/`、根级 Qwen revision artifact、`plan/research-plan.{json,md,tex,pdf}` 及 `delivery-report.json`。
+  - 对题目 PDF 的原始字节 SHA、原计划 Pydantic 内部 artifact hash、rendered source plan 到原 Qwen plan/question 的绑定、Skill routing canonical hash、选中 Skill ID/hash/path 和 `SKILL.md` 实际正文哈希逐一复核；传给修订 Qwen 的是已复核正文，不重新路由或由编排器代写科学内容。
+  - 未传 `preexperiment_artifact` 时调用真实 `run_contest_prime_preexperiment` 写入新 delivery；新增 `--preexperiment-artifact` 时调用 `load_contest_prime_preexperiment(..., verify_files=True)`，全量重验 manifest 及每份 raw/null/metrics/log/input 文件并跳过重复运行。两条路径都要求 pilot 为 `completed/exploratory_pilot`、题目一致、source-plan SHA 精确匹配，且不得声称正式实验或数学证明。
+  - 修订只调用一次 `revise_contest_direct_plan`，传入原题、宽松中文交付要求、已选 Skill、锁定真实参考目录、pilot artifact/metrics/root；随后校验 revision artifact、raw response、authorship receipt 及响应哈希，再把 `revision.flat_payload()` 连同程序生成的 question/generation/preexperiment 元数据交给现有 materializer。没有内容重试、格式循环、独立科学评审、正式实验或论文生成。
+  - `delivery-report.json` 区分 `executed_in_this_delivery` 与 `reused_after_full_hash_verification`，程序绑定所有输入、pilot evidence、revision response/receipt、JSON/Markdown/TeX/PDF/manifest 的绝对路径、SHA-256 和字节数；固定声明 `preexperiment_executed=true`、`formal_experiment_executed=false`、`paper_claimed=false`。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_prime_feedback_cli.py` → `5 passed in 1.93s`。覆盖真实 runner 接线（以确定性 fake 隔离昂贵计算）、既有 artifact 全量复用并证明 runner 未调用、Skill 正文篡改在实验前失败、非空输出保护，以及 argparse 正确转发 `--preexperiment-artifact`。
+  - 三模块最终联合回归：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_prime_preexperiment.py tests/unit/competition/test_contest_direct_plan_revision.py tests/unit/competition/test_contest_prime_feedback_cli.py` → `22 passed in 5.63s`。
+  - `poetry run ruff check ...` 覆盖三个模块及三份测试 → `All checks passed!`；`poetry run ruff format --check ...` → `6 files already formatted`；`poetry run mypy` 覆盖三个生产模块 → `Success: no issues found in 3 source files`；新 CLI/test `py_compile` 与定向 whitespace check 通过；`python -m ... --help` 可用。
+  - 对真实 `science125-question-001-objective-review-final-v2` 做只读预检：题目 PDF、Skill/routing、原 Qwen plan、rendered source plan 全部匹配；`prime-gap-pilot-v2` 经正式 loader 全量重验通过，run ID `prime-pilot-c9dfaac70c007592`、artifact hash `96d532c9f7dab59c5a328152a20ec8b5911da7caa28a45d95c18cc11d62f6444`、manifest 内 17 份 evidence 全部存在且哈希一致。该预检未调用 Qwen、未重跑预实验。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。共享工作树中的其他改动全部保留，未 staging、未 commit。
+- 后续：主 Agent 应以新空 output root 调用本 CLI，并显式传入 final `prime-gap-pilot-v2/prime-preexperiment.json`，从而只进行一次真实 Qwen 结果反馈和 PDF 物化；随后独立核对计划对四类 null、Holm 校正、效应收缩和预实验边界的表述。若真实 Qwen 内容仍失败，应保留 revision raw response/receipt 并局部处理通用守卫，不得把编排器文字伪装成模型修订。
+
+---
+
+## 2026-08-11 23:20:09 +08:00 - Codex 子 Agent `/root/plan_revision_stage` - 证据数字舍入与科学记数法等价修复
+
+- 用户请求/活动任务：真实 Qwen 单次修订已经返回科学内容，但本地证据守卫把合理表示差异误判为虚构数字，包括真实值到有限小数位的四舍五入、百分比/95% CI 标签、模型参数，以及 `[1.0×10^7,1.1×10^7)` 一类科学记数区间。要求只做通用、保守的确定性等价修复，不针对本次结果硬编码，不再次调用模型，且真正远离证据的数字继续拒绝。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_revision.py`
+  - `tests/unit/competition/test_contest_direct_plan_revision.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 数字守卫由字符串完全相等改为 `Decimal` 语义比较。输出小数或 scientific notation 的最后书写位决定分辨率，仅当某个已核验证据值落入该表示的半单位舍入区间时接受；普通整数仍按精确标签/计数处理，不允许任意舍入到整数。符号冲突不会以近似通过。
+  - 百分数同时保留书写值与除以 100 的语义候选，因此 `92.94%` 可与证据 `0.929353...` 按四位小数等价；`95% CI` 又可与已核验字段名 `...ci95` 的标签精确绑定。结构化 collector 从数值叶子、非 hash 文本和可解释 identifier 标签提取来源数字，显式跳过 SHA-256/canonical hash，支持 `m5`、`order2`、`wheel_210` 等模型参数而不把哈希片段当作科学依据。
+  - 新增复合科学记数解析：`a×10^n`、`a*10^n`、`a·10^n` 与普通 `aeN` 都投影为一个 Decimal claim，mantissa 的书写精度随指数缩放；复合表达式的 `10` 与指数不再被拆成独立数字。程序不认识的 mantissa 仍按与所有证据的距离拒绝。
+  - 真实失败还暴露原先在 guard 通过后才保存 provider response，导致被本地规则拒绝的单次 Qwen 输出丢失。现将 raw response 和完整 `ModelAuthorshipReceipt` 前移到任何内容/数字 guard 之前，并以 `revision input hash + response hash` 形成 write-once 路径；失败响应可审计，同一输入后续若获准再调用也不会覆盖先前字节。研究计划 artifact 仍只在全部科学边界通过后生成。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_revision.py` → `10 passed`。新增明确覆盖 `-0.00115344→-0.0012`、`0.929353→0.9294/92.94%`、`-7.526→-7.5`、`-85.149→-85.1`、`95% CI`、`m=5`；三个 `×/*/·10^7` 区间及普通 e notation 可与整数端点证据匹配；`1.2×10^7` 与远离 fixture 证据的 `0.99` 继续拒绝；被拒响应和 receipt 仍落盘。
+  - 对正式 live `prime-gap-pilot-v2/prime-preexperiment.json` 与 `metrics.json` 做纯本地只读重验：`-0.0012`、`0.9294`、`-7.5`、`-85.1`、`95% CI` 及 `[1.0×10^7,1.1×10^7)`、`[2.0×10^7,2.1×10^7)`、`[5.0×10^7,5.1×10^7)` 全部得到证据等价；非证据端点 `1.2×10^7` 被拒。该检查没有模型调用。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run ruff format --check ...` → `2 files already formatted`；`poetry run mypy src/autoresearch/competition/contest_direct_plan_revision.py` → `Success: no issues found in 1 source file`。
+- 问题新增或更新：无；未修改 `Problem.md`。这次是确定性 validator 的表示层缺陷，不是 Qwen 科学内容失败，也不据此放宽文献、文件哈希、预实验/正式实验边界或真实结果来源门。
+- 后续：已通知 `/root/prime_feedback_integration` 数值守卫冻结，可执行三模块联合回归并最多再发起一次由用户授权的真实修订调用。若新响应再次被拒，raw response/receipt 将保留，下一步应审计具体语义而非无限重试。未 staging、未 commit。
+
+---
+
+## 2026-08-11 23:28:47 +08:00 - Codex 子 Agent `/root/plan_revision_stage` - 观测证据守卫最终窄化与保留响应离线验收
+
+- 用户请求/活动任务：第二次真实 Qwen 修订已完整保留；本地守卫仅因 `-85` 的整数四舍五入、摘要粗粒度范围端点 `-30` 以及未来候选设计参数 `2310` 误拒。要求只做通用、保守的本地修复，不改科学正文、不再次调用模型，并说明如何用已保存 response/receipt 完成交付。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_revision.py`
+  - `tests/unit/competition/test_contest_direct_plan_revision.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 普通整数字面量按个位分辨率匹配已核验证据，仅容许标准整数舍入的 ±0.5；绝对值至少 10 且以 `0` 结尾的整数仅按一个尾随零解释为十位粗粒度报告，容许 ±5。由此 `-85` 可对应 `-85.104...`，摘要范围端点 `-30` 可对应 `-30.946...`，但远离证据的整数仍失败关闭。
+  - 数字来源门改为仅审查声称“已观察/预实验结果”的子句。带有“后续、正式实验、计划、建议、候选对照、不能排除、例如、替代解释”等显式未来或假设标记的子句不再被误当成已观察数据；进入 `【后续正式实验计划】` 一节后持续排除，只有新的已观察结果标题才恢复审查。未标记文本仍默认按证据声明严格处理。
+  - 因而“未来引入模 2310 对照”及“不能排除模 2310 约束”可作为候选设计/替代解释保留，而“预实验观察到模 2310 约束下结果”仍会因没有真实证据被拒；没有降低文件哈希、引用目录、预实验真实性、正式实验边界或已观察数值来源门。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_contest_direct_plan_revision.py -q --no-cov` → `13 passed in 1.83s`。新增覆盖 `-85` 个位舍入、`-30` 十位粗粒度范围端点、远离证据的 `-20` 反例、后续计划/不能排除子句中的 `2310` 与 `1000` 可通过，以及已观察子句中的 `2310` 仍拒绝。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run ruff format ...` 已格式化目标文件；`poetry run mypy src/autoresearch/competition/contest_direct_plan_revision.py` → `Success: no issues found in 1 source file`。
+  - 对已保存原始响应 `runs/contest-delivery/science125-question-001-preexperiment-feedback-v1/revision/responses/direct-plan-revision-0e49580e625053cc-32d1e5f4cfec.txt`、正式 live `prime-gap-pilot-v2` artifact/metrics 和原计划执行纯本地 guard 重放 → `exact_saved_response_guard=PASS`。该验收未访问网络、未调用 Qwen、未改写模型科学正文。
+- 问题新增或更新：无；未修改 `Problem.md`。这是证据声明作用域和数值表示精度的确定性 validator 缺陷，现有 response 与 authorship receipt 均已保留且哈希可核验。
+- 后续：集成层可从现有 receipt 构造 `LLMJsonCompletionResult`，以 `llm_call=lambda **_: retained_completion` 调用同一 `revise_contest_direct_plan` 参数完成离线 finalize，再用 `revision.flat_payload()` 物化 JSON/Markdown/TeX/PDF；不得再次请求模型。未 staging、未 commit。
+
+---
+
+## 2026-08-11 23:38:00 +08:00 - Codex 主 Agent `/root` - 首题真实预实验反馈研究计划最终交付
+
+- 用户请求/活动任务：真正执行一次《Science》125 问首题“素数为何如此特别？”的预实验，保存原始数据、日志和指标，让 Qwen 读取真实结果后修订假设与完整中文研究计划；格式从宽、证据从严，只交付研究计划而不冒充正式实验、论文或证明。
+- 使用的 Skills：`experimental-design`、`statistical-analysis` 与 `pdf`。前两者用于审查分析单位、强/弱零模型、经验检验、多重比较和有限样本推断边界；PDF Skill 用于独立检查可打开性、页数、文字层和渲染页面。Skill 只影响当前方法审计，没有写入通用 system prompt；主 Qwen 仍按“题目/要求 → 已选计算数论 Skill 独立消息 → 原计划 → 真实预实验证据 → 输出合同”的顺序接收上下文。
+- 参与的临时子 Agent：`/root/prime_preexperiment_impl` 实现并真实运行素数预实验；`/root/plan_revision_stage` 实现一次性 Qwen 证据修订和通用数字表示守卫；`/root/prime_feedback_integration` 实现独立交付入口；`/root/final_prime_plan_audit` 仅做最终只读科学审计。科研正文来自保留的真实 `qwen3.7-max` 响应，编排器只负责验证、投影、哈希、物化和恢复。
+- 本主 Agent 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_cli.py`：为首题锁定目录补充排列熵、modified PE、素数短区间/随机模型、连续素数残基偏差、筛模型、随机置换 p 值与熵估计等真实一手来源。
+  - `tests/unit/competition/test_contest_direct_plan_cli.py`：固定新增参考目录与路由边界。
+  - `src/autoresearch/competition/contest_direct_plan_render.py`：将 `≤/≥/τ/Δ/×/−` 显式渲染为 TeX 数学符号，避免中文 PDF 丢失比较符号或希腊字母。
+  - `tests/unit/competition/test_contest_direct_plan_render.py`：补数学符号渲染回归。
+  - `Problem.md`：新增并解决 `P-20260811-128`。
+  - `Agent.md`：仅追加本条；各子 Agent 已分别记录其模块与验证。
+- 真实预实验：默认 live 在 `runs/contest-delivery/science125-question-001-objective-review-final-v2/preexperiment/prime-gap-pilot-v2/` 完成，耗时 58.1513 秒；五个不相交百万宽固定区间共 312,359 个 prime gaps，四类零模型各 199 draws/区间，共 3,980 draws。逐 gap CSV、全部 null draws、metrics、参数、环境、stdout/stderr、源码快照、源计划快照和 manifest 全部保存。主 Agent 又用独立 full bytearray sieve 复核五区间 prime count 为 `70435/64336/61938/59336/56360`，与 runner 一致。
+- 结果：aggregate observed entropy `0.9293531`。相对 local/global 置换的 delta 为 `-0.0245798/-0.0250546`，相对 residue-path/wheel-210 强约束零模型为 `-0.00115344/-0.00225108`；四类 aggregate 单侧经验 p 均为 `0.005`，跨四模型 Holm 为 `0.02`。这说明信号在强算术约束后仍可检测，但幅度缩小约一个数量级；最终计划据此把假设收窄为“在五个固定区间、m=5 和给定条件零模型下的有限尺度顺序结构”，并把模算术约束列为主要替代解释，不外推为素数一般规律。
+- Qwen 恢复：前一次真实返回被旧本地表示层守卫误拒且未保留；第二次响应在 guard 前 write-once 保存。通用守卫修正后，直接从原 receipt 重建 `LLMJsonCompletionResult` 离线 finalize；原/新回执 `messages_sha256=e14725297ed0f7ba24ea7c0a18309c2e1239e956f3599a20629cada5418caa8d`、`response_sha256=32d1e5f4cfec4774949e46754357fef59c1b4b1c12b7d7a52389b48c053a8200` 和 parsed payload hash 逐字相等。最终化没有第三次网络调用、没有编辑 Qwen 科研正文。
+- 最终科学审计与更正：只读临时审计发现三项内容级 P1 和一个术语问题——局部分块置换实际破坏块内顺序，不能声称保留短程相关/检验长程依赖；摘要混用了聚合与单区间 standardized diagnostics；本次未执行 OEIS 联网核验；固定五区间重采样不是总体 CI。没有再调用模型，也没有改原始 Qwen response 或 revision artifact。新增 `scientific-editorial-corrections.json`，以 before/after SHA 和 base artifact/response hash 独立记录证据更正，主假设/问题/rationale 逐字不变；最终渲染还补入锁定目录中与 tie-aware modified PE 直接对应的 Bian et al. 引用。
+- 最终交付：`runs/contest-delivery/science125-question-001-preexperiment-feedback-final/` 包含根级 Qwen revision artifact、作者回执、raw response、evidence-correction artifact、`plan/research-plan.json`、`.md`、`.tex`、真实 `.pdf`、render manifest 与 `delivery-report.json`。PDF 独立验证为 6 页、未加密、文字层含标题/待研究问题/实验结果/参考论文/预实验；目视复核第一页与结果页数学符号及更正文本正确。delivery report 绑定原题 PDF、Skill、原计划、17 份 pilot evidence、revision、correction 与五种渲染文件，总计重新核验 41 个 path+SHA 文件。最终 correction hash 为 `6141dc5a2baa3a06d5ef8e30319b37253c935b36bebeb45794581e05f3d6c666`，末次仅修复审计发现的重复标点并同步重渲染哈希。
+- 验证：联合聚焦 `37 passed in 11.12s`；Ruff → `All checks passed!`；Mypy → `Success: no issues found in 4 source files`；py_compile 通过。正式 pilot loader 全文件重放 PASS；最终 report 41 个文件重哈希 PASS；revision 与 correction canonical hash PASS；Codex PDF runtime `pypdf` → `6 pages / 7303 chars / openable / unencrypted / required sections PASS`。渲染器自身专项另为 `8 passed`。
+- 问题新增或更新：`P-20260811-128` 已 Resolved。TeX helper 在 Windows 读取混合编码日志时仍产生非致命 GBK 解码线程告警，导致 render manifest 的内部 `page_count=null`；PDF 编译、文本和页面均有效，delivery report 使用独立 pypdf 记录 6 页。Poetry 环境缺少 pypdf 的一次验证命令失败后，已分离为 Poetry 科研制品校验和 Codex bundled PDF runtime 校验，两者均通过。
+- 边界与后续：这是探索性预实验驱动的研究计划，不是正式实验、数学证明或论文。五个区间是固定 benchmark，不是总体随机样本；重采样范围不是总体置信区间。后续如继续，应按计划新增更多不相交区间和更高阶筛约束，并在看新结果前冻结正式协议。未 staging/commit：共享工作树含多日并行且互相依赖的未提交更改，`Agent.md`/`Problem.md` 也混有其他任务增量，当前强行聚焦提交会违反“不批量提交无关改动”；全部现有用户改动均保留。
+
+---
+
+## 2026-08-12 01:13:27 +08:00 - Codex 子 Agent `/root/final_prime_plan_audit` - 研究计划引用投影真实性收窄
+
+- 用户请求/活动任务：仅修复直接研究计划的引用投影：空选择或全部无效选择不得自动扩张为整个文献目录；混合选择只保留合法目录项并稳定去重。只修改生产模块、定向单测并追加本日志，不修改 CLI、评审或 `Problem.md`。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan.py`
+  - `tests/unit/competition/test_contest_direct_plan.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：`_project_reference_selection` 现在对空、遗漏或全部非法的选择返回空元组；目录外字符串和越界编号始终被丢弃；混合输入仅保留合法编号/精确目录项，并按首次出现顺序去重。计划 schema 原已允许空引用，因此不会因模型未选择文献而阻断交付，也不会把未选择论文伪装为引用。新增空选择、全部越界、合法/非法混合和重复选择四类回归；原虚构引用案例同步改为断言空引用及 Markdown 的诚实缺省说明。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan.py` → `11 passed in 1.59s`。
+  - `poetry run ruff check src/autoresearch/competition/contest_direct_plan.py tests/unit/competition/test_contest_direct_plan.py` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/contest_direct_plan.py tests/unit/competition/test_contest_direct_plan.py` → `Success: no issues found in 2 source files`。
+  - `poetry run python -m py_compile src/autoresearch/competition/contest_direct_plan.py tests/unit/competition/test_contest_direct_plan.py` → 通过。
+  - 附加运行 `ruff format --check` 时发现生产文件已有与当前引用修复无关的全文件格式差异；为保持本次改动最窄，未执行会改写多处既有代码的全文件格式化。Ruff lint 本身通过。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。
+- 后续：引用目录仍作为允许集合而非默认引用集合。未来 CLI 可另行记录非法选择诊断，但本次未新增 API、重试或交付门禁。共享工作树含其他 Agent 改动，本子任务未 staging、未 commit。
+
+---
+
+## 2026-08-12 01:19:16 +08:00 - Codex 子 Agent `/root/plan_revision_stage` - 最终物化研究计划独立科学评审 sibling
+
+- 用户请求/活动任务：新增独立 sibling 模块，对最终研究计划执行一次配置模型科学评审；输入最终计划、真实探索性预实验 artifact/metrics/文件绑定、锁定真实参考目录与已选 Skill，输出 hash-bound JSON/Markdown、raw response 和作者回执。不得读取旧 objective review/audit/correction verdict，不得格式重试或改写计划；只新增生产模块、定向测试并追加本日志。
+- 使用的 Skill：`peer-review`。据此采用先重述问题和最强反证、再按假设—证据、零模型、分析单位、统计、外推、复现与引用逐项评审，并把重大与次要问题分层；没有套用论文发表门或字数/中文比例/机会格标准。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_scientific_review.py`
+  - `tests/unit/competition/test_contest_direct_plan_scientific_review.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 冻结 API `review_contest_direct_plan_science(...) -> ContestDirectPlanScientificReviewArtifact`，并提供 `build_contest_direct_plan_scientific_review_messages(...)` 与 `load_contest_direct_plan_scientific_review(path, verify_files=True)`。模型恰好调用一次；模块没有 repair/retry、计划作者回调或计划重写路径。
+  - reviewer 消息顺序为通用 scientific-review system → 原始问题与要求 → 锁定真实参考目录 → 已核验探索性预实验证据 → 最终计划与 hash → 每个 selected Skill 独立消息 → 单次输出合同。system 不含数论答案；输入不含旧 objective review、audit/correction verdict 或 delivery success 状态。计划 artifact 的额外旧审计字段会在投影边界被排除。
+  - 最终计划可直接消费原 direct/revision artifact，也可直接消费最终物化 `plan/research-plan.json`。物化输入优先使用 `question.question_zh`，机械恢复 nested datasets/experiments 与最终更正后的科学字段；完整物化 payload canonical hash 和源文件字节 SHA-256 同时绑定。`generation`、`status` 与旧更正/审计元数据不进入评审上下文。artifact 显式记录 `source_kind=materialized_final_plan` 和 `independence_scope=fresh_interaction_not_model_family_independence`，不把新交互冒充模型家族独立。
+  - 预实验进入模型前重算 artifact/manifest canonical hash、manifest/metrics 文件 SHA-256，并逐文件验证 manifest 与 artifact 的 evidence list、字节数和调用方额外 binding。metrics、参数、环境和小日志正文可进入 reviewer；raw/null 等大文件只提供绝对路径、字节数和 SHA-256，不冒充已逐行阅读。
+  - reviewer 返回 recommendation、问题重述、最强反证、总体评价、七个科学维度、优点、major/minor issues 和锁定参考编号。常见中英文别名、nested assessment、字段顺序、字符串/列表/issue object 由本地机械规范化；不检查篇幅或中文比例。越界引用或内容缺失只在 raw response/receipt write-once 后抛清晰异常，不触发作者重写或再次调用模型。
+  - JSON artifact 绑定最终计划、真实 pilot/metrics、全部已验文件、目录、Skill、输入、模型响应、receipt 和 Markdown hash；Markdown只投影 reviewer 科学内容与程序边界。程序固定声明 exploratory preexperiment、formal experiment=false、paper=false、prior audit context=false、plan rewrite=false、hand-written scientific prose=0。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_contest_direct_plan_scientific_review.py -q --no-cov` → `7 passed in 1.70s`。覆盖独立消息顺序/Skill 分离、旧审计隔离、一次调用、materialized corrected bytes/hash、宽容别名、major/minor、缺字段与越界引用的 response/receipt 先保留、预实验篡改在调用前失败、Markdown 篡改重放检测。
+  - 三模块联合 `poetry run pytest tests/unit/competition/test_contest_direct_plan_scientific_review.py tests/unit/competition/test_contest_direct_plan_revision.py tests/unit/competition/test_contest_prime_preexperiment.py -q --no-cov` → `27 passed in 5.59s`。
+  - `ruff format --check` → `2 files already formatted`；`ruff check` → `All checks passed!`；`mypy` → `Success: no issues found in 1 source file`；两个新文件 `py_compile` 通过。
+  - 无网络真实制品 smoke：直接读取 `science125-question-001-preexperiment-feedback-final/plan/research-plan.json` 与 live `prime-gap-pilot-v2/prime-preexperiment.json`，以 fake reviewer 隔离模型后完成 JSON/Markdown/response/receipt 及 loader 全重放；`source_kind=materialized_final_plan`，共验 18 个文件（17 evidence + manifest），最终物化计划 canonical hash `7d5e000598901dc32b71d829646150f2e844e0e1006da5ca202c9e0abf5bb5f5`。本任务未调用真实 Qwen。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。开发中首次静态检查发现两个联合类型/现代 `isinstance` 写法问题，随后修复；新增 materialized 测试首次因 fixture 只给一个目录项却复用 `[1,2]` reviewer 响应而正确失败，修正 fixture 后全绿。这些均未影响真实制品。
+- 后续：主 Agent/CLI 可把最终物化 plan path、live pilot path、锁定目录和已选 Skill 传入冻结 API，发起至多一次真实 reviewer 调用；无论 verdict 如何，都只生成独立 review artifact，不回写计划。共享工作树包含并行任务改动，本子任务未 staging、未 commit。
+
+---
+
+## 2026-08-12 01:23:35 +08:00 - Codex 子 Agent `/root/prime_feedback_integration` - 指定方向真实检索到研究计划的一键交付闭环
+
+- 用户请求/活动任务：实现“指定方向 → 真实检索 → 目标头脑风暴与评审 → 中文研究计划 → Markdown/TeX/PDF”的独立交付优先 CLI；复用既有方向检索、Skill 路由、研究目标阶段、直接计划生成与物化模块，不调用静态锁定目录兜底，不增加格式修订循环，不运行真实付费模型，并给后续独立科学评审留下只读插接点。
+- 使用的 Skill：`literature-review`。据此把来源可追溯性、多来源部分失败、检索时间、摘要、URL/DOI、引用允许集合和零结果失败作为证据边界；本任务是代码集成而非文献综述成稿，因此没有额外生成综述图或改写科研正文。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_plan_cli.py`
+  - `tests/unit/competition/test_contest_direction_plan_cli.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增 provider-neutral 入口 `run_contest_direction_plan_delivery(...)` 和 `python -m autoresearch.competition.contest_direction_plan_cli`。生产签名与命令行均不暴露测试 searcher 或人为 `retrieved_at`；输出目录必须为空，避免覆盖或混入旧制品。
+  - 执行顺序固定为题目/要求与通用方法上下文 → 仅 Skill 元数据路由 → 对选中 Skill 文件重新读取并复核内容/文件 SHA-256 → 默认 Arxiv/OpenAlex 真实检索 → 独立 brainstorm/review 临时 controller/capability → 研究目标阶段 → 单次计划生成 → 物化。Skill 正文只作为下游独立上下文注入，不写入通用 system prompt；两组临时身份在阶段结束后归档、能力撤销，响应与回执保留。
+  - 文献目录只接受带实际带时区检索时间、来源、非空摘要以及 HTTP(S) URL 或 DOI 的真实检索记录；允许单个来源失败后用另一来源继续。零合格记录会写入自身哈希可验证的 `direction-literature-failure.json` 并明确失败，绝不调用 `objective_literature_from_locked_catalog` 或其他静态目录兜底。
+  - 计划引用必须是合格真实检索目录的精确子集；虚构或目录外引用在物化前拒绝。格式/schema 失败直接结束，不重新请求模型。当前方向链没有预实验，计划必须诚实包含“尚未执行预实验”，交付报告固定声明 preexperiment/formal experiment/paper 均为 false。
+  - 物化后验证 JSON/Markdown/TeX/PDF；PDF 必须非空、可提取文字且不超过 20 页。优先采用 renderer 页数；其为 `None` 时独立读取，先显式寻找 `pdfinfo.exe` 以绕开 Windows PATH 中损坏的 `.cmd` override，再尝试 Python PDF reader。交付报告绑定输入、Skill、检索、目标阶段、计划、全部输出文件的路径/字节数/SHA-256，并提供后续独立科学评审的稳定 plan/report 路径与“不得删除或重写计划”约束。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_plan_cli.py` → `7 passed, 1 skipped`；跳过项是显式 `RUN_LIVE_CONTEST_DIRECTION_PLAN=1` 才运行的真实外部检索/模型 smoke，本任务按要求未触发付费调用。覆盖完整 mock 顺序、仅元数据路由与 Skill 正文分离、部分来源失败、实际检索元数据、身份撤销、页数 fallback 6 页成功与 21 页拒绝、坏 `.cmd` 绕过、零记录失败 receipt、虚构引用拒绝、一次调用失败关闭及生产 API 不暴露测试注入。
+  - 联合回归 `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_literature.py tests/unit/competition/test_contest_direct_skill_router.py tests/unit/competition/test_contest_research_objective_stage.py tests/unit/competition/test_contest_direct_plan.py tests/unit/competition/test_contest_direct_plan_render.py tests/unit/competition/test_contest_direction_plan_cli.py` → `52 passed, 1 skipped in 7.81s`。
+  - `poetry run ruff check src/autoresearch/competition/contest_direction_plan_cli.py tests/unit/competition/test_contest_direction_plan_cli.py` → `All checks passed!`；`ruff format --check` → 两文件已格式化；`poetry run mypy src/autoresearch/competition/contest_direction_plan_cli.py` → `Success: no issues found in 1 source file`；两文件 `py_compile` 与 `git diff --check` 均通过；模块 `--help` 正常。
+  - 只读真实 PDF fallback smoke：对既有首题最终研究计划 PDF 调用独立页数读取 → `(6, 'pdfinfo')`，证明实际 `C:\texlive\2026\bin\windows\pdfinfo.exe` 可用且未误调用损坏 `.cmd`。该 smoke 未访问网络、未调用模型、未改制品。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。外部数据依赖尚未执行 opt-in live smoke，因此不能把 mock 回归表述为已验证 Arxiv/OpenAlex 当前在线可用性；代码会保留分源失败证据并在零结果时失败关闭。
+- 后续：主 Agent 可在配置和凭证就绪时用 CLI 对指定方向运行一次 live 交付，或显式设置 `RUN_LIVE_CONTEST_DIRECTION_PLAN=1` 执行 opt-in smoke。独立科学评审 sibling 可消费交付报告中的最终计划路径，生成旁路 review artifact，但不得据 verdict 删除或重写计划。本任务未 staging、未 commit。
+
+---
+
+## 2026-08-12 01:43:12 +08:00 - Codex 主 Agent `/root` - 独立终审与指定方向真实检索一键闭环 live 收口
+
+- 用户请求/活动任务：恢复两项交付能力：①对首题真实预实验反馈后的最终物化研究计划执行一次独立科学评审；②把“指定方向 → Skill 选择 → 真实检索 → 假设构思 → 目标评审 → 中文计划 → JSON/Markdown/TeX/PDF”接成一键 CLI。只做交付所需局部修复，不进入正式实验、论文、投稿或额外安全工程。
+- 使用的 Skill：`peer-review`。据此让独立 reviewer 分别检查假设—证据、最强反证、零模型/对照、分析单位、统计、外推、复现和引用，并区分 major/minor；未把论文发表门、字数、中文比例或机会格覆盖引入本次终审。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_scientific_review.py`、对应测试：由子 Agent 新增，主 Agent 完成真实调用与重放。
+  - `src/autoresearch/competition/contest_direction_plan_cli.py`、对应测试：由子 Agent新增一键入口；主 Agent补真实大目录的相关性/载荷预算投影与 live 反例。
+  - `src/autoresearch/competition/contest_direct_plan.py`、对应测试：递归展开包装/双语章节键；校验前保留 raw response；显式限制 reasoning budget，避免可见计划被隐藏推理耗尽。
+  - `Problem.md`：新增并解决 `P-20260812-129`。
+  - `Agent.md`：仅追加本条；各子 Agent 已记录其独立模块。
+- 独立科学评审 live：调用配置的 `qwen3.7-max`，输入最终修正版 `science125-question-001-preexperiment-feedback-final/plan/research-plan.json`、live v2 prime pilot、17 份 evidence + manifest 和最终计划的 10 条锁定参考目录；旧 objective review、correction verdict 和 delivery success 未进入 reviewer 上下文。输出位于 `runs/contest-delivery/science125-question-001-preexperiment-feedback-final/independent-scientific-review-v1/`，artifact hash `0b971a4c8c43e931c3da0baef3aa90325d69f84611962c26426e7a01955acc34`，结论 `pass`、major/minor 均空；评审明确把结论限定为“模算术约束主导、强约束后仅剩小幅可检测信号”的探索性计划，不声称一般素数规律。评审只输出旁路 JSON/Markdown/raw/receipt，未改最终计划；loader 全文件重放通过。
+- 指定方向 live：方向为“有限尺度素数间隙序列中模算术约束与高阶顺序结构的信息论检验”。v1 在真实检索后因 39 条完整摘要使临时任务超过 32KB 而停止，目录完整保留。通用投影修复后，v2 取得 47 条真实记录、43 条合格记录，以完整记录预算选取相关子集；三个构思角色中两份成功、一份失败，独立目标 reviewer 仍形成 `degraded` 但可用目标，所有临时身份均归档移除。前两次计划作者可见输出因无界 reasoning 截断；保留第二次 raw 后，显式 thinking budget=3000，并只复用既有检索/目标制品完成最终作者调用。系统生成的计划引用 3 篇本轮真实检索记录，明确“尚未执行预实验”，没有伪造观察结果。
+- 最终方向制品：`runs/contest-delivery/direction-prime-gap-arithmetic-live-v2/`。`delivery-report.json` 诚实标明恢复模式、7 次成功 artifact 调用 + 2 次失败作者调用 = 9 次 provider request；`system-authored-research-plan.json` artifact hash `c311ffa05682bcf75f36d0b188916e1d33bac9e20df336e44cbe1e11c8798843`。计划 JSON/Markdown/TeX/PDF 齐全，PDF 独立验证 6 页、未加密、中文必要章节可读；35 个 inventory 文件路径/字节/SHA-256 全部重算一致。完整检索 artifact 保留未裁剪；planning 子集只是上下文投影，不冒充文献合格性判断。
+- 验证：
+  - 独立 review 专项 `7 passed`；review/revision/pilot 联合 `27 passed`。
+  - 最终九模块联合：`82 passed, 1 skipped in 12.30s`；跳过的是默认关闭的测试级付费 live case，本条已另行真实运行默认 Arxiv/OpenAlex 与配置 Qwen。
+  - Ruff → `All checks passed!`；`ruff format --check` → 6 files formatted；Mypy → 3 source files success；py_compile 通过。
+  - Prime final review loader、方向 direct-plan loader、PDF `pdfinfo.exe`、方向 report 35-file inventory 均独立重放通过。
+- 问题新增或更新：`P-20260812-129` Resolved。另记录两个非产品故障：初次配置探针错误导入不存在的 `load_config`，已改用 `ConfigParser`；首次真实 review 已成功落盘，但打印脚本访问不存在的 `artifact.output_path` 后 exit 1，随后直接用正式 loader 验证 artifact，未再调用 reviewer。
+- 边界与后续：首题终审仍是同一配置模型的新交互，不是模型家族独立；方向计划未执行预实验，因此不是论文或实验结果。方向 live 目录中的一个 OpenAlex 预印本来源质量偏弱，目标/计划阶段只证明真实检索和引用闭合，不等于全文同行评议；后续若用于正式研究，应增加全文质量筛选和真实预实验。本轮未 staging/commit：共享工作树含多日并行且互相依赖的未提交改动，强行聚焦提交会混入无关文件。
+
+---
+
+## 2026-08-12 02:29:38 +08:00 - Codex 子 Agent `/root/evidence_skill_router` - 真实文献后证据感知 Skill 路由
+
+- 用户请求/活动任务：把 Skill 选择移到真实文献检索之后；保持旧 v1 API/制品兼容，并让新路由只接收程序从真实检索制品投影的有界完整记录。模型只选 Skill ID，哈希与证据绑定全部由程序计算。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_skill_router.py`
+  - `tests/unit/competition/test_contest_direct_skill_router.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 保留无证据时原 `contest-direct-skill-routing-v1`、原三消息顺序与原输入/制品哈希投影；新增可选 `literature_evidence_context` 后使用 v2，顺序固定为 system → direction/requirements → program-projected real literature → Skill metadata。selector 仍只见 `skill_id/name/description/content_sha256`，没有读取或传入 Skill 正文的 API。
+  - 新增严格冻结的文献 evidence context、record 与 provenance 契约。预期通过 `ContestDirectLiteratureEvidenceContext.from_retrieval_artifact(...)` 从已重新校验的 `ContestDirectionLiteratureArtifact` 选择完整记录；每条保留 record ID、题名、完整摘要、HTTP(S) URL、来源/查询/检索时间及 record SHA-256，拒绝伪装 retrieval artifact、未知/重复记录、无 URL/DOI 记录和额外 `skill_body/content` 字段。
+  - 文献上下文固定 14 KiB UTF-8 canonical JSON 上限；不截断任何单条摘要，超限要求调用者重选更少的完整记录。v2 artifact 与模型消息共同绑定完整 retrieval artifact hash、本次 record IDs、完整记录 subset hash 和 evidence canonical hash；文献变化会改变 messages/input/artifact hash。哈希、ID 与选择回执均由程序生成，模型响应只允许目录中的 ID。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_contest_direct_skill_router.py -q --no-cov` → `11 passed in 1.70s`。覆盖 v1 三消息兼容、v2 顺序、恶意 Skill 正文字段拒绝、完整摘要无截断、14 KiB 超限失败、真实 retrieval factory、证据变更哈希传播、空/未知 Skill 拒绝和 v2 loader 重放。
+  - 联合 CLI 回归 `poetry run pytest tests/unit/competition/test_contest_direct_skill_router.py tests/unit/competition/test_contest_direct_plan_cli.py tests/unit/competition/test_contest_direction_plan_cli.py -q --no-cov` → `23 passed, 1 skipped in 1.87s`；跳过项为既有 opt-in live case。
+  - `poetry run ruff check ...` → `All checks passed!`；`ruff format` 后两文件格式化；`poetry run mypy src/autoresearch/competition/contest_direct_skill_router.py` → `Success: no issues found in 1 source file`；`py_compile` 通过。
+- 问题新增或更新：无；按子任务边界未修改 `Problem.md`。
+- 后续：正确主链应先无 Skill 调用方向检索，再从 retrieval artifact 选取不超过 14 KiB 的完整记录子集构造 context 并路由 Skill；后续才加载已选 Skill 正文。共享工作树含其他 Agent 改动，本子任务未 staging、未 commit。
+
+---
+
+## 2026-08-12 02:37:22 +08:00 - Codex 子 Agent `/root/postpilot_objective_stages` - 预实验前构思与预实验后单次目标评审拆分
+
+- 用户请求/活动任务：纠正指定方向科研链的阶段顺序，将“真实检索与 Skill 细化后的候选假设构思”与“真实预实验后的独立目标评审”拆成两个 sibling 阶段；不得在预实验前评审，不得由程序按 p 值替模型作科学结论，不得进行第二次科学重想。只新增独立模块和定向测试，不修改旧 router、旧 objective stage、CLI、direct plan、revision 或 `Problem.md`。
+- 使用的 Skill：`hypothesis-generation`。据此要求候选显式给出可检验假设、研究目标、可证伪条件、科学对象、观测量、主要指标与竞争零模型；本任务交付的是可复用代码阶段而非假设报告，因此未生成该 Skill 面向成稿报告要求的示意图或 LaTeX 报告。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_hypothesis_stage.py`
+  - `tests/unit/competition/test_contest_direction_hypothesis_stage.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增 `run_contest_direction_hypothesis_brainstorm(...)`：三个临时 Qwen 内容代理并行读取指定方向、真实检索目录、入选 Skill 正文和 caller 提供的 executable-adapter metadata，只输出预实验前未评审候选。候选包含程序计算的 `candidate_id` 以及模型撰写的中文假设/目标/证伪条件，并原样保留 `adapter_id/scientific_object/observable/metric/null_models/reference_indices`；部分代理失败形成 `degraded`，全部失败则关闭。明确要求选择具体 adapter 时逐字复制同一 descriptor 的兼容字段，禁止翻译、改写或跨 adapter 拼接；程序不靠关键词猜适配器。
+  - 新增 `run_contest_postpilot_objective_review(...)`：输入已持久化 brainstorm、pilot brief 和 `prime-preexperiment.json`，先调用正式 loader 全量复核 manifest 及 raw/null/metrics/log/source 等全部 evidence 的 bytes/SHA-256，再派发一个与构思角色分离的临时 reviewer，恰好一次返回 `retain | narrow_once | terminate`、最终目标/假设/证伪条件、预实验解释和真实目录引用。失败不进行内容重试或第二次科学调用；`model_call_count=1`、`scientific_rethink_count=1`。
+  - post-pilot 消息读取 stdout/stderr 正文、全部 aggregate results、五个区间主要观测量与四类零模型关键比较；raw/null CSV 仅由程序做全文件哈希验证，模型消息明确未逐行读取。完整输入的绝对路径和哈希保留在 artifact；送模时用紧凑相对 path/bytes/SHA-256 清单。长 pilot brief 只选择完整科学字段而不截断单字段。定向回归锁定最终任务消息小于 28,000 字符，避免 32KiB transport contract。
+  - 两类 artifact 都有程序计算 hash、固定落盘路径、`plan_context_payload()` 与 loader；brainstorm loader 复核 batch、manifest、assignment、result、archive、task record 和 authorship receipt，post-pilot loader 可重哈希全部绑定输入。程序不依据显著性阈值生成 decision，也不把探索性预实验冒充正式实验。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_hypothesis_stage.py` → `5 passed in 5.46s`。覆盖完整未评审构思、程序 ID、适配器逐字边界、单角色失败降级、`narrow_once`、`terminate`、真实小型素数预实验、一次 reviewer 调用、五区间/四零模型紧凑投影、全哈希清单、<28K 消息和 raw 文件篡改在模型调用前失败。
+  - `poetry run ruff format ...` → `2 files left unchanged`；`poetry run ruff check ...` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/contest_direction_hypothesis_stage.py` → `Success: no issues found in 1 source file`。
+  - 两个新增文件 `py_compile` 通过。
+- 问题新增或更新：无；开发中首次测试暴露 adapter tuple 进入 canonical JSON 失败，已改为从 Pydantic JSON 投影计算 descriptor hash；首次 post-pilot payload 超过 32KiB，随后去除重复路径与重复 interval 字段，并以完整字段投影替代字符截断，最终专项与 <28K 断言通过。均已在交付前解决，未修改 `Problem.md`。
+- 后续：集成 Agent 可按 `真实检索 → 证据感知 Skill 选择 → brainstorm → adapter 精确兼容判定 → 真实 pilot → post-pilot review` 顺序调用两个 API；最终计划作者只消费 post-pilot `plan_context_payload()`。本子任务未运行付费模型；真实 provider smoke 应由统一 CLI 在完整链路中执行。共享工作树含并行改动，未 staging、未 commit。
+
+---
+
+## 2026-08-12 02:48:43 +08:00 - Codex 子 Agent `/root/postpilot_objective_stages` - 真实 live post-pilot 上下文预算收窄
+
+- 用户请求/活动任务：真实 evidence-first live 已完成检索、构思和素数预实验，但 post-pilot reviewer 在模型调用前因真实 planning literature、候选、metrics 与逐文件清单重复进入消息而超过 32KiB。要求不牺牲磁盘验证，只把入选候选、其引用的完整文献、冻结协议、aggregate metrics 和紧凑证据清单交给 reviewer，并用当前 live 制品完成不调用模型的 real-shape preflight。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_hypothesis_stage.py`
+  - `tests/unit/competition/test_contest_direction_hypothesis_stage.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - post-pilot 读取 hash-bound pilot brief 的 `selected_candidate`，逐字段核对它确实属于 brainstorm 且 adapter/scientific object/observable/metric/reference indices 未变化；reviewer 不再看到另外两个未入选候选。
+  - 文献投影只按该入选候选实际引用的原目录编号选择，最多五条；每条保留完整 title、abstract、URL、DOI、retrieval source/time 和 record hash，不截断字段。送审编号重新连续化，同时保留 `source_catalog_index`。若整体预算仍超限，只按稳定末尾逐条移除整条记录，永不切摘要或单个字段，至少保留一条完整记录。
+  - pilot brief 只投影 selected candidate、adapter descriptor、冻结参数以及 direction/hypothesis/literature/skill/provisional 等输入 hash；不包含 provisional plan 正文。metrics 只投影完整四类 `aggregate_results` 和 validation/scientific 顶层字段；完整 metrics 与 interval 明细仍在调用前逐文件验证并保存在 artifact 绑定中。
+  - 模型侧 evidence inventory 改为整体 `verified_inputs_bundle_sha256`、总文件数/总字节、brainstorm/pilot brief/preexperiment artifact/manifest/metrics/stdout/stderr 七类关键条目，以及 raw/null CSV 各自的文件数、总字节和 bundle hash。artifact 仍保留本次 live 的 38 个逐文件绝对路径、bytes、SHA-256，并新增 bundle hash 自校验。
+  - 新增精确 UTF-8 task input 预算计算，目标上限 28KiB；artifact 记录 `task_input_utf8_bytes`。当前真实 live shape 在不调用模型的 build-only preflight 中为 `18,543 bytes`，保留入选候选引用的三条完整文献（原编号 1、2、3）、38 个已验证文件的整体绑定、5 个 raw 与 5 个 null CSV 组绑定。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_hypothesis_stage.py` → `6 passed in 6.26s`。新增 current-live-shape 测试直接读取 `direction-prime-gap-evidence-first-live-v1` 的 brainstorm、pilot brief 和真实 pilot，拦截临时池派发以保证未调用模型，并验证 UTF-8 预算、完整文献字段、原目录编号和证据组计数；制品不存在的干净环境会显式 skip 该 live-shaped case。
+  - 独立只读 live preflight → `task_input_utf8_bytes=18543`、`projected_literature_count=3`、`source_indices=[1,2,3]`、`verified_file_count=38`、`key_file_count=7`、`raw_count=5`、`null_count=5`；未调用 provider。测量产生的两个空临时目录已在确认位于该 live run 内且为空后删除。
+  - Ruff format/check 通过；Mypy → `Success: no issues found in 1 source file`；两个文件 `py_compile` 通过。
+- 问题新增或更新：无；这是同一 P0 的局部消息投影修复，完整 evidence 校验没有放宽，未修改 `Problem.md`。
+- 后续：统一 CLI 可从已完成真实 pilot 处续跑 post-pilot reviewer。该 reviewer 仍只允许一次科学调用；后续最终计划与终审由主链负责。本 follow-up 未 staging、未 commit。
+
+---
+
+## 2026-08-12 02:56:35 +08:00 - Codex 子 Agent `/root/postpilot_objective_stages` - live post-pilot 旧 shape 只读兼容
+
+- 用户请求/活动任务：严格 resume 发现真实 post-pilot reviewer 已在 schema 新增 `verified_inputs_bundle_sha256` 前成功落盘；要求不重跑模型、不修改旧 artifact 字节，只从旧制品已有完整逐文件绑定确定性恢复该派生字段，并继续严格验证。
+- 变更文件：`src/autoresearch/competition/contest_direction_hypothesis_stage.py`、`tests/unit/competition/test_contest_direction_hypothesis_stage.py`、`Agent.md`（仅追加本条）。
+- 变更摘要：post-pilot artifact 的 before-validator 仅在该字段缺失时严格解析非空 `verified_inputs`，从规范 JSON 投影计算 bundle SHA-256；after-validator 始终重算并核对 bundle，同时接受当前 artifact hash 或仅排除这个后增派生字段的 legacy artifact hash。新 `create` 路径仍显式写入字段。loader 继续逐项检查实际路径、大小和 SHA-256，因此不存在信任缺省值的降级。
+- 验证：专项 `8 passed in 6.04s`；现场 `direction-prime-gap-evidence-first-live-v1/postpilot-stage/postpilot-objective-review.json` 缺该字段但成功只读加载、重算 bundle、复核 38 个绑定文件，加载前后原字节完全一致。另以新制品构造 legacy shape，并篡改一个 binding、重算 legacy artifact hash，loader 仍因实际文件不匹配而拒绝。Ruff format/check、Mypy、py_compile、diff check 全部通过。
+- 问题新增或更新：无；没有修改 `Problem.md`，没有调用 provider，没有重写旧 artifact。
+- 后续：统一 CLI 可直接严格 resume 已保存 post-pilot artifact，不应再次调用 reviewer。本子任务未 staging、未 commit。
+
+---
+
+## 2026-08-12 03:03:53 +08:00 - Codex 子 Agent `/root/direction_preexperiment_integration` - 指定方向 evidence-first 真实预实验闭环与严格 checkpoint 恢复
+
+- 用户请求/活动任务：在不重构既有科研模块、不让格式门反复消耗模型的前提下，把正确顺序接成一键闭环：指定方向 → 无 Skill 通用真实检索 → 文献证据后选 Skill → 三候选假设构思 → 明确兼容的真实素数预实验 → 一次预实验后独立目标评审 → 一次证据修订 → JSON/Markdown/TeX/PDF → 一次独立科学终审；哈希、ID、状态和路径只能由程序计算。真实长链失败后必须严格 checkpoint resume，不得重跑前七次调用、pilot 或已保存 revision。
+- 使用的 Skill：`pdf`。最终制品明确要求可打开 PDF，因此按该 Skill 用独立 PDF 工具核页数、加密状态和文字可提取性，并目视检查首页；Poetry 环境没有 `pypdf` 后没有安装新依赖或伪报成功，改用实际 TeX Live `pdfinfo.exe`、`pdftotext.exe` 与 `pdftoppm.exe`。
+- 变更文件：
+  - 新增 `src/autoresearch/competition/contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`。
+  - 修改 `src/autoresearch/competition/contest_direct_plan_revision.py`、`tests/unit/competition/test_contest_direct_plan_revision.py`。
+  - `Problem.md`：新增 `P-20260812-130`，同时记录 32 KiB、legacy shape、数字守卫恢复与终审漏检的真实证据。
+  - `Agent.md`：仅追加本条。证据感知 Skill router 与 hypothesis/post-pilot sibling 由其各自子 Agent 修改并已独立记录；本 Agent 只做新 orchestrator、revision 最窄胶水与联合验收，未改它们的科研模块实现。
+- 变更摘要：
+  - 新一键 API/CLI 固定科学顺序，不再调用旧 bundled objective review。通用检索显式 `selected_method_skills={}`；真实 literature artifact 形成后才把完整记录的有界子集交给 v2 Skill router，随后加载入选 Skill 正文。三个临时 Qwen 只生成可证伪候选；程序仅按显式 adapter descriptor 判断可执行性，不按关键词或显著性替模型选科学结论。
+  - 注册唯一真实 adapter `prime-gap-information-theory-v1`，兼容性同时要求 `consecutive_integer_primes`、`ordered_consecutive_prime_gaps`、tie-aware 五阶排列熵、支持的四类零模型子集以及计算数论 Skill。pilot brief 冻结参数、decision rule、retrieval/routing/brainstorm/provisional hash 和 protocol delta；`source_plan_path` 明确只是 hash-bound snapshot，不声称编译或执行模型计划。unsupported 方向在 `required` 策略写 blocked receipt，绝不伪造预实验。
+  - 真实 pilot 后只进行一次 post-pilot reviewer 和一次最终计划 revision；provisional 仅作内部 evidence-bound baseline，从不渲染或交付。最终独立 reviewer 绑定已物化 `plan/research-plan.json` 和完整 pilot evidence，只输出旁路 verdict，不删除或改写计划。交付报告逐阶段记录 attempt/success/failure、历史/当前 provider 调用、真实 pilot 边界与完整文件 inventory。
+  - `--resume-existing` 对同一 root 逐件重验 direction、无 Skill literature、v2 routing、当前 Skill bytes/manifest、brainstorm batch 全套制品、adapter、provisional、pilot brief、prime manifest/raw/null/metrics/log。已存在 post-pilot、revision、render 和 review 均只读跳过；残缺或多份 revision sidecars 失败关闭。若 provider revision 已有唯一 raw response 与 authorship receipt 但下游本地守卫失败，系统重建同一 completion，重算 receipt/messages/response/parsed hash 后本地 replay，绝不发第二次 provider 请求。
+  - revision 数字守卫新增 `M/million/百万` 的乘百万语义和裸 `10^6` 整体解析，不再把 `21M/51M` 当作 `21/51`、也不把指数 `6` 当观测值；不等价的 `52M` 仍拒绝。非观测语气仅补“可能源于”，使“残差信号可能源于模2310”保持替代解释，Observed Results 若把未执行 `2310` 写成观察仍拒绝。后增 post-pilot provenance hash 不再进入科学 revision context，从而既由程序独立验证，又可精确重放旧已付费 prompt。
+- 真实 live 与恢复：
+  - fresh 目录 `runs/contest-delivery/direction-prime-gap-evidence-first-live-v1/` 取得 54 条去重真实记录，检索 query generation 未接触 Skill；v2 路由见 5 条完整证据后选择计算数论/新颖性/因果方法 Skill；三个假设 Agent 全部成功并逐字选择同一真实 adapter。内部 provisional 与真实 `prime-pilot-87a71991dcd3b3ed` 完成，原始间隙、五区间 null draws、metrics、参数、环境、源码和日志全部保存。
+  - 首次 post-pilot 在 provider 前因 >32 KiB 停止；投影修复后一次 Qwen 得到 `narrow_once`。唯一 Qwen revision raw/receipt 保存后被旧数字守卫误拒；严格 resume 没有重跑检索、路由、构思、provisional、pilot、post-pilot 或 revision。最终只新增一次独立科学 review 调用，交付报告诚实计为历史 8 + 本次 1 = 9 次 provider requests，并记录 `preserved_response_replayed_locally=true` 和一次 post-provider validation failure recovered。
+  - 最终 revision `direct-plan-revision-19aadbda96c28fd0`，计划 JSON/Markdown/TeX/PDF 齐全；PDF 6 页、126039 bytes、A4、未加密、中文标题/预实验/参考文献可提取，首页目视无截断或黑框。终审 source file SHA-256 与实际 materialized JSON 完全一致，verdict 为 `pass`。prime loader 重验 17 个 manifest evidence 文件，最终 delivery inventory 65 项与 inventory hash 完全一致。
+- 验证：
+  - revision 专项 `16 passed`；loop 专项 `6 passed`；最终 literature/router/hypothesis/revision/render/review/pilot/loop 八模块联合 `70 passed in 16.06s`。
+  - 聚焦 Ruff → `All checks passed!`；Mypy → `Success: no issues found in 4 source files`；四个生产模块 `py_compile` 通过；CLI `--help` 正常并暴露 `--resume-existing`、source reuse、required/if-supported 与各阶段预算。
+  - 正式 loaders 全文件重放：revision 1 call、pilot completed、independent review 1 call/pass；report inventory exact/hash 均 true。PDF 首次按 Skill 尝试 `pypdf` 因未安装失败，随后 TeX Live `pdfinfo.exe`/`pdftotext.exe` 成功；损坏的 PATH `pdfinfo.cmd` 未作为成功依据。`git diff --check` 仅报告已有 Windows CRLF 将来归一化提示，无 whitespace error。
+- 问题新增或更新：`P-20260812-130` Open scientific issue。人工反证发现正式计划每零模型 100 draws、四项 Bonferroni 后 alpha 0.01 的门在 `+1` Monte Carlo p 下理论不可达（最小调整后 p≈0.0396），终审错误给 pass；终审还没有清楚区分 pilot 的宽 `10^6` 整数区间与正式计划拟用的每块 `10^6` 个素数。当前 plan/review 保持 write-once，未静默改文或追加第二次科学调用。
+- 后续：若用户要消除该科学缺陷，应新建显式 plan amendment/v2 谱系，让模型把正式阶段 null draws 提高到严格门可达范围（数学下限 400，实际应更多）、明确 Monte Carlo p 与多重比较合同，并显式说明 pilot/formal 分析单位差异；随后对新物化 JSON 做新的独立 review。现有 completed resume 按设计只读返回，尚无 versioned post-delivery amendment 入口。本轮未 staging、未 commit；共享工作树含多日并行改动，强行提交会混入无关文件。
+
+---
+
+## 2026-08-12 03:14:39 +08:00 - Codex 子 Agent `/root/direction_preexperiment_integration/amendment_review_context` - 独立科学评审可选红队清单上下文
+
+- 用户请求/活动任务：只为 `contest_direct_plan_scientific_review.py` 增加通用、可选的红队审计清单上下文。非空清单必须以单独完整消息进入一次全新独立评审，输入与 artifact 绑定清单哈希，响应必须显式逐项回应 `finding_id`；无清单的旧消息、artifact 与哈希路径保持兼容。不得修改 `Problem.md` 或其他生产模块。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direct_plan_scientific_review.py`
+  - `tests/unit/competition/test_contest_direct_plan_scientific_review.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - `build_contest_direct_plan_scientific_review_messages(...)` 与 `review_contest_direct_plan_science(...)` 新增关键字参数 `required_audit_findings: Sequence[str | Mapping[str, Any]] = ()`。字符串可携带如 `RT-01` 的前缀；没有 ID 时由程序按稳定顺序分配；映射字段和嵌套 JSON 内容完整保留并确定性排序，重复或空 ID 在模型调用前拒绝。
+  - 非空清单形成独立 `required_red_team_audit_findings` 用户消息，位于最终输出合同之前；系统提示明确这是全新交互、清单只是必须独立核验的检查线索而非预设结论，并要求在科学 assessment 或 major/minor issues 中原样写出每个 `finding_id`。清单 canonical hash 同时进入 prompt、input hash 和 artifact；`prior_audit_context_supplied=True`。
+  - 模型仍只调用一次。raw response 与 authorship receipt 先不可变落盘，再对规范化后的 assessment/issues 做精确 ID 边界检查；缺少任一 ID 时直接失败，不重试、不生成 Markdown/JSON。artifact 增加可选 `required_audit_findings_sha256`，并把旧 `prior_audit_context_supplied: Literal[False]` 放宽为 `bool`。
+  - 空清单路径不增加消息、不改变 input payload、不写可选字段，旧 Markdown 文案不变；artifact validator 在可选字段缺省时从 canonical hash 投影中移除该后增默认字段。现场旧 live artifact `direct-plan-scientific-review-fe7cfb0bb0eec093` 已只读加载，文件 SHA-256 前后同为 `932a5bdbcade984b6b348a6484c0dbfe485cfafc9500ed294f98b2a1a29033d8`。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_scientific_review.py` → `9 passed in 1.91s`。覆盖默认路径不落新字段、完整映射/字符串清单、稳定 ID 顺序与清单哈希、fresh interaction 边界、一次成功评审，以及遗漏 ID 后仅保留一次 response/receipt 且不生成终稿。
+  - `poetry run ruff format ...` → 最终无待格式化变更；`poetry run ruff check ...` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/contest_direct_plan_scientific_review.py` → `Success: no issues found in 1 source file`。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。首次新增失败测试被既有锁定目录门先拦截，修正测试 fixture 为完整两条目录后通过，不影响生产实现。
+- 后续：上层 amendment/v2 编排器可把程序化红队发现直接传入 `required_audit_findings`，但本子任务未接线该编排器、未调用付费模型、未修改已完成 live 制品，也未 staging/commit 共享工作树。
+
+---
+
+## 2026-08-12 03:27:05 +08:00 - Codex 子 Agent `/root/direction_preexperiment_integration/amendment_review_context` - 红队清单输出格式门宽容化
+
+- 用户请求/活动任务：按交付优先与格式宽容原则修正刚加入的审查合同：保留 `required_audit_findings` 的独立完整消息、ID/hash 与 artifact 绑定，但不得要求 Qwen 在自由中文评审里逐字复述 `finding_id`；确定性红队审计失败应由上层 orchestrator 阻断，不得由本模块用 ID 文本格式替代科学判断。
+- 变更文件：`src/autoresearch/competition/contest_direct_plan_scientific_review.py`、`tests/unit/competition/test_contest_direct_plan_scientific_review.py`、`Agent.md`（仅追加本条）。
+- 变更摘要：删除规范化响应后扫描 assessment/issues 并因缺少 ID 失败的 hard gate，同时删除对应 helper。非空清单提示改为“实质核验线索、并非预设结论、finding_id 仅用于程序绑定”；最终合同明确允许自然中文组织评估且无需逐字复述 ID。清单全文、稳定 ID、canonical hash、input hash、artifact 字段、fresh-interaction 边界、单次调用和 response/receipt 不可变留存均保持不变；空清单兼容路径未改。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_scientific_review.py` → `9 passed in 1.78s`；新增/改写定向用例证明响应完全不含 `RT-01` 时仍在一次调用后生成 JSON/Markdown artifact，response 与 receipt 均各一份。Ruff format/check 通过；Mypy → `Success: no issues found in 1 source file`。
+- 问题新增或更新：无；按任务边界未修改 `Problem.md`。
+- 后续：上层 amendment/v2 必须根据 deterministic audit 的布尔/结构化结果决定是否阻断；本 review 模块只负责把非空清单完整交给独立评审并绑定其来源，不以格式复述作为审计已解决的证明。本轮未调用 provider，未 staging/commit。
+
+---
+
+## 2026-08-12 03:43:01 +08:00 - Codex 子 Agent `/root/direction_preexperiment_integration/v4_targeted_tests` - v4 七字段定向修复闭环测试
+
+- 用户请求/活动任务：为 `contest_direction_targeted_scientific_repair_cli.py` 增加独立、交付优先的 mock 测试，证明唯一 repair 模型只返回七个允许字段，其余科学计划字段由程序逐值冻结；只有七项确定性 RT 审计全部通过后才渲染并进行一次自由科学评审，失败时必须在渲染和评审前短路，且 v1/v2/v3 检索、路由、假设和预实验均不重跑。
+- 变更文件：新增 `tests/unit/competition/test_contest_direction_targeted_scientific_repair_cli.py`；`Agent.md`（仅追加本条）。未修改生产实现或 `Problem.md`。
+- 变更摘要：构造独立的 v1/v2/v3 hash-bound mock 谱系与真实 Pydantic revision artifact；成功用例核对 repair response schema 恰好七字段、一次 repair → 七项 RT 全绿 → render → 一次 non-rewriting review 的调用顺序、两次新 provider request 记账、四类上游阶段 `rerun=false`，并从落盘 v4 artifact 重新加载验证九个冻结字段与 v3 模型值完全相等、七个可修字段逐值等于模型响应。失败用例让真实 `_audit_amended_plan` 对不完整方法返回 false，证明系统只保留一次 repair 及审计/报告，绝不创建 plan 或 independent-review 目录。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_targeted_scientific_repair_cli.py` → `2 passed in 1.88s`（格式化后复跑）；`poetry run ruff format ...` → `1 file reformatted`；`poetry run ruff check ...` → `All checks passed!`；`poetry run python -m py_compile ...` → 通过。
+- 问题新增或更新：无；首次成功用例直接比较 JSON 列表与模型 tuple 导致一项测试失败，改为用正式 `ContestDirectPlanRevisionArtifact` 重新加载后按模型值比较，复跑全绿；这只是测试断言类型差异，未修改 `Problem.md`。
+- 后续：主 Agent 可将本专项与生产模块静态检查合并后执行唯一 live v4 repair；本子任务没有调用真实 provider、没有改写 v1/v2/v3 制品，也未 staging/commit 共享工作树。
+
+---
+
+## 2026-08-12 04:04:51 +08:00 - Codex 子 Agent `/root/direction_preexperiment_integration` - v2–v5 版本化科学修订与最终交付
+
+- 用户请求/活动任务：对已完成的 evidence-first 素数间隙研究计划做版本化科学修订，不覆盖 v1、不重跑检索/路由/构思/真实 pilot；修复 Monte Carlo 显著性门不可达、残基路径与 wheel-210 语义、弱序并列编码、pilot/formal 分析单位、simulation z 解释和引用边界。只在确定性 RT-01–RT-07 审计通过后物化新计划，并进行一次 fresh、non-rewriting 独立科学评审；格式错误不得触发内容循环。
+- 使用的 Skill：`peer-review` 与 `pdf`。前者用于把旧终审漏检转化为最强反证、零模型、分析单位、统计可达性、外推与引用逐项核验，而不是机械 ID 复述；后者用于独立核验最终 PDF 的页数、加密状态、文本层与视觉可读性。
+- 变更文件：
+  - 新增 `src/autoresearch/competition/contest_direction_scientific_amendment_cli.py`、`src/autoresearch/competition/contest_direction_targeted_scientific_repair_cli.py`。
+  - 修改 `src/autoresearch/competition/contest_direct_plan_revision.py`；配套修改/新增 `tests/unit/competition/test_contest_direct_plan_revision.py`、`tests/unit/competition/test_contest_direction_scientific_amendment_cli.py`、`tests/unit/competition/test_contest_direction_targeted_scientific_repair_cli.py`。
+  - 子 Agent 独立修改并已单独记录 `contest_direct_plan_scientific_review.py` 的可选红队上下文和格式宽容逻辑；本条只记录上层接线与联合验收，不重复冒充其改动。
+  - 更新 `Problem.md` 的 `P-20260812-130`；本条追加到 `Agent.md`。
+  - 真实版本目录：`runs/contest-delivery/direction-prime-gap-evidence-first-live-v2` 至 `...-v5`。v1、v2、v3、v4 和 v5 的历史失败/成功字节均未删除或覆盖。
+- 变更摘要：
+  - 新增 versioned amendment 入口，严格加载并哈希复核 v1 的最终计划、真实 prime pilot、metrics、runner 源码与锁定文献；修订上下文合并真实检索目录及 pilot 锁定的一手方法来源。哈希、revision ID、文件路径与状态均由程序计算，Qwen 只写科学内容。
+  - RT-01–RT-07 硬科学审计覆盖：残基路径键 `(segment,left mod30,right mod30)`；wheel-210 的 100k 数轴段点数/端点与允许候选点无放回抽取边界；pilot 199 draws/raw 0.005/Holm 0.02/alpha 0.05 与 formal 999/+1/Holm/adjusted p<0.01；weak-order 与 Fubini(5)=541；pilot 宽 10^6 数轴区间和 formal 每块 10^6 个素数的单位差；有限 simulation null SD 的 z 诊断非 population effect；Bandt-Pompe、Bian、Lemke Oliver、Banks-Ford-Tao、Phipson-Smyth 等锁定引用与局限。
+  - v2/v3 各允许恰好一次全文修订和一次独立 reviewer 调用；确定性审计失败时不把 reviewer 的 pass 当完成。v4 改为恰好一次七字段局部修订，程序冻结其余九字段；v5 再只修 `paper_abstract`、`results`、`limitations`，其余 13 个字段逐值冻结。没有字符串补丁、内容 retry 或格式重写循环。
+  - 发现 v4 RT-05 与 v5 RT-06 是审计假阴性而非剩余科学缺陷：v4 已写“二者定义不同，不可混同”，v5 的 `metrics` 已写 z 仅相对有限 simulation null SD、不是 population effect size。只扩大确定性语义 marker/字段范围后对原 v5 bytes 本地重审；旧 audit 与 blocked report 保留，新审计写入 `targeted-scientific-repair-audit-v2.json`，未重放 repair provider。
+  - 审计 7/7 后才物化 JSON/Markdown/TeX/PDF，并仅发起一次 fresh freeform review。reviewer 收到完整、哈希绑定的红队清单但无需逐字复述 RT ID；最终 recommendation=`pass`，program audit 仍是不可绕过的完成门。终审绑定物化后的 `plan/research-plan.json`，不绑定中间 revision 文件。
+- 真实 live 结果：
+  - v2 revision `direct-plan-revision-a721c393ee65cb67`、v3 revision `direct-plan-revision-71da2e37c0fdf5ff`、v4 revision `direct-plan-revision-18aa7cb807150142` 均作为失败证据保留；v5 最终 revision 为 `direct-plan-revision-cd64725380df9b6b`，artifact hash `f6fbe5445c223da9f9597663393a774b3235a1a91f40ece8dab8cfce5278cd72`。
+  - 真实 pilot 沿用 `prime-pilot-87a71991dcd3b3ed`，artifact hash `f57ef2e38c4b3f86616ab276dfc937fe13d1f6c8583bd2e0c11f0f82908ad659`；未重跑检索、Skill 路由、hypothesis 或 preexperiment，正式实验仍明确为未执行。
+  - 最终报告 `runs/contest-delivery/direction-prime-gap-evidence-first-live-v5/delivery-report-v2.json` 状态 `completed`，SHA-256 `fcaf0b2ff9d14149c4bc4ad2a0a7e665905910fd476093660334c6b68a44f770`。v5 记账为一次三字段 repair + 一次 fresh review，共 2 次 provider request、0 内容 retry；v2/v3/v4 历史尝试独立保留，不伪装为单次成功。
+  - 最终独立 review artifact hash `7c43d222b60b8560b8f337ac70c97f022e22a2c27ef467c2027cdbae8b854b64`；物化 plan JSON SHA-256 `46394106cedfb11f449034c1ed080a492f21894246220c2a9b733efe533c1ec2`。PDF 8 页、A4、138965 bytes、未加密，SHA-256 `017b753749c44549b0cdf9f0938ba172c431a7d97800e25c069a2e15c58e0d02`。
+- 验证：
+  - `poetry run pytest -q --no-cov` 聚焦 targeted repair、amendment、revision、scientific review、hypothesis stage 五模块 → `44 passed in 7.20s`。
+  - 聚焦 `ruff check` → `All checks passed!`；四生产模块 `mypy` → `Success: no issues found in 4 source files`；四模块 `py_compile` 通过。
+  - 正式 loader/哈希脚本重验：pilot 的 17 个 manifest evidence 文件；v5 revision raw response/receipt；review raw response/receipt/Markdown；RT-01–RT-07 全 true；v5 相对 v4 仅三个允许字段变化，v4 相对 v3 仅七个允许字段变化；15 个非 report inventory 文件及 renderer manifest 的路径、bytes、SHA-256 和 inventory canonical hash 全部重放一致。
+  - `pdfinfo.exe` → 8 页、A4、未加密、PDF 1.7；`pdftotext.exe` 提取出 56359–70434、999/+1/Holm、simulation null SD、wheel-210 和参考文献等关键表述；`pdftoppm.exe` 后目视检查首页与末页，无裁切、黑框或乱码。
+  - 两个只读验收脚本曾因本地假设错误失败：先误用 v3 文件名，后误以为终审应绑定中间 revision。按实际版本文件名及“终审绑定物化 JSON”的合同修正后全量通过；失败未改制品。首次 live finalization 的 PTY 进程启动被 Windows 拒绝，非 PTY 重跑成功且没有重复 provider 调用；TeX helper 的 GBK reader-thread 告警非致命。
+- 问题新增或更新：`P-20260812-130` 从 Open scientific issue 更新为“Resolved by versioned v5 scientific amendment”，同时保留 v1 终审漏检、v2–v5 失败/恢复、审计假阴性、PTY/GBK 告警和最终证据。该状态不代表正式实验或论文完成。
+- 后续：可按 v5 计划执行 999 draws 的正式实验和 wheel-2310 敏感性分析，但不属于本次交付。共享工作树含多日并行改动，本任务未 staging、未 commit，避免混入其他 Agent 文件。
+
+---
+
+## 2026-08-12 11:49:13 +08:00 - Codex 子 Agent `/root/metadata_semantics_fix` - 文献引用数、DOI 与撤回状态语义修复
+
+- 用户请求/活动任务：修复检索记录把 arXiv 未提供的引用数写成确定的 `0`、仓储 DOI 与正式发表 DOI 混淆、引用计数缺乏来源/查询日期，以及入围预印本未核验撤回状态的问题；保持旧制品可加载并遵守 API 访问频率。本子任务只修改通用文献模型、API 客户端和对应测试，不修改 competition 编排器或 `Problem.md`。
+- 使用的 Skill：`citation-management`。按其“预印本仓储标识与正式发表 DOI 分离、元数据需来源核验、缺失值不得伪造”的工作流确定字段语义；没有生成文档或图示。
+- 变更文件：`src/autoresearch/literature/models.py`、`src/autoresearch/literature/clients.py`、`tests/unit/literature/test_literature_models.py`、`tests/unit/literature/test_clients.py`、`Agent.md`（仅追加本条）。
+- 变更摘要：
+  - `AcademicPaper.citation_count` 改为 `int | None`，其中 `None` 明确表示来源未报告，来源明确返回的 `0` 仍保留；新增 `citation_count_source` 与 `citation_count_as_of`。缺少所有新字段的旧 JSON 仍可加载，默认值为未知。
+  - 新增独立的 `repository_doi`。arXiv 新旧两类 canonical ID 均可程序派生 `10.48550/arXiv.*`，但 `doi` 继续只保存 Atom `arxiv:doi` 所给的正式发表 DOI；两者不互相冒充。
+  - arXiv Atom 记录不再硬编码零引用；Semantic Scholar 与 OpenAlex 仅在 API 真正返回非负整数时写入引用数，并绑定各自来源与查询日期。非法、布尔、负数或缺失值均保持未知。
+  - 新增 `publication_status`（`unknown/preprint/published/withdrawn/retracted`）、`status_source` 和 `status_as_of`。OpenAlex 的 `type/is_retracted` 进入状态解析；arXiv Atom 只识别明确状态词，不能把“方法不足”之类评论误判为撤回。
+  - 新增显式 `ArxivClient.verify_status(paper)`：只对已经入围的单条记录请求权威 abs HTML，复用现有三秒 arXiv 限速器与重试策略，不在 broad search 中对每条命中追加请求。官方目标 `2110.15271v2` 实测返回 `withdrawn`。同行评审状态没有从 DOI、venue 或 OpenAlex 类型中臆断。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/literature tests/integration/literature tests/property/literature` → `37 passed in 1.50s`。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run mypy src/autoresearch/literature/models.py src/autoresearch/literature/clients.py` → `Success: no issues found in 2 source files`；`git diff --check` 通过。
+  - `$env:AUTORESEARCH_LIVE_LITERATURE='1'; poetry run pytest -q --no-cov tests/smoke/test_literature_live.py` → `1 passed in 5.32s`；同环境运行 `tests/smoke/test_literature_refresh_live.py` → `1 passed in 10.16s`，真实 Arxiv/OpenAlex/Semantic Scholar 路径至少一源成功且刷新链通过。
+  - DataCite 真实 API 分别核验 `10.48550/arXiv.2110.15271` 与旧式 `10.48550/arXiv.hep-th/9901001`，均为 `findable` 且落到对应 arXiv 页面；真实运行 `ArxivClient.verify_status` 核验 `https://arxiv.org/abs/2110.15271v2` → `withdrawn arxiv_abs 2026-08-12`。
+- 问题新增或更新：无；按父任务边界未修改 `Problem.md`。核验发现先前“目标 Atom comment 含 withdrawn”的前提不成立：Atom comment 只有分析不足说明，撤回标记位于官方 abs HTML，因此采用入围后低频核验而非危险的语义猜测。
+- 后续：competition 层须把 `citation_count=None` 作为未知而非零，排序时不得直接对可空值 `max`；应透传新增 provenance/status 字段，对 `withdrawn/retracted` 排除、对 `unknown/preprint` 软降权，并只对少量入围 arXiv 记录调用 `verify_status`。本子任务未 staging/commit，共享工作树的其他改动均未触碰。
+
+---
+
+## 2026-08-12 11:45:38 +08:00 - Codex 子 Agent `/root/onekey_search_wiring` - 一键方向循环扩大单次文献候选池
+
+- 用户请求/活动任务：修复一键方向研究循环仍把每次检索候选数写死为 8 的接线问题；底层更广检索必须真正进入一键 CLI，同时不得增加查询数乘数据源数、不得绕过已有来源级限流与退避，也不得改动模型调用和正式实验链。
+- 使用的 Skill：`paper-lookup`。依据其“有界调用、同一限流主机串行、arXiv 每 3 秒至多一次、429/503 退避并显式报告”的约束审计现有接线，仅扩大单次响应候选池，不做并发扇出。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_research_loop_cli.py`
+  - `tests/unit/competition/test_contest_direction_research_loop_cli.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：新增统一常量 `_DEFAULT_RESULTS_PER_SEARCH = 20`，同时用于 Python 一键入口和 argparse，消除两处默认值漂移；一键入口继续把该值原样传入 `literature_runner`。CLI help 明确参数是“每条查询在每个数据源的一次 API 请求”内的候选上限，扩大本地候选池但不增加查询数×数据源数的请求次数。未增加线程、异步并发、额外数据源或额外模型调用；现有底层仍按 query/source 双层循环逐次调用，客户端仍执行 per-source limiter、指数退避和 429 circuit breaker。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_research_loop_cli.py` → `6 passed in 2.23s`；mock 全闭环断言 Python 默认实际传入 `max_results_per_search=20`，parser 测试断言 CLI 默认与 help 文案。
+  - `poetry run pytest -q --no-cov tests/unit/literature/test_clients.py -k "rate_policy or exponential_backoff or 429_opens_circuit or rate_limit_circuit_breaker"` → `9 passed, 8 deselected in 0.53s`，确认现有来源级限流策略、指数退避和 429 熔断未被接线修改破坏。
+  - `poetry run ruff format --check ...` → `2 files already formatted`；`poetry run ruff check ...` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/contest_direction_research_loop_cli.py` → `Success: no issues found in 1 source file`。
+  - `poetry run python -m autoresearch.competition.contest_direction_research_loop_cli --help` → 退出码 0，显示新的候选池说明（当前 PowerShell 捕获输出的中文为终端代码页乱码，不影响 argparse 内容或测试）。
+- 问题新增或更新：无；按子任务边界未修改 `Problem.md`。中文 help 在该终端捕获时乱码是既有控制台代码页现象，不影响功能，未登记为交付阻塞。
+- 后续：等待底层检索提示、元数据语义和质量软排序的并行修改合流后，由主 Agent 运行联合回归与一次受限 live smoke。本子任务未 staging、未 commit，避免污染共享工作树。
+
+---
+
+## 2026-08-12 12:01:24 +08:00 - Codex 子 Agent `/root/onekey_search_wiring` - 一键循环最终候选撤回核验与离线恢复接线
+
+- 用户请求/活动任务：底层质量排序已新增最终候选 arXiv 状态核验，但一键方向研究循环仍使用无核验 selector。要求 fresh 在 Skill 路由前核验 shortlist、撤回/撤稿条目不进入正向研究证据并自动补位；状态回执必须 write-once、进入报告和 Skill evidence 谱系；checkpoint resume 必须只读验证并确定性恢复同一 planning catalog，绝不重复联网；source-delivery 文献复用也必须在当前新目录生成回执。
+- 使用的 Skill：继续遵循 `paper-lookup` 的有界调用原则。状态请求仅针对软排序后实际尝试纳入 planning context 的 arXiv preprint finalist，不对全候选批量补请求；复用已有 `ArxivClient` 限流与 retry。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_research_loop_cli.py`
+  - `tests/unit/competition/test_contest_direction_research_loop_cli.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - fresh 与 source-delivery reuse 均在 `_eligible_literature` 之后调用 `_select_planning_literature_with_status(..., arxiv_status_verifier=ArxivClient().verify_status)`；测试可注入 verifier，但 CLI/生产默认始终是真实 verifier。核验后 catalog 在 `_skill_routing_literature_evidence` 之前形成，因此 Skill routing evidence hash、hypothesis 输入与后续计划引用都绑定剔除 withdrawn/retracted 后的同一 catalog。
+  - 新建 `literature/finalist-status-verification.json`，沿用 `contest-direction-finalist-status-verification-v1` schema，记录 shortlist-only 范围、每条 original/verified status、来源日期、outcome/error、verification count 与程序 canonical hash；使用 `_write_new_json`，拒绝覆盖。
+  - resume 必须先验证回执 schema、canonical hash、attempted count、record ID 唯一性、source URL、original status、verified status/outcome 一致性；随后把回执状态与状态来源确定性投影到 catalog，先去掉 withdrawn/retracted，再用无 verifier selector 恢复规划顺序。因此无论中途 resume 还是已 completed 的只读 resume，都不会再次发状态请求；completed 路径还复验交付报告中的文件 bytes/hash 与 artifact hash 绑定。
+  - 完成与无 adapter 报告都绑定回执文件；完成报告记录 artifact hash、请求数、剔除数、逐条剔除记录和 shortlist-only 范围。checkpoint resume 明确记 `resume_status_network_requests=0`。模型调用数、真实预实验和正式实验边界未改。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_research_loop_cli.py` → `7 passed in 1.69s`。覆盖：全 mock 一键 fresh 写回执并在报告绑定；completed resume 注入会 fail 的网络 verifier 仍零调用；篡改回执失败关闭；arXiv finalist 被 verifier 标为 withdrawn 后剔除并由 OpenAlex published 候选补位；加载回执后本地重放仍只选 replacement 且 verifier 调用数不增加；blocked receipt 也绑定状态回执。
+  - `poetry run ruff format ...` → `2 files reformatted`；随后 `poetry run ruff check ...` → `All checks passed!`。
+  - `poetry run mypy src/autoresearch/competition/contest_direction_research_loop_cli.py` → `Success: no issues found in 1 source file`。
+  - `poetry run python -m py_compile ...` 与 `git diff --check -- ...` 均退出码 0。
+  - 合流后补跑 `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_research_loop_cli.py tests/unit/competition/test_contest_direction_plan_cli.py` → `17 passed, 1 skipped in 1.86s`；再次 Ruff 与 Mypy 均通过。
+- 问题新增或更新：无；按子任务边界未修改 `Problem.md`。旧的一键 run 没有新回执时不能按新协议 resume，这是有意失败关闭，避免在 resume 中静默联网或把旧未核验 catalog 当作新核验结果。
+- 后续：主 Agent 合流底层文献元数据、查询扩展和软排序修改后，运行相关 competition/literature 联合回归及一次有界 live smoke。本子任务未 staging、未 commit。
+
+---
+
+## 2026-08-12 12:08:33 +08:00 - Codex 主 Agent `/root` - 文献元数据、广泛检索和候选状态核验合流验收
+
+- 用户请求/活动任务：修复 PDF 中 arXiv 文献 DOI 缺失与“被引次数 0”的错误语义；扩展检索提示，更广泛地搜索且优先相关、高引用和高质量来源，同时控制外部 API 访问频率。
+- 使用的 Skill：完整读取并采用 `paper-lookup` 与 `nature-academic-search` 的多源检索、来源分层、去重、证据边界和有界调用原则。没有采用机械最低引用数或刊名推断影响因子，因为新论文、细分领域和跨库覆盖不可直接比较，当前免费来源也不提供可核验的 Clarivate JIF。
+- 变更文件（共享工作树由三个并行子任务完成并由本 Agent 合流验收）：
+  - `src/autoresearch/literature/models.py`
+  - `src/autoresearch/literature/clients.py`
+  - `src/autoresearch/competition/contest_direction_literature.py`
+  - `src/autoresearch/competition/contest_direction_plan_cli.py`
+  - `src/autoresearch/competition/contest_direction_research_loop_cli.py`
+  - 对应 literature/competition 单元测试
+  - `Problem.md`（新增 P-20260812-131）
+  - `Agent.md`（子 Agent 条目及本条，仅追加）
+- 变更摘要：引用次数现区分未知与明确零并附来源/截至日期；DataCite arXiv 仓储 DOI 与正式发表 DOI 分离；入围 arXiv 预印本通过官方 abs 页面低频核验 withdrawn/retracted。查询提示扩为四类互补检索，默认每 query/source 在同一次请求取 20 个候选；规划以相关性为主，软结合年龄归一化引用、仅有来源时才使用的期刊质量、发表/DOI/venue 完整性、跨源佐证和来源多样性。fresh/reuse 一键循环在 Skill evidence hash 前写 finalist 状态回执；resume 严格验回执并零联网恢复同一目录。
+- 验证：
+  - `poetry run pytest tests/unit/literature/test_literature_models.py tests/unit/literature/test_clients.py tests/unit/literature/test_refresh.py tests/unit/competition/test_contest_direction_literature.py tests/unit/competition/test_contest_direction_plan_cli.py tests/unit/competition/test_contest_direction_research_loop_cli.py -q --no-cov` → `60 passed, 1 skipped in 2.30s`。
+  - 相关五个生产模块 Ruff → `All checks passed!`；Mypy → `Success: no issues found in 5 source files`；py_compile 通过。
+  - `$env:AUTORESEARCH_LIVE_LITERATURE='1'; poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py -q --no-cov` → `2 passed in 6.36s`。
+  - shortlist-only live 核验 `2110.15271v2` 为 withdrawn，并由下一候选补位；共享子任务已记录具体请求与 receipt 结果。
+- 问题新增或更新：新增 `P-20260812-131`。代码修复只影响新检索/新恢复协议；历史 v5 仍正向引用该撤回预印本，必须通过版本化 v6 重生成，不能静默覆盖 write-once 计划或 PDF。
+- 后续：如需更新当前交付计划，启动一次新版本的 literature refresh → Skill routing → Qwen evidence-bound plan amendment → fresh scientific review；不得把旧 v5 当作已经经过新状态核验。共享工作树含大量其他任务改动，本轮未 staging、未 commit。
+
+---
+
+## 2026-08-12 11:55:10 +08:00 - Codex 子 Agent `/root/metadata_semantics_fix` - 跨源 arXiv 仓储 DOI 反例补丁
+
+- 用户请求/活动任务：补修 OpenAlex 和 Semantic Scholar 会把 arXiv DataCite 仓储 DOI 放进通用 DOI 字段的反例，防止跨源合并后将 `10.48550/arXiv.*` 冒充正式发表 DOI；保持 ordinary publication DOI 行为不变，不修改 competition。
+- 变更文件：`src/autoresearch/literature/clients.py`、`tests/unit/literature/test_clients.py`、`Agent.md`（仅追加本条）。
+- 变更摘要：新增单一 `_classify_doi` 边界，先用既有 `normalize_doi` 去代理前缀并大小写规范化；凡 canonical 值以 `10.48550/arxiv.` 开头，只写规范化 `repository_doi` 且令 publication `doi=None`。OpenAlex `doi`、Semantic Scholar `externalIds.DOI` 和 arXiv Atom `arxiv:doi` 共用相同分类；普通 DOI 保留来源原值。目标 URL 形式 `https://doi.org/10.48550/arXiv.2110.15271` 和大小写变体均有独立测试。
+- 验证：`poetry run pytest -q --no-cov tests/unit/literature/test_clients.py tests/unit/literature/test_literature_models.py` → `26 passed in 2.14s`；文献全回归 `tests/unit/literature tests/integration/literature tests/property/literature` → `39 passed in 1.51s`；Ruff → `All checks passed!`；Mypy → `Success: no issues found in 2 source files`；`git diff --check` 通过。
+- 问题新增或更新：无；按边界未修改 `Problem.md`。
+- 后续：competition 跨源 merge 可消费已分离的两种 DOI；不得再用 `repository_doi` 填补 publication DOI。未 staging/commit。
+
+---
+
+## 2026-08-12 11:58:11 +08:00 - Codex 子 Agent `/root/broad_search_quality` - 方向文献广泛检索与质量软排序
+
+- 用户请求/活动任务：修复方向研究计划的低质量文献检索：扩大检索提示与单次候选召回，优先相关、较高引用及有可核验期刊质量的文献，明确区分未知与零引用，排除撤回/撤稿材料进入正向 planning；同时严格控制 API 调用频率，不用机械最低引用门槛。
+- 使用的 Skill：`literature-review`。依据其多角度检索、跨源去重、引用核验、预印本状态审查与质量优先原则设计四类互补查询和软排序；没有采用 Skill 示例里的固定引用阈值，因为不同学科和论文年龄不可直接比较，且用户明确要求流程不机械。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_literature.py`
+  - `src/autoresearch/competition/contest_direction_plan_cli.py`
+  - `tests/unit/competition/test_contest_direction_literature.py`
+  - `tests/unit/competition/test_contest_direction_plan_cli.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 通用查询提示扩展为四个互补视角：核心对象/机制、方法/测量/数据、权威综述/奠基/高影响证据、反证/争议/替代解释；要求同义词和相邻学科表述，但不把年份、期刊名、作者或最低引用数写进硬门槛。仍最多四条查询，每个 source/query 只调用一次。
+  - `retrieve_contest_direction_literature` 与方向计划 CLI 的单次每源候选默认由 8/10 统一提高到 20；不新增查询、数据源、逐命中请求或并发扇出。底层既有来源级 limiter、重试和 429 circuit breaker 未改。
+  - competition record 全量透传并哈希绑定 `repository_doi`、可空 citation count 及 source/as-of、publication status 及 source/as-of。目标上下文分别显示正式发表 DOI 与仓储 DOI；未知引用明确写成“不得解释为0”。当前 API 没有可核验 JIF 时明确写未知，禁止根据刊名臆造影响因子。
+  - planning 改为软质量排序：查询词法相关性权重最高，随后才是按论文年龄归一化的 `log1p` 引用信号、仅在数值与来源同时存在时使用的 JIF 信号、发表/venue/DOI 完整性、跨源佐证和所选集合来源多样性。没有最低引用硬筛；高被引但不相关的论文不能挤掉高度相关未引论文。
+  - 已知 `withdrawn/retracted` 在 eligible 阶段排除。对软排序后真正拟入上下文且明确为 arXiv preprint 的少量 finalist，才调用 `ArxivClient.verify_status`；撤回材料退出正向 planning 并由下一候选补位。独立 `literature/finalist-status-verification.json` 保存每次尝试、结果、来源、日期与错误；核验失败保留为非权威状态而不误判。全候选逐篇状态请求被显式禁止。
+  - 同一 v1 schema 加入旧提示与旧 record/hash 投影的只读 replay 兼容；三个既有 live literature JSON 均可原样加载，旧 artifact 经过 `model_dump` 再严格验证及进入 Skill router 仍保持原 artifact hash。
+- 验证：
+  - 聚焦 literature/plan/research-loop/router 联合回归：`37 passed, 1 skipped in 2.09s`；其中新增四查询/默认20候选、unknown≠0、仓储 DOI、相关性优先、年龄归一化引用、finalist-only withdraw/backfill 和 legacy hash replay 测试。
+  - Ruff → `All checks passed!`；Mypy → `Success: no issues found in 2 source files`；两个生产模块 `py_compile` 通过。
+  - 三个已有真实目录的 `direction-literature.json` 全部严格加载（45、47、54 records）；旧 v1 `model_dump` 再验证和 `ContestDirectLiteratureEvidenceContext.from_retrieval_artifact` 均保持 hash 相等。
+  - 受限 live smoke 只请求一个最终候选 `https://arxiv.org/abs/2110.15271v2`：官方页面解析为 `withdrawn`，receipt 为 `excluded_from_positive_planning`，下一条 OpenAlex 候选自动补位；没有扫描其余候选。
+- 问题新增或更新：无；按父任务边界未修改 `Problem.md`。事实边界：当前通用 AcademicPaper/API 没有 JIF 数据，系统只能在未来存在“数值+来源”时软使用，现阶段不得把 venue 名称当作影响因子。引用次数是各索引截至某日的指标，不是论文真伪或科学质量的替代物。
+- 后续：一键 evidence-first research loop 正在并行接入相同 finalist status receipt；跨库逐篇引用补全仍应只针对最终少量候选做有界 enrichment，不能把每条 broad-search 命中都扩成额外 API 风暴。本子任务未 staging/commit，共享工作树含多 Agent 改动。
+
+---
+
+## 2026-08-12 15:28:53 +08:00 - Codex 子 Agent `/root/light_chain_memory` - 轻量方向链 OB 原始记忆与 Dreaming 桥
+
+- 用户请求/活动任务：将已有 OB 主权原始记忆和 Dreaming 恢复接入轻量 evidence-first 方向研究链；已完成阶段的模型交互、检索、假设、真实 pilot、计划和评审制品应进入现有记忆层，Dreaming 只能作为可重建的可选派生上下文，任何记忆故障不得阻断科研交付。本子任务不修改 80% 上下文压缩和 checkpoint 实现，避免与并行子任务冲突。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_memory.py`
+  - `tests/unit/competition/test_contest_direction_memory.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增 `ContestDirectionMemoryBridge`，按完成阶段递归发现运行目录内制品，将每个文件的精确字节通过现有 `RawMemoryStore.capture_file` 写入本地私有、只追加、内容寻址的原始层；`interactions/`、`responses/` 与响应回执识别为 `MODEL_TRANSCRIPT`，其余日志、指标、JSON、CSV、Markdown、TeX、PDF 等识别为 `TOOL_OUTPUT`。每个绑定同时保存运行目录相对路径、bytes、媒体类型和同一 payload SHA-256，捕获前后文件发生变化即拒绝纳入派生视图。
+  - 每阶段只基于已重验的 `RawMemoryBinding` 生成现有 `DreamingMemoryContent`。派生摘要仅列文件路径、大小和哈希，不复制、压缩或推断科学结论；投影明确标记为可删除、可重建、非证据，所有科学数字和论断仍须回到绑定的原始制品核验。
+  - 新增 write-once `memory/stages/<stage>.json` 与 `memory/recalls/<consumer>.json` 回执。可选召回必须由调用方显式 `requested=True`，逐项重验阶段回执、当前源文件、原始记录和 Dreaming 投影后才返回独立 context；召回选择回执明确不证明模型实际消费，更不证明因果收益。
+  - 同阶段 resume 直接严格重验并复用既有回执，不重复产生原始记录；源制品或投影变化后召回降级为 unavailable。RawMemory 初始化、单文件捕获、Dreaming 或回执写入失败均转为 `degraded/unavailable` sidecar，`delivery_blocked_by_memory` 固定为 false，绝不修改原始科研制品。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_memory.py` → `5 passed in 3.06s`。覆盖真实模型输入/输出与阶段制品精确写入、Obsidian Dreaming 投影、显式可选召回、摘要不复制伪造科学结论、RawMemory 启动失败降级、resume 零新增记录及源文件变化后拒绝召回。
+  - `poetry run pytest -q --no-cov tests/unit/knowledge/test_raw_memory.py tests/unit/competition/test_contest_direction_memory.py` → `23 passed in 7.59s`。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run mypy src/autoresearch/competition/contest_direction_memory.py` → `Success: no issues found in 1 source file`。
+- 问题新增或更新：无。为了避免并行覆盖，本子任务仅提供独立桥；轻链主 CLI 的 fresh/resume 阶段触点和任务感知 completion 由并行合流任务接入。底层 literature/router 目前只持久化部分响应哈希，因此真实模型请求/响应的全量原始捕获仍须由正在接入的 task-aware completion runtime 覆盖，不能声称单靠本桥已经捕获不存在的字节。
+- 后续：主 Agent 合流时应在每个成功阶段调用 `capture_completed_stage`，只有当前模型策略明确选择记忆时才把 `recall_optional_context(...).context` 作为独立派生消息注入；不得把 recall receipt 当成模型消费证明或科学证据。本子任务未 staging、未 commit，共享工作树其他改动未触碰。
+## 2026-08-12 15:44:06 +08:00 - Codex 子 Agent `/root/light_chain_compaction` - 轻量方向链官方 80% 上下文压缩接线
+
+- 用户请求/活动任务：把既有“对应模型官网最大上下文达到 80% 后自动压缩”接入轻量 evidence-first 指定方向研究链；只能总结当前阶段之前已经完成的任务对话，当前正在执行的整个阶段必须保持原文；原始请求/响应必须进入 OB 主权原始记忆，断点恢复不得因复用 provider response 而丢失 completed-history 语义。本子任务不实现 Dreaming 内容或通用 checkpoint 状态机，只消费并行组件。
+- 使用的 Skill：完整读取 `pi-agent` 及其 `sessions.md`、`compaction.md`、`session-format.md`、`models.md`，核对 session tree、compaction entry、模型 `contextWindow` 与 active turn 边界；项目实现仍复用仓库现有 Python `model_capabilities.py`/`task_context.py`，没有引入 Pi 运行时依赖或硬编码模型上下文值。
+- 变更文件：
+  - `src/autoresearch/competition/contest_direction_context_runtime.py`
+  - `src/autoresearch/competition/contest_direction_research_loop_cli.py`（与 checkpoint 子任务共享接线）
+  - `tests/unit/competition/test_contest_direction_context_runtime.py`
+  - `tests/unit/competition/test_contest_direction_research_loop_cli.py`
+  - `Agent.md`（仅追加本条）
+- 变更摘要：
+  - 新增 `ContestDirectionContextRuntime`，每个真实 Qwen 科研阶段以 `stage_name + 程序计算的 canonical input SHA-256` 形成稳定 active task；检索查询、文献后 Skill 路由、三路假设构思、内部 provisional、预实验后目标评审、最终计划修订和独立科学评审均使用现有 `AutonomousTaskContextSession`。同一假设阶段的三次调用保持在同一 active task 内，只有 runner 成功退出后才整体进入 completed journal；异常阶段的原始调用保留但不进入后续摘要。
+  - 每次调用都从 `config.yaml` 的 provider/model 读取配置，再由现有官方来源注册表获取并哈希绑定官网页面字节和解析结果；80% 触发值由 `floor(official_context_window_tokens * 0.8)` 派生。runtime 不接受任何上下文窗口数值参数，未知 provider/model 无官网来源或无已验证缓存时失败关闭。fresh 即使复用已有 literature 也先核验官方 capability，不能绕过来源事实。
+  - 当前阶段 messages 在 delivered context 中逐字保留，且完全不进入 Qwen 历史合并摘要；仅当前阶段之前成功完成的任务调用可作为 raw completed history，达到官方窗口 80% 时才合为一份中文派生摘要。所有 exact request/response/reasoning/usage 先写现有 `RawMemoryStore`，context preparation 保存 capability/budget、before/after 估算、completed raw bindings、summary request/response 和 delivered hash；摘要明确不是科研证据。
+  - 新增 `checkpointed_stage`，调用顺序冻结为 `leaf runner → task context → write-once provider escrow → provider`。provider response 已落 escrow 但 stage 未物化时，resume 会零网络读取 exact completion，再通过 context 层捕获并晋升 completed history；不会发生“escrow 重放绕过 OB/压缩历史”的缝隙。resume 缺失 postpilot、revision 和 review 的新调用也使用同一路径。
+  - 各 leaf 既有 `ModelAuthorshipReceipt` 能消费 `LLMJsonCompletionResult` 的 context provenance，因而科学制品继续绑定 source messages、实际 delivered messages 和 write-once context preparation；哈希、stage ID 与路径均由程序生成，不交给模型。
+- 验证：
+  - `poetry run pytest tests/unit/llm/test_model_capabilities.py tests/unit/llm/test_task_context.py tests/unit/competition/test_contest_direction_context_runtime.py -q --no-cov` → `12 passed in 4.23s`。覆盖官网能力解析/80% 精确派生、unknown provider 拒绝猜测、completed-only 合并、active task 原文、同阶段多调用与失败阶段隔离。
+  - `poetry run pytest tests/unit/competition/test_contest_direction_research_loop_cli.py tests/unit/competition/test_contest_direction_stage_checkpoint.py tests/unit/competition/test_contest_direction_context_runtime.py -q --no-cov` → `14 passed in 3.15s`。覆盖 fresh 七个阶段 completion 全接入、checkpoint response replay、resume 零 provider 仍写 completed history，以及阶段/API 回执。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run mypy src/autoresearch/competition/contest_direction_context_runtime.py src/autoresearch/competition/contest_direction_research_loop_cli.py` → `Success: no issues found in 2 source files`；相关模块 `py_compile` 通过。
+- 问题新增或更新：无。本任务未声称 token 预估是供应商精确 tokenizer：冷启动采用保守 Unicode 估算，得到真实 provider usage 后由已哈希 calibration 改进；官方 capability 页面/缓存是窗口事实，usage calibration 是估算证据，两者没有混为一谈。Dreaming 是否注入某一科研 prompt 仍必须由显式策略选择，不能因存在历史就自动当作事实或当前指令。
+- 后续：由主 Agent 合流 `ContestDirectionMemoryBridge` 的完成阶段制品 capture/可选 Dreaming recall 与 checkpoint 子任务的首缺失阶段恢复，运行轻链完整联合回归；共享工作树含大量其他任务改动，本子任务未 staging/commit。
+
+---
+## 2026-08-12 15:56:19 +08:00 - Codex 子 Agent `/root/light_chain_resume` - 轻量方向研究链全阶段断点续跑与付费响应托管
+
+- 用户请求/活动任务：将既有断点续跑恢复到 evidence-first 指定方向轻量链；进程在任一模型阶段、真实检索/状态核验、真实 pilot 或渲染/终审边界崩溃后，必须验证既有字节并从首个缺失阶段继续，不能重复已完成付费调用或 API 请求。
+- 变更文件：新增 `src/autoresearch/competition/contest_direction_stage_checkpoint.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`；修改 `src/autoresearch/competition/contest_direction_research_loop_cli.py`；`Agent.md`（仅追加本条）。与并行子 Agent 新增的 `contest_direction_context_runtime.py` 保持组合接口，但本条不冒充其 80% context 实现。
+- 变更摘要：
+  - 新增 write-once、hash-bound provider response escrow。七个模型阶段的准确请求合同与 `LLMJsonCompletionResult` 在返回 leaf runner 前落盘；同 stage/input/request 的 resume 只读重放，不再访问 provider。
+  - 新增每 source/query 文献 API 响应 escrow 与 arXiv finalist status 核验 escrow；扩大检索的单次 API 已成功返回后，即使上层目录尚未物化也可零网络重放。
+  - 轻量链为 literature、Skill routing、hypothesis brainstorm、provisional plan、真实 pilot、postpilot objective review、final revision、render 和 independent review 共九阶段写入顺序化完成 receipt，并绑定产物 bytes/SHA-256。
+  - `--resume-existing` 不再要求 pre-pilot 制品全部存在：可从 literature、routing、hypothesis、provisional、pilot、postpilot、revision、render 或 review 的首个缺失阶段继续。模型原始响应已托管但 artifact 未物化时，本地重放同一响应；hypothesis/pilot/postpilot 的不完整派生目录不删除，移动到 `checkpoints/interrupted-stage-outputs/` 后重新物化。
+  - completed resume 在返回前复核方向、finalist 状态回执及报告中的完整文件库存；篡改仍失败关闭。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_stage_checkpoint.py tests/unit/competition/test_contest_direction_research_loop_cli.py tests/unit/competition/test_contest_direction_context_runtime.py` → 联合 `15 passed`；checkpoint 专项后续扩至 `6 passed`，覆盖模型响应崩溃重放、request/hash 篡改、阶段 artifact 篡改、文献 source API 零重请求、finalist 状态零重请求及 interrupted 输出无删除隔离。Ruff 全部通过；Mypy 三生产模块通过；py_compile 与 `git diff --check` 通过。
+- 问题新增或更新：无。仍有一个非科研交付阻断的小窗口：leaf artifact 已写、但 context task 的 `with` 尚未正常退出时崩溃，科研 resume 会跳过模型且不重复付费，OB 原始 transcript 仍在，但该次调用可能尚未晋升 completed-task context journal；已告知 context 子 Agent，可作为非阻塞 reconciliation 补强。
+- 后续：由父 Agent/并行 context-memory 子 Agent 串行完成 OB/Dreaming capture 与上述 completed-task reconciliation，再跑联合回归。本子任务未 staging、未 commit；共享工作树含多 Agent 改动。
+
+---
+
+## 2026-08-12 16:19:48 +08:00 - Codex 子 Agent `/root/light_chain_memory` - OB/Dreaming 轻量链 fresh/resume 最小集成
+
+- 用户请求/活动任务：把已实现的 `ContestDirectionMemoryBridge` 最小接入 evidence-first 指定方向轻量链的 fresh 与断点 resume；每个完成阶段捕获真实制品，postpilot、最终计划修订和独立科学评审可选读取 Dreaming 导航，同时确保派生摘要不替代证据、记忆故障不阻断科研交付、completed resume 不重复捕获。本任务明确未修改既有 80% compaction 算法和 checkpoint 状态机语义。
+- 变更文件：`src/autoresearch/competition/contest_direction_memory.py`、`src/autoresearch/competition/temporary_qwen_pool.py`、`src/autoresearch/competition/contest_direction_hypothesis_stage.py`、`src/autoresearch/competition/contest_direct_plan_revision.py`、`src/autoresearch/competition/contest_direct_plan_scientific_review.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`，以及对应的六个 competition 单元测试文件；`Agent.md`（仅追加本条）。
+- 变更摘要：
+  - fresh 与 partial resume 在九个阶段的既有 `record_completed_stage` 成功边界后，调用同一 sidecar 捕获检索、Skill 路由、临时 Agent 假设与交互、provisional、真实 pilot 原始数据/日志/指标、postpilot、计划修订/原始响应、渲染制品和终审。相同阶段 receipt 严格重验后复用，绝不生成第二份 RawMemory record。
+  - 默认在 postpilot、最终计划修订和独立科学评审前显式召回此前完成阶段的 Dreaming 投影；召回内容作为独立 user message，位于事实/Skill 上下文之后、最终任务合同之前。三个模型 API 与各自输入哈希只绑定实际注入的派生上下文哈希；该上下文固定标记 `derived_context_is_evidence=false`，也不能为研究计划中的观察数字授权。CLI 提供 `--disable-dreaming-recall`，只关闭模型读取，不关闭完成制品的原始记忆捕获。
+  - recall 写入失败或任一 RawMemory/Dreaming API 异常时只返回 `unavailable`，模型收到 `None` 并继续依靠真实 artifact。运行目录 `memory/` 被排除出科学交付的强制文件库存，避免可重建 sidecar 丢失反向阻断已完成科研；报告仍保存 receipt/projection 哈希和明确非证据边界。partial resume 对已执行阶段复用原 checkpoint input hash，防止可选 recall 丢失导致重复模型调用或交付中断。
+  - completed resume 先保持既有完整科学文件重验，再只调用 `load_stage_receipt` 重放九个记忆绑定；不调用 capture，返回 `new_capture_count=0`。Dreaming/RawMemory 重验失败只作为 `memory_resume=degraded` 报告，不篡改或降格科学产物。
+- 验证：
+  - `poetry run pytest tests/unit/competition/test_contest_direction_memory.py tests/unit/competition/test_temporary_qwen_pool.py tests/unit/competition/test_contest_direction_hypothesis_stage.py tests/unit/competition/test_contest_direct_plan_revision.py tests/unit/competition/test_contest_direct_plan_scientific_review.py tests/unit/competition/test_contest_direction_research_loop_cli.py -q --no-cov` → `61 passed in 16.16s`。覆盖 fresh、从 direction checkpoint 的 partial resume、completed resume 九 receipt 重放/RawMemory 零新增、三个实际模型消息的顺序与非证据边界、摘要无科学声明污染、启动/捕获/召回失败降级。
+  - 相关生产与测试文件 Ruff → `All checks passed!`；六个生产模块 Mypy → `Success: no issues found in 6 source files`；`py_compile` 通过。
+- 问题新增或更新：无；未修改 `Problem.md`。边界说明：Dreaming receipt 只能证明选择和绑定，不能证明模型因果使用或科学正确性；模型实际收到该消息由 provider 请求/messages 与 authorship receipt 另行绑定。
+- 后续：由主 Agent 运行整条真实 Qwen/live loop 时使用用户配置的 `context_vault_root`，并检查报告 `memory.optional_model_recalls[*].context_injected_into_model_stage` 与三个 authorship/input hash 一致。本子任务未 staging、未 commit；共享工作树含大量其他 Agent 改动。
+
+---
+
+## 2026-08-12 16:26:23 +08:00 - Codex 主 Agent `/root` - 轻量方向链上下文、主权记忆、Dreaming 与续跑闭环验收
+
+- 用户请求/活动任务：恢复既有 80% 上下文压缩、OB 原始记忆、Dreaming 和断点续跑，并真正接入 evidence-first 指定方向轻量研究链；保持科研证据优先，不让派生记忆或工程状态阻断真实检索、预实验、计划与评审。
+- 使用技能：按 `pi-agent` 技能的 session/compaction 边界复核设计；采用“只总结已完成任务、当前阶段保持原文”和可恢复会话思路，但未引入 Pi 的独立运行时或把其实现冒充本项目证据。
+- 变更文件：合流并复核 `src/autoresearch/competition/contest_direction_context_runtime.py`、`contest_direction_stage_checkpoint.py`、`contest_direction_memory.py`、`contest_direction_research_loop_cli.py`、`contest_direction_hypothesis_stage.py`、`contest_direct_plan_revision.py`、`contest_direct_plan_scientific_review.py`、`temporary_qwen_pool.py` 及对应测试；更新 `Problem.md` 的 `P-20260812-132`；`Agent.md` 追加本条。
+- 变更摘要：
+  - fresh 与 resume 的七组真实模型阶段统一进入 task-aware context；官方模型能力页及已验证缓存决定最大上下文，运行时不接受人工窗口覆盖，达到官方窗口 80% 才压缩已完成历史，当前阶段不入摘要。
+  - 所有原始请求、可见响应、推理、usage 与阶段制品保留在 OB 主权原始记忆；Dreaming 仅生成可重建的路径/字节/hash 导航，并以独立非证据消息可选注入 postpilot、最终计划修订和独立评审。
+  - 九阶段完成回执、七组模型响应 escrow、文献 source/query API 与 arXiv finalist 状态 escrow 已接入；`--resume-existing` 从首个缺失阶段继续，已有付费响应可零网络本地重放，未完成目录只隔离不删除。
+  - completed resume 全量重验科学库存后只读重放九个 memory receipt，既不重复 capture，也不增加 RawMemory record；memory/Dreaming 故障降级但不改写科学结论或阻断真实交付。
+- 验证：
+  - `poetry run pytest -q --no-cov`（context、checkpoint、memory、research loop、hypothesis、revision、review、model capability、task context 九组）→ `66 passed in 18.01s`。
+  - 相关九个生产模块 Ruff → `All checks passed!`；Mypy → `Success: no issues found in 9 source files`；`py_compile` 通过；CLI help 显示 `--resume-existing` 与 `--disable-dreaming-recall`。
+  - opt-in 官方能力 live：`RUN_LIVE_OFFICIAL_MODEL_CAPABILITY=1 ... tests/live/test_official_model_capability_live.py` → `1 passed`；Qwen3.7-Max 官方上下文 `1,000,000`、80% 阈值 `800,000`，能力事实 hash `0096701e0ac6546f6295f59d0ee571203f5df3e3ef2054979560d9d0af9e5561`。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260812-132`。仍记录一个非科研阻断的小窗口：阶段 artifact 已落盘但 context manager 尚未正常退出时崩溃，resume 不会重复付费且 OB 原文仍在，但该次调用可能暂未晋升 completed-task 摘要历史。
+- 后续：本次没有为验证而重新消耗整条付费 Qwen 链；下次 fresh live 默认启用四项能力，旧的内容寻址交付目录保持只读。共享工作树含大量并行任务改动，本次未 staging、未 commit。
+
+---
+
+## 2026-08-13 02:21:06 +08:00 - Codex 子 Agent `/root/provisional_visible_output_fix` - Q1 provisional 可见输出定向修复
+
+- 用户请求/活动任务：修复真实 Q1 v2 的内部 provisional plan 因 Qwen 隐藏推理挤占可见 JSON、只返回 4/13 科学字段的问题；禁止本地补写科学内容和模型格式重试，保留前五次已完成调用，并给出原目录精确 resume 命令。
+- 变更文件：`src/autoresearch/competition/contest_direct_plan.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direct_plan.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`；`Problem.md` 新增 `P-20260813-138`；`Agent.md` 仅追加本条。
+- 变更摘要：
+  - `generate_contest_direct_plan` 新增 provider-neutral `thinking_mode: enabled|disabled`；默认仍为 enabled、预算仍为 4000，旧调用行为不变。disabled 必须显式使用 `thinking_budget=None`，避免配置看似关闭但仍携带无效推理预算。
+  - 仅 direction loop 的内部 provisional fresh 与 partial-resume 两个调用点使用 `thinking_mode="disabled"`。post-pilot feedback/objective review、真实证据驱动 revision 与 independent scientific review 均未修改。
+  - 不新增 retry、不由程序补写缺失科学内容。已有 enabled 失败响应继续 write-once 保留；request checkpoint 由于 mode/budget 改变得到新 hash，新 disabled 请求只执行一次，随后可按同一请求本地重放。
+  - 根据新 live 完整 JSON 证据，将 `source/target/baselines/metrics` 的英文 machine IDs 从中文叙述检查中移除，只保留非空约束；八类真正的 narrative 科学字段继续要求中文，未取消中文报告合同。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan.py tests/unit/competition/test_contest_direction_research_loop_cli.py tests/unit/competition/test_contest_direction_stage_checkpoint.py` → `43 passed in 5.16s`；目标文件 Ruff → `All checks passed!`；两个生产模块 Mypy → `Success: no issues found in 2 source files`。本子 Agent 未联网、未调用模型、未改写任何既有 run artifact；新 live 调用由主 Agent 执行并确认完整 JSON 已进入 escrow。
+- 问题新增或更新：`Problem.md` 新增并解决代码缺陷 `P-20260813-138`；真实 v2 尚未完成后续 pilot/revision/render/review，因此不能声称最终计划已经交付。
+- 后续：由主 Agent 在仓库根目录再次执行：`poetry run python -m autoresearch.competition.science125_batch --question-pdf C:\Users\Z\Downloads\sjtu-booklet.pdf --output-root runs/contest-delivery/science125-q001-full-feature-live-v2 --start 1 --limit 1 --resume --min-interval-seconds 1 --preexperiment-policy required --config config.yaml --env .env --skills-root skills`。同 request escrow 应零 provider 复用完整 provisional 响应，然后继续真实 pilot、post-pilot revision、渲染和独立评审。本子任务未 staging、未 commit；共享工作树含大量其他 Agent 改动。
+## 2026-08-13 02:03:00 +08:00 - Codex 子 Agent `/root/research_api_ui` - 轻量科研链 API、中文前端与批量/自进化适配
+
+- 用户请求/活动任务：恢复 API/前端和 125 问批量入口，在正式实验、结果论文暂缓的边界下把既有 evidence-first 指定方向链、checkpoint/OB/Dreaming、PDF 批量服务和 evidence-to-Skill 影子验证接到可调用产品入口；不得复制科研逻辑或以 API 冒充自进化晋升。
+- 变更文件：新增 `src/autoresearch/api/__init__.py`、`research_service.py`、`adapters.py`、`app.py` 与 `static/index.html|app.js|styles.css`；新增 `tests/unit/api/test_research_api.py`、`test_adapters.py`；新增 `docs/research-plan-api.md`；`Problem.md` 新增 `P-20260813-133`；`Agent.md` 仅追加本条。
+- 变更摘要：
+  - 使用已有生产依赖 `aiohttp` 提供本地单用户 REST API 和最小中文前端。单题 `POST /api/runs` 只调 `run_contest_direction_research_loop`，支持 dry-run、状态、九阶段、公开制品、断点 resume 和取消请求；阶段完成状态复用 `load_completed_stage` 重验 receipt 和每个制品 hash，不按文件名猜成功。
+  - API job manifest 原子落盘；进程重启后把遗留 queued/running/cancel_requested 诚实标为 `interrupted` 并允许从既有 checkpoint 续跑。同步 direction runner 尚无 cooperative cancel hook，queued 可取消，running 只进入 `cancel_requested`，不会虚报线程已停止或删除已写证据。
+  - 125 问 API 改为只接受现有本地 PDF、start/limit/include_question_ids，不能由浏览器传任意题目文本；`Science125BatchAdapter` 默认惰性调用 `autoresearch.competition.science125_batch.run_science125_batch`。批量 dry-run 仍经过真实 PDF 确定性解析，但零模型调用。
+  - `POST /api/runs/{id}/evolution` 默认惰性调用冻结 `run_evidence_to_skill_evolution`；只允许 completed run，write-once API receipt 可重放。GET 暴露候选、development/held-out 验证与 eligibility，始终 `promotion_authorized=false`；adapter 不调用 activation，也不写 active Skill。
+  - 下载仅允许 JSON/CSV/log/Markdown/TeX/PDF 等公开制品；provider response、OB 原始记忆、context memory、私有目录和路径穿越均拒绝。无认证服务的 main 只接受 `127.0.0.1`、`::1`、`localhost`，非 loopback 直接失败。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/api` → `15 passed in 1.81s`。覆盖单题真实函数 seam、dry-run 零调用、checkpoint 阶段重验、公开/私有 artifact、resume、进程恢复、PDF batch adapter、batch dry-run 语义、只读候选、自进化 frozen service 单次调用/回放、path traversal 和 loopback-only bind。
+  - 最终联合：API、PDF 题集、125 问批量服务、自进化服务四组 → `31 passed in 6.08s`；其中 API 自身 `15 passed`，题集解析 `7 passed`，batch `5 passed`，evidence-to-Skill `4 passed`。
+  - `poetry run ruff check src/autoresearch/api tests/unit/api` → all passed；Mypy → 7 source files no issues；py_compile、targeted `git diff --check` 通过（仅既有 `Problem.md` CRLF notice）。
+  - 本地非付费启动 `python -m autoresearch.api.app --host 127.0.0.1 --port 18765` 后，health 为 `ok`，batch/evolution adapter configured，首页 HTTP 200 且含“科研计划台”；随后干净终止。
+  - 经正式 API adapter 对 `C:/Users/Z/Downloads/sjtu-booklet.pdf` 做全 125 问 dry-run：`all_125_source_questions_available=true`、`selected_count=125`、`completed_count=0`、正式实验/结果论文均 false，清单与 batch report 已写入 `runs/manual-live/research-api-science125-dry-run/`。首次烟测发现 API 外层 `dry_run` 标志误写 false，已修并新增回归测试；没有模型、文献 API 或正式实验调用。
+- 问题新增或更新：`Problem.md` 新增 `P-20260813-133`，记录同步运行中取消仍为 cooperative-request 边界及本地无认证暴露风险的解决方式。
+- 后续：若需要可靠硬停止，科研 leaf 必须消费阶段边界取消令牌或迁到可回收独立 worker 进程；不能在当前线程模型上伪造已停止。正式实验、结果论文、Skill activation 与非本机部署保持关闭。本子任务未 staging、未 commit，未触碰共享工作树的其他 Agent 修改。
+
+---
+
+## 2026-08-13 02:02:51 +08:00 - Codex 子 Agent `/root/science125_batch` - Science 125 确定性题库与计划批量编排
+
+- 用户请求/活动任务：恢复全部 125 问批量输出能力，但本轮正式实验和结果论文延期；从用户提供的 `sjtu-booklet.pdf` 读取官方问题，按题独立生成研究计划，支持 API/CLI、限流、续跑、失败隔离，并为第 1 题后续自进化提供稳定 hook，不能让模型编造题目或实验。
+- 使用技能：`pdf`。按其 Poppler/PDF 文本提取方法检查真实 PDF；因普通 `pdftotext` 在双栏跨行版式只返回 103 个问号结尾行，进一步使用同一 Poppler 工具族的 `pdftohtml -xml` 读取加粗标题与坐标，未使用模型 OCR、翻译或补题。
+- 变更文件：`src/autoresearch/competition/contest_question_input.py`、新增 `src/autoresearch/competition/science125_batch.py`、`tests/unit/competition/test_contest_question_input.py`、新增 `tests/unit/competition/test_science125_batch.py`；`Problem.md` 新增 `P-20260813-134`；`Agent.md` 仅追加本条。
+- 变更摘要：
+  - `extract_all_science_125_questions` 从显式本地 PDF 的加粗 XML 标题层确定性重建两栏/跨行题目；每题保存 PDF 与印刷页码、学科、原文片段、source/page/question SHA-256 和程序 ID。只有仓库已核验的第 1 题附中文翻译；其余题不伪造翻译。完整清单必须通过 125 数量、连续序号、唯一 ID、首末题指纹及 12 学科计数验证。
+  - `run_science125_batch` 是 API-friendly service：默认 `limit=1` 且严格串行，支持 start、limit、多个 include ID、resume、dry-run、最小 API 间隔、每题 output/attempt/state、程序 hash、失败隔离和非阻断 `per_question_hook`。CLI 同步暴露 `--limit 1` 等参数。
+  - 第 1 题无论批量默认策略如何均以 `preexperiment_policy=required` 进入已验证 direction loop；其余题若没有已注册真实 pilot adapter，可从 upstream 已完成的真实无 Skill 检索、文献后 Skill 路由和临时 Agent 假设继续一次中文 plan-only authoring/render，明确 `preexperiment_executed=false` 和“尚无兼容真实预实验适配器”。正式实验、结果论文全部 false。
+  - failed question 不阻止后续题；resume 不把 failed state 当 completed，并在同一 attempt 内调用既有内层 checkpoint 的 `resume_existing=True`，保留失败 receipt，成功题零模型重跑。post-run hook 只在计划交付完成后调用，失败 receipt 非阻断，供独立的 evidence-to-Skill 服务接入而不建立未冻结核心依赖。
+- 验证：
+  - 真实 `C:/Users/Z/Downloads/sjtu-booklet.pdf`：提取 125 题，manifest `dd6b24581b994d6c329fa2e7a0077eb4f5c5a47659c78405e717bdf2e243bfd1`；首题 `What makes prime numbers so special?`、末题 `Can robots or AIs have human creativity?`，12 学科计数验证通过。
+  - `poetry run python -m autoresearch.competition.science125_batch --question-pdf ... --output-root runs/manual-live/science125-extraction-smoke-20260813 --limit 1 --dry-run` → 成功；`all_125_source_questions_available=true`、选择首题、正式实验/结果论文 false，零付费模型与外部文献 API。
+  - 提取器+批量 mock：`12 passed`；覆盖缺题失败关闭、切片/ID、dry-run 零 runner、第 1 题 required、无 adapter plan-only、限流顺序、hook、失败隔离、同 attempt 续跑和成功题零重跑。Ruff 全绿；Mypy 两生产模块无问题；CLI help 正常。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-134`。事实边界：全部英文题目来自 PDF；仅第 1 题中文翻译已有冻结依据。其余题最终报告使用中文不等于输入题目存在官方中文翻译。
+- 后续：本子任务未付费运行 Qwen；主 Agent 可用默认 `--limit 1` 执行第一题真实 loop，并从每题返回的 `delivery_report_path`/plan 路径或 `per_question_hook` 调用自进化服务。全量 125 题必须显式扩大 `limit` 并接受成本/API 频率；本任务未 staging、未 commit，共享工作树含其他 Agent 修改。
+
+---
+
+## 2026-08-13 02:05:52 +08:00 - Codex 子 Agent `/root/skill_evolution` - 真实文献与预实验驱动的受控候选 Skill 自进化
+
+- 用户请求/活动任务：复用现有检索、Skill、真实预实验、shadow/promotion/rollback 与 OB 方向链制品，实现一个可由批量/API 调用的最窄 evidence-to-Skill pipeline；候选必须绑定高相关/高影响论文与真实 pilot 原始证据，先做 development/held-out 验证，未通过不得晋升，生产启用必须显式且可回滚。正式实验、结果论文、API、前端和 125 题批处理不在本子任务范围。
+- 使用技能：`skill-creator`。候选采用标准 `skills/<id>/SKILL.md`、`agents/openai.yaml`、`references/` 结构；正文保持简洁、方法型和可迁移，详细论文/pilot 证据放在 bindings 中，并以系统 `quick_validate.py` 做结构兼容验证。
+- 变更文件：新增 `src/autoresearch/competition/contest_direction_skill_evolution.py`、`tests/unit/competition/test_contest_direction_skill_evolution.py`；`Problem.md` 新增 `P-20260813-135`；`Agent.md` 仅追加本条。未触碰 API、前端、Science 125 批处理、正式实验或论文生成文件。
+- 变更摘要：
+  - 冻结 API-friendly 入口 `run_evidence_to_skill_evolution(delivery_dir, output_dir, skills_root, ...)`。入口只接受 completed direction delivery，重新验证 literature artifact、报告绑定、selected Skill manifest，并通过正式 loader 逐项核验真实 pilot 的 raw/null/metrics/log 文件；fresh、partial escrow replay 和 completed 全量重验均受支持。
+  - 父 Skill 不是机械取 manifest 第一项，而是结合方向、scientific question、hypothesis、metric 与 null model 对已选 Skill 程序排序；真实旧第一题只读审计选中 `prime-structure-computational-number-theory`，没有误选排在前面的通用 novelty Skill。
+  - 文献以查询相关性为主、被引次数和 DOI 完整性为次的软排序选入；明确把它称为影响力代理而非期刊影响因子，也不补造旧制品中缺失的被引或 DOI。论文与 pilot 按程序确定性分成 development/held-out；候选生成模型只看到 development，且 lessons 必须同时引用 paper 与真实 pilot evidence ID。ID、hash、状态、文件 bindings 与 rollback target 全由程序计算。
+  - 候选默认只写 `output_dir/shadow/candidates/<candidate-id>/`，无论 held-out 是否通过都不修改 active skills。第二次独立模型调用只读取候选和 held-out cases；所有冻结 case 必须逐项且按顺序评审，通过才得到 `heldout_passed_shadow`/`promotion_eligible=true`。provider 可见 JSON 与 parsed JSON write-once 托管，断点续跑不会重复付费调用。
+  - 新增显式 `activate_validated_evolved_skill(...)` 与 `rollback_activated_evolved_skill(...)`。只有通过 candidate 可复制到 active root；receipt 保存候选/父版本 hash、操作者、说明、生产状态和回滚模式。回滚把候选可恢复地移入 archive，父 Skill 必须保持原字节；未通过候选、父版本漂移或任一篡改均失败关闭。所有 receipt/artifact 的 schema 默认字段在计算 hash 前显式写入，避免 Pydantic 默认补全后重算不一致。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_skill_evolution.py tests/unit/competition/test_contest_direction_literature.py tests/unit/competition/test_contest_prime_preexperiment.py tests/unit/knowledge/test_skills.py tests/unit/experiments/test_shadow.py tests/unit/experiments/test_promotion.py tests/unit/experiments/test_strategy_rollback.py` → `42 passed in 8.88s`。
+  - 专项 4 tests 覆盖真实小型素数 pilot、generic-first 父 Skill 选择、generation/held-out 信息隔离、通过/失败 shadow、exact `quick_validate.py`、completed 零 provider replay、显式 activation/rollback 与 candidate tamper 拒绝。
+  - `poetry run ruff check ...` → `All checks passed!`；`poetry run mypy src/autoresearch/competition/contest_direction_skill_evolution.py` → `Success: no issues found in 1 source file`；py_compile 通过。
+  - 对既有 `runs/contest-delivery/direction-prime-gap-evidence-first-live-v1` 做只读 evidence loader 审计，父 Skill 选择正确，文献只保留与 prime gap 直接相关的四条；旧 artifact 的 citation count 仍为 0，未冒充新版文献元数据修复已经执行。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-135`，记录初始真实 pilot fixture 未过既有科学门和系统 validator 在 Windows GBK locale 下的 UTF-8 读取问题；两者均用更稳定 fixture/显式 UTF-8 运行环境解决，没有降低科学门或篡改系统技能。
+- 后续：本子任务没有付费执行第一题全链，也没有自动激活任何候选。主 Agent 可在第一题 fresh live completed 后调用冻结入口；API 只能暴露 shadow/validation 状态，若用户以后明确批准生产启用，再单独调用 activation，并保留 rollback receipt。本子任务未 staging、未 commit，共享工作树含大量其他 Agent 改动。
+
+---
+
+## 2026-08-13 02:11:06 +08:00 - Codex 子 Agent `/root/q1_adapter_scope_fix` - Science 125 第 1 题适配器窄放行与 blocked 断点重评
+
+- 用户请求/活动任务：紧急修复首题真实运行在 Skill 和三个 exact candidate 均已通过后，仍因官方宽题干未显式出现 `gap + information` 而被 adapter direction gate 拒绝；要求只放行官方第 1 题，且 blocked checkpoint 续跑不重复前五次模型调用。
+- 变更文件：`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`、`Problem.md`、`Agent.md`。
+- 变更摘要：
+  - 只把冻结的官方 Q1 中文、英文或批处理程序精确产生的三行双语 envelope 视为 broad parent；任意素数问题不因此放行。
+  - broad parent 仍必须选中 `prime-structure-computational-number-theory` Skill，且候选的 adapter ID、scientific object、observable、metric 和 null coverage 必须精确匹配；蛋白质/基因冲突方向显式失败关闭。
+  - resume 不覆盖旧 `preexperiment-adapter-selection.json` 或 `blocked-receipt.json`。只对上游 hash、Skill、candidate 和旧失败原因全部匹配的 Q1 写入 `preexperiment-adapter-selection-reassessment.json`，其 `supersedes` 绑定旧 receipt 字节；重放同一 reassessment 幂等，篡改或其他方向被拒。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_research_loop_cli.py` → `12 passed`。
+  - 相关回归（方向链、Science125 batch、stage checkpoint、PDF 题库）→ `30 passed`。
+  - Ruff 通过；Mypy → `Success: no issues found in 1 source file`；py_compile 与 targeted `git diff --check` 通过。
+  - 现有 live blocked 目录只读审计确认 `required_skill_selected=true`、3/3 candidates `compatible=true`、旧 `direction_compatible=false`，符合窄重评条件。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-136`。
+- 后续：主 Agent 可对现有 `attempt-001/research-loop` 使用原方向加 `--resume-existing --preexperiment-policy required`原地续跑；将从 provisional plan/真实 pilot 开始，不重跑前五次模型请求。本子任务未 staging、未 commit，未修改其他模块。
+
+---
+
+## 2026-08-13 02:41:00 +08:00 - Codex 子 Agent `/root/q1_adapter_scope_fix` - postpilot MathML 与 Dreaming 有界投影
+
+- 用户请求/活动任务：Science 125 第 1 题真实 pilot 已完成，postpilot 因唯一保留 Goldbach 文献的 MathML 摘要和旧 32KB task gate 失败；要求保留完整文本/公式 annotation、原 record hash、真实 pilot 和断点，不联网、不调模型、不提交。
+- 变更文件：`src/autoresearch/competition/contest_direction_hypothesis_stage.py`、`tests/unit/competition/test_contest_direction_hypothesis_stage.py`、`Problem.md`、`Agent.md`。
+- 变更摘要：
+  - abstract 投影删除 HTML/XML/MathML 标记、解码 entity、保留普通文本与 CDATA/公式 annotation，只规范空白而不按字符数截断；`record_sha256` 继续绑定未投影的完整记录。
+  - 精确测量暴露完整 Dreaming receipt 的 summary/raw bindings 也进入 pool 32KB 门。postpilot 现只注入阶段、receipt、projection 和原始绑定的计数/束 hash 导航；完整 receipt 原字节落盘不变，派生导航仍不是科学证据。
+  - 任务精确字节计数现包含实际注入的 derived-memory context；超预算时删序列化最大的整条 literature projection，保留 `source_catalog_index`引用身份并确定性重编当次 `catalog_index`；只有真正 payload-too-large 才进入该缩减分支。
+- 验证：
+  - `poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_hypothesis_stage.py` → `11 passed`。
+  - hypothesis-stage + research-loop + memory + temporary-pool 联合 → `41 passed`。
+  - 真实 v2 build-only：`21,793 UTF-8 bytes`，pool `18,623 / 32,000 chars`，2 条文献 abstract `1,034 + 199 chars`，compact Dreaming `3,628 chars`；无网络/模型调用。
+  - Ruff 全绿；Mypy → `Success: no issues found in 1 source file`；py_compile 和 targeted `git diff --check` 通过。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-137`。
+- 后续：主 Agent 使用原 Science125 batch 命令加 `--resume`即可在同一 `attempt-001` 从 postpilot 继续；已完成的真实 pilot 和前置模型/API 回执均只读复用。本子任务未 staging、未 commit，未修改 pool 全局 cap 或其他模块。
+
+---
+
+## 2026-08-13 02:37:59 +08:00 - Codex 子 Agent `/root/q1_numeric_guard` - Q1 v2 修订数字截断追溯修复
+
+- 用户请求/活动任务：紧急诊断真实 Q1 v2 final-plan revision 被数字守卫以 `-7.4` 阻断的问题；只读核对已保存响应、真实 pilot metrics 与解析规则，若确需修改则只改 revision 模块及测试；绝不调用模型或重跑预实验。
+- 变更文件：`src/autoresearch/competition/contest_direct_plan_revision.py`、`tests/unit/competition/test_contest_direct_plan_revision.py`、`Problem.md`、`Agent.md`。
+- 变更摘要：真实指标为 `-7.465853262881276`；模型的 `-7.4` 是一位小数向零截断而非标准四舍五入。数字来源守卫在原精确/普通舍入规则之后，新增同 Decimal 分辨率的 `ROUND_DOWN` 档位验证；它只判断可追溯表示，不改模型文本或指标，也不接受相邻错误档位。新增真实精度 fixture 与正/负回归测试。
+- 保存响应只读审计：直接读取 write-once provider checkpoint 的 `parsed_json` 及真实 `prime-preexperiment.json`、`metrics.json`、原始文本；修复后 Results 19 个、paper abstract 9 个、rationale 1 个、limitations 6 个证据性数字均有来源，`-7.3` 对同一证据仍失败。没有网络、模型或预实验调用。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_revision.py` → `18 passed`；与 `test_contest_direction_research_loop_cli.py` 联合 → `30 passed`；Ruff all passed；Mypy 1 source file 无问题；py_compile 通过。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-139`。
+- 后续：主 Agent 可在原 Q1 v2 目录执行同一 `--resume` 命令，由 checkpoint 本地重放已保存 revision response；数字守卫不再阻断。独立科学评审仍应判断“截断而非四舍五入”的报告风格及其他科学内容。本子任务未 staging、未 commit；共享工作树含大量并行改动，未尝试混合提交。
+## 2026-08-13 02:12:49 +08:00 - Codex 子 Agent `/root/research_api_ui` - Q1 计划文献首条超预算定向修复
+
+- 用户请求/活动任务：只修复 `contest_direction_plan_cli.py` 的 planning literature 完整记录预算漏洞；最高分超长记录必须跳过并让短候选补位，任何记录不得截断，全超长须清晰失败；保持相关性、软质量与 withdrawn 状态逻辑，并说明已产生的 Q1 checkpoint 如何处理。不联网、不调用模型、不触碰 API/research loop。
+- 变更文件：`src/autoresearch/competition/contest_direction_plan_cli.py`、`tests/unit/competition/test_contest_direction_plan_cli.py`；`Problem.md` 新增 `P-20260813-137`；`Agent.md` 仅追加本条。
+- 根因与修复：两个字符预算判断都错误地依赖 `selected_indices` 非空，首条记录因此不受单条或总预算限制。现在在 status verification 前后分别对完整记录做无条件单条预算检查，超长即跳过且不截断，再尝试下一质量排序候选；随后继续执行原累计预算。只有所有记录均因单条超长被拒时才给出专门错误，其余状态排除失败语义不变。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_plan_cli.py` → `12 passed, 1 skipped in 1.76s`；skip 为显式 opt-in 的联网/付费 live 测试，本任务按要求未启用。既有相关性优先、软质量排序、完整记录投影、withdrawn/retracted finalist 排除及 backfill 测试全部通过。对 v1 原始 literature/finalist receipt 只读运行修复后的投影，超长 Choice 记录被跳过并选出 4 条预算内完整记录（3528/5039/3336/1740 chars）。`poetry run ruff check ...` → all passed；`poetry run mypy src/autoresearch/competition/contest_direction_plan_cli.py` → no issues；py_compile 通过。
+- Q1 checkpoint：真实 v1 已完成 stage 1–3，且 Skill routing/假设制品及 provider escrow 明确包含 `Introduction to number theory` 超长上下文。修复后 planning catalog hash 会改变，stage 2/3 的 write-once input hash 不再相同；原地 resume 应失败关闭，不能通过删除 receipt 或重放旧 provider response 绕过。保留 v1 失败证据，在新的 output root fresh 重跑 Q1。
+- 问题新增或更新：`P-20260813-137`。
+- 后续：主 Agent 应让一键 Q1 使用新目录；不得把 v1 的 blocked receipt、Skill routing、假设或 response escrow复制到 fresh run。本子任务未联网、未调用模型、未运行预实验、未 staging、未 commit。
+
+---
+
+## 2026-08-13 02:50:21 +08:00 - Codex 子 Agent `/root/q1_scientific_repair` - Q1 v2 一次科学修订与机械恢复审计
+
+- 用户请求/活动任务：不重跑 retrieval、Skill routing、brainstorm 或真实 pilot，基于已保存失败 revision、真实 pilot metrics 与审计 findings 做最窄的 Q1 v2 科学修订；最多一次 Qwen 修订，修正 rationale 截断、simulation-standardized diagnostic 非 population effect、raw `0.005`/Holm `0.02`、mod30 residue 与 wheel-210 分界、fixed `n=5` 边界与最终目录引用；将通过的标准 revision artifact 交给原 batch resume 继续 render/review，不改原完成状态。
+- 变更文件：新增真实运行制品 `runs/contest-delivery/science125-q001-full-feature-live-v2/questions/q001-d3a6861ef6c09218/attempts/attempt-001/research-loop/system-authored-revised-research-plan.json`、`revision/machine-recovery/model-output-artifact-before-recovery.json`、`revision/machine-recovery/recovered-revision-artifact.json`、`revision/machine-recovery-audit.json`，以及新 Qwen response/authorship sidecars `revision/responses/direct-plan-revision-c08ff9469ee282ce-49282f0c95b3.txt` 和 `revision/interactions/direct-plan-revision-c08ff9469ee282ce-49282f0c95b3.json`；`Problem.md` 新增 `P-20260813-140`；`Agent.md` 仅追加本条。未修改生产代码、测试或既有 pilot 原始数据。
+- 执行与科学边界：只读审计证实旧 `contest_direction_scientific_amendment_cli`/targeted repair 硬绑另一条 199/999-draw v1→v5 链，不宜冒用。本任务直接复用 `revise_contest_direct_plan`，绑定同一 provisional、三条最终 planning literature、两个已选 Skill、postpilot 评审、pilot artifact/metrics、旧失败 response/receipt 和 OB/Dreaming recall，发送唯一 fresh Qwen 科学修订。它正确修正统计与方法边界，但仍输出两个可证明未闭合字段。根据主 Agent 确认，仅做可审计的纯机械恢复：rationale 逐字节取同一 verified provisional 完整字段；results 只删除精确未闭合的最后 clause，零补字、零科学改写。未接受模型 artifact 原字节保留，原 response/receipt 不覆盖。
+- 验证：仓库现有 `_guard_observed_numbers`、`_verify_plan_references`、`_verify_revision_sidecars` 全部通过；machine-recovery audit 的 9/9 检查通过，覆盖两个机械操作身份、raw `p=.005`/Holm `p=.02`、diagnostic 非 population effect、mod30/wheel-210 分离、fixed `n=5` 非总体 CI、最终文献目录、单次模型请求与原 sidecar 恒等。复验输出 `validated=true`、`checks=9`、`provider_calls=1`；revision ID `direct-plan-revision-c08ff9469ee282ce`，artifact hash `f642d94a452d66de335b6a046ffd555fc99ea7a9c3c63c3686fd526d51fc216a`，标准与 versioned recovered 文件 SHA-256 同为 `003189a07a52218f1b3a8941d21a3f858d05e81b76ab0802d8c4a2d89bb705ab`。没有执行正式实验，没有生成结果论文。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-140`。首次机械恢复校验因向 numeric guard 误传 dict 而在发布前失败；source snapshot 已提前保留，改用验证过的 `ContestDirectPlanArtifact` 后成功，无模型/API 调用或证据丢失。
+- 后续：主 Agent 使用既有 Science125 batch `--resume` 加载该标准 artifact，继续现有 render 与一次 independent scientific review；不再调用修订模型，不自动修改 batch 成功状态。共享工作树含其他 Agent 改动，本子任务未 staging、未 commit。
+
+---
+
+## 2026-08-13 03:01:40 +08:00 - Codex 子 Agent `/root/evolution_evidence_id_fix` - 自进化开发文献 ID 规范化与 live held-out 验证
+
+- 用户请求/活动任务：修复首题 evidence-to-Skill live 运行把 Qwen 引用的 development paper 原始 `record_id` 误判为未知/held-out evidence ID；必须只做精确机械规范化，unknown/held-out 继续拒绝，复用已保存候选 completion，且真实执行一次独立 held-out review。
+- 变更文件：`src/autoresearch/competition/contest_direction_skill_evolution.py`、`tests/unit/competition/test_contest_direction_skill_evolution.py`、`Problem.md`、`Agent.md`；live 续跑新增 `runs/contest-delivery/science125-q001-full-feature-live-v2/evolution-v1/` 下的 held-out input/completion、shadow candidate、evidence bindings、最终 JSON/Markdown artifact。未修改原 generation input/completion、真实预实验、研究计划或 active Skills。
+- 变更摘要：候选 draft 结构校验后，只把当前 development paper 的精确 `record_id` 映射为程序规范 `paper:<record_id>`；held-out、未知、近似或 pilot ID 不做别名映射，规范化后重复仍失败关闭。artifact、Skill 正文、bindings 与 seed hash 全部使用规范 ID，provider 原始响应继续保存在 write-once escrow，便于审计模型实际输出。
+- live 结果：原 generation completion input hash `975e24a264b5e693f949a51453c375a619865c94143ee0404f3c24b1a8b120f4` 成功本地重放；只新调用一次 Qwen3.7-Max held-out review，artifact 的 `model_calls_at_creation=1`。候选 `prime-structure-computational-number-theory-evo-49b98a088bfa` development 校验通过，两个隐藏文献案例未通过、隐藏 pilot interval-05 通过，故诚实保留 `heldout_failed_shadow`、`promotion_eligible=false`，未自动激活。完成后用抛错 completion 再运行得到 `resumed_existing=True`，确认 completed 零 provider replay。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direction_skill_evolution.py` → `7 passed in 6.04s`；`poetry run ruff check ...` → `All checks passed!`；`poetry run mypy src/autoresearch/competition/contest_direction_skill_evolution.py` → `Success: no issues found in 1 source file`；py_compile 通过；对 live shadow candidate 运行系统 `quick_validate.py` → `Skill is valid!`。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-141`。held-out 科学拒绝不是工程阻塞，不能通过放宽验证或自动激活绕过。另新增 open `P-20260813-142`：live 文献分区含一条把生物医学动词 `prime` 误当数论素数的 T-cell 论文；当前 candidate 已失败且未激活，风险未进入 active Skills。
+- 后续：候选继续留在 shadow 供人工查看；若要提升迁移性，应先为下一候选增加数学/数论领域一致性软过滤或优先复用已锁定 planning shortlist，再运行新的 evidence-bound candidate 迭代，而不是改写本次独立评审。本子任务未 staging、未 commit；共享工作树含大量并行修改，避免混入无关提交。
+
+---
+
+## 2026-08-13 03:05:33 +08:00 - Codex 子 Agent `/root/reference_render_cleanup` - Q1 参考文献人类展示投影与版本化重渲染
+
+- 用户请求/活动任务：修复最终 research-plan Markdown/TeX/PDF 把锁定文献目录中的 record ID、完整摘要、MathML、检索谱系与 hash 原样打印的问题；只清洁人类输出，不改变上游证据/JSON，不调用模型，并为现有完成态 Q1 生成可审计版本化展示。
+- 使用技能：`pdf`，用于真实 PDF 编译、页数、文本可提取性和污染字段审计。
+- 变更文件：`src/autoresearch/competition/contest_direct_plan_render.py`、`tests/unit/competition/test_contest_direct_plan_render.py`、`Problem.md`、`Agent.md`；新增 live 展示制品 `runs/contest-delivery/science125-q001-full-feature-live-v2/questions/q001-d3a6861ef6c09218/attempts/attempt-001/research-loop/plan-polished-v2/{research-plan.json,research-plan.md,research-plan.tex,research-plan.pdf,research-plan-manifest.json,presentation-render-audit.json}`；首次就地渲染的恢复副本移至 `research-loop/recovery-history/reference-render-cleanup-inplace-attempt/`。标准 `plan/` 现在精确只含原五制品且均恢复原字节，未改 delivery report、完成回执、正式实验或结果论文。
+- 变更摘要：新增通用 string/mapping reference canonicalization，只在 MD/TeX/PDF 投影作者、题名、年份、期刊/会议、正式或仓储 DOI、可选来源和 URL；JSON 继续保留完整检索证据。render manifest v2 增加 projection version、display references 和 hash。新增版本化 presentation 入口，明确拒绝 source/output 同目录，重验 source manifest/inventory，生成 sibling 展示版并以 immutable audit 同时绑定标准五制品、可选外层完成回执和展示五制品；全程零模型、零检索、零实验调用。
+- 完成态恢复：初次操作曾把清洁版写到已完成标准目录；发现外层 inventory/hash 不变量后，立即用预先保存且逐项 SHA-256 核验的旧五制品恢复。原 hash 为 JSON `019afe31...4546`、MD `c091f904...f706`、TeX `7a6f423f...e19d`、PDF `c4c243cf...0e2e`、manifest `e66aefe0...8093`。随后只在 `plan-polished-v2/` 发布清洁版；audit hash `e8017803f6616a3a12aefc7b1abae16385edef6028bf925fcf173afb8b1da93f`，标准与展示 JSON 字节完全一致。
+- 验证：`test_contest_direct_plan_render.py` → `12 passed`；render + direction-plan + research-loop + Science125 batch → `41 passed, 1 skipped`（skip 为显式 opt-in live）；Ruff、Mypy、py_compile、`git diff --check` 通过。清洁 PDF 从 6 页降到 4 页；`pdftotext` 确认两条真实书目仍在，五类 transport/audit 垃圾标记均为 0。原 Science125 命令 `--resume` 返回 `already_complete_no_model_call`；provider escrow 前后均 10 文件，集合 hash 均为 `bc3d382ad50649c9073ca0a1e227520354e0c6685d3efd3f599e4c74624c8fbe`。
+- 问题新增或更新：`Problem.md` 新增并解决 `P-20260813-143`；新增 low/open `P-20260813-144` 记录 Windows 默认 GBK 导致 TeX stdout reader 非致命解码警告。该警告未影响 PDF 编译或文字验证，本轮未触碰已有并行修改的 `research/plans.py`。
+- 后续：交付/续跑继续使用 immutable 标准 `plan/`；给用户展示时使用 `plan-polished-v2/`。后续若正式把新版 renderer 跑入 fresh attempt，其标准输出会直接使用清洁参考文献；不得对已完成 attempt 原地覆盖。共享工作树含多 Agent 修改，本子任务未 staging、未 commit。
+
+---
+
+## 2026-08-13 03:11:44 +08:00 - Codex 子 Agent `/root/reference_render_cleanup` - post-review 参考题名 Unicode 数学展示 v2
+
+- 用户请求/活动任务：修复 post-review PDF 中真实题名 `4⋅10¹⁸` 因 CTeX 字体 fallback 视觉丢点号/上标的问题；仅在 display 层做通用数学字符规范化，补测试，只重渲染 versioned post-review plan，并让审计绑定 Q1 repair 的最终报告。
+- 变更文件：继续更新 `src/autoresearch/competition/contest_direct_plan_render.py`、`tests/unit/competition/test_contest_direct_plan_render.py`、`Problem.md`、`Agent.md`；新增 live sibling `post-review-revision-v1/plan-presentation-v2/{research-plan.json,research-plan.md,research-plan.tex,research-plan.pdf,research-plan-manifest.json,presentation-render-audit.json}`。未修改 `post-review-revision-v1/plan/`、旧 `post-review-delivery-report.json`、源计划、review 或实验数据。
+- 变更摘要：projection version 升为 `bibliographic-display-v2`；书目题名和 opaque display 中的乘点规范为 `×`，连续 Unicode 上标/下标 run 分别规范为单个 `^`/`_` 加 ASCII 字符。原证据 JSON 与 DOI/URL 完全不动。版本化 audit 绑定旧 post-review delivery report、fresh independent review、issue coverage audit、post-review plan artifact、源五制品与新五制品，并明记零模型/检索/实验调用。
+- 验证：renderer 专项 `13 passed`；Ruff、Mypy 通过。源五制品 hash 与旧 report inventory 5/5 相同。新 PDF SHA-256 `56b8e2af88ce5b96549fa8781c1318f5beccb1b3ae6b52c3af2d76a0df945313`、5 页；manifest SHA-256 `1eab069abc1aeb6dcbabd01f475829657c0d3cce235cd2954a3e4233e22ae477`；audit artifact hash `a7a158934f164ac4ad819b52e90441747f4b16e0a281fc628a69e0d2a2687810`。PDF 文本为 `4×10^18`，原 `⋅/¹/⁸` 与内部 lineage 标记均为 0；150 DPI 最后一页视觉检查也清晰显示完整表达式。
+- 问题新增或更新：新增并解决 `P-20260813-145`。既有 `P-20260813-144` 的非致命 Windows TeX stdout 解码警告仍存在，但未影响编译、PDF 文本或视觉验证。
+- 最终衔接：`/root/q1_scientific_repair` 已完成 immutable `post-review-delivery-report-v2.json`；文件 SHA-256 `35e938d0f0247bb7e9832dc65efcbb9b8cd9b2dc5ebab295b98c04b8034c1009`、artifact hash `2b377b4e67d706774e57fe39a4c929515215f98e221d8c2bc6102b49d04f4b31`。报告绑定本次展示、旧 report 与 fresh review，standard 未改变。本子任务未 staging、未 commit。
+---
+
+## 2026-08-13 03:12:20 +08:00 - Codex 子 Agent `/root/q1_scientific_repair` - Q1 post-review 有界修订、四格式交付与新独立科学评审
+
+- 用户请求/活动任务：不重跑 retrieval/routing/brainstorm/pilot，针对原独立评审的 HL k-tuple 可执行基线 major 与 wheel 异质性、`m=4/6` 两个 minor，执行一次 bounded Qwen 修订；随后仅在 versioned 目录物化 JSON/Markdown/TeX/PDF，再运行一次新鲜独立科学评审并如实交付，无论结果均不再循环。
+- 使用技能：`scientific-critical-thinking`，用于核对研究计划的推断范围、统计解释、异质性、方法可行性和“已执行事实/未来计划”边界。
+- 变更文件：新增 `research-loop/post-review-revision-v1/` 下的 `system-authored-post-review-research-plan.json`、Qwen response/receipt、`post-review-issue-coverage-audit.json`、`plan/` 四格式及 manifest、`independent-scientific-review/` JSON/Markdown/response/receipt、前序 `post-review-delivery-report.json`、最终 `post-review-delivery-report-v2.json`；并绑定其他 Agent 生成的 `plan-presentation-v2/` 人类展示版。本 Agent 追加 `Problem.md` 的 `P-20260813-146` 和本 `Agent.md` 记录。未覆盖 standard plan/report，未修改生产代码或测试。
+- 修订与科学边界：Qwen 修订 provider 仅 1 call，thinking disabled；补入 HL 零模型构造/重复/决策/降级，区间2 wheel `p=0.08` 与聚合 raw `0.005`/Holm `0.02` 分离，`m=4/6` 明确为未来敏感性，当前证据仍仅 `m=5`。程序只删除 limitations 列表序号 1–9，0 添加字符；10/10 issue-coverage 通过。HL 基线、`m=4/6` 和正式实验均没有被写成已执行。
+- 新独立评审：唯一 1 call，thinking disabled，`prior_audit_context_supplied=false`、`plan_rewrite_performed=false`；review ID `direct-plan-scientific-review-8d68b26861e233fe`，artifact hash `9a8d5bcd7e23ddfe6302217955769cc5597b760ba990724375904720735205e7`。结论仍为 `major_revision`（2 major/2 minor）：HL 生成器的原型可行性/复杂度/降级阈值和 wheel 区间2的诊断预案为 major；`m=5` 理据和 `segment_size=4096` 敏感性为 minor。按合同停止，未再修订。
+- 展示版与最终报告：`plan-presentation-v2/research-plan.json` 与被评审 JSON 字节相同；只将参考文献题名的 `4⋅10¹⁸` 展示为 `4×10^18`，`scientific_content_changed=false`。最终 PDF SHA-256 `56b8e2af88ce5b96549fa8781c1318f5beccb1b3ae6b52c3af2d76a0df945313`，5 页，可提取文字，无 record ID/完整摘要/检索谱系/MathML 污染。`post-review-delivery-report-v2.json` file SHA-256 `35e938d0f0247bb7e9832dc65efcbb9b8cd9b2dc5ebab295b98c04b8034c1009`，artifact hash `2b377b4e67d706774e57fe39a4c929515215f98e221d8c2bc6102b49d04f4b31`，绑定 source revision、coverage audit、真实 pilot、旧/新评审、最终 PDF/manifest/audit 和 superseded v1 report。
+- 验证：`poetry run pytest -q --no-cov tests/unit/competition/test_contest_direct_plan_render.py` → `11 passed`；修订现有 numeric truthfulness/reference/sidecar gates 全部通过；独立 review loader 对旧/新 review 的 response/receipt/Markdown 全部重验 hash；最终 manifest 四文件 SHA/size 全部匹配；TeX Live `pdfinfo.exe` → 5 pages，`pdftotext.exe` 验证文字可读与内部谱系标记全缺失；v2 report inventory 20 文件 hash 通过。第一次 review 尝试的本地 wrapper 参数冲突发生在 provider 前，零 provider 请求/零工件；修正后只有上述唯一新评审 call。
+- 问题新增或更新：`Problem.md` 新增 `P-20260813-146`；非致命 Windows LaTeX 日志 GBK 解码问题已由并行 renderer Agent 记录为 `P-20260813-144`。
+- 后续：当前研究计划可作为如实的高质量修订版交付，但不可冒充评审 pass 或正式实验就绪。后续若恢复正式实验，先处理 `P-20260813-146` 的两个 major；本子任务未 staging、未 commit，共享工作树含其他 Agent 改动。
+
+---
+
+## 2026-08-13 03:16:06 +08:00 - Codex 主 Agent `/root` - 第一问全功能一键实跑、受控自进化与产品面验收
+
+- 用户请求/活动任务：正式实验和结果论文暂缓；恢复 evidence-to-Skill 自进化验证、API/中文前端、125 问批量入口，并用《Science》125 问第一题真实一键重跑验证检索、Skill 路由、临时 Agent、真实预实验、反馈修订、独立评审、80% 上下文策略、OB/Dreaming 和记忆断点续跑。
+- 使用技能：`skill-creator` 约束 shadow Skill 结构和 quick validation；`arbor` 仅采用开发/held-out 隔离思想而不自动晋升；`sites-building` 用于复核本地前端边界；`pdf` 用于最终 PDF 的页面、加密、文字层和视觉检查。
+- 主 Agent 直接变更：`src/autoresearch/competition/contest_direct_plan_scientific_review.py` 将一次性、非回写终审固定为 `thinking_mode=disabled`/`thinking_budget=None`，避免隐藏推理耗尽可见 JSON；`tests/unit/competition/test_contest_direct_plan_scientific_review.py` 钉住该 transport 设置；并把重复问题编号中的 post-review 科学风险更正为 `P-20260813-146`。其他生产改动、测试和日志由同轮子 Agent 分任务记录。
+- 第一问 live：标准 Science125 入口在同一 `attempt-001` 原地断点恢复；检索、路由、三路假设、真实 pilot 均未重跑。真实 pilot `prime-pilot-3bf07723279ba369` 含 17 个 hash-bound evidence 文件、五个固定区间和四类 null。标准链最终 `completed_count=1/failed_count=0`，随后再次 `--resume` 在 3.6 秒内返回 `already_complete_no_model_call`；provider escrow 前后均 10 个文件，completed-context 数量不变。正式实验与结果论文始终为 false。
+- 上下文与记忆验收：Qwen 官方 capability 记录为 1,000,000 context，80% trigger=800,000；12 份 context preparation 的最大估计输入 138,684，故本次无需压缩，`compression_triggered=0`，但 active task 12/12 均排除于历史摘要且逐字保留。九阶段 OB capture 均存在；postpilot、plan、review 三阶段 recall 实际注入独立非证据 Dreaming 消息；完成态重放不新增 capture 或 provider 调用。
+- 自进化 live：开发候选 generation escrow 本地重放，新增一次独立 held-out Qwen；候选 `prime-structure-computational-number-theory-evo-49b98a088bfa` 开发校验通过、held-out 未通过，最终 `heldout_failed_shadow`、`promotion_eligible=false`、未写 active。再次 completed replay 使用会抛错的 provider seam 仍成功，证明零调用。程序没有为了演示功能绕过失败；领域同形词 `prime` 误收 T-cell 论文的后续风险已记录为 `P-20260813-142`。
+- 最终计划与评审：标准交付保持 immutable；另产出 versioned post-review 高质量修订和 5 页清洁展示 PDF，参考文献不再含 record ID、摘要、MathML、检索谱系或 hash，题名数学式显示为 `4×10^18`。新独立评审仍为 `major_revision`（HL 生成器可行性/阈值与 wheel 区间异质性诊断为 major），因此如实停止，不声称 pass 或正式实验就绪。最终报告 SHA-256 `35e938d0f0247bb7e9832dc65efcbb9b8cd9b2dc5ebab295b98c04b8034c1009`；PDF SHA-256 `56b8e2af88ce5b96549fa8781c1318f5beccb1b3ae6b52c3af2d76a0df945313`。
+- API/批量验收：aiohttp 服务在 `127.0.0.1:8766/8767` 实际启动，`/api/health` 返回 ok、`/` 返回 200 中文页面；authentication=false 仅限 loopback，batch/evolution configured=true，automatic activation/formal experiment/result paper=false。用户 PDF 的 125 题 manifest 为 `dd6b24581b994d6c329fa2e7a0077eb4f5c5a47659c78405e717bdf2e243bfd1`，全 125 dry-run selected=125、failed=0、provider=0；只真实运行第一问，没有虚报另外 124 份计划已生成。
+- 最终验证：聚焦联合 `112 passed in 23.12s`；Ruff all passed；Mypy 15 production files passed；py_compile 和 scoped `git diff --check` 通过。bundled `pypdf` 验最终 PDF 5 页、未加密、文字可提取，Poppler 120/150 DPI 首尾页视觉检查通过。API smoke 后已正常停止本地服务，无后台进程。
+- 问题新增或更新：沿用/解决 `P-137`—`P-145`；更正重复编号并保留 open `P-20260813-146` 科学风险。另有 open low `P-144`（Windows TeX stdout GBK reader warning）和 open `P-142`（自进化文献领域歧义）。共享工作树包含大量既有/并行变更，未 staging、未 commit，以免混入无关文件。
+- 后续：当前任务已证明“轻量科研链、真实 pilot、记忆/压缩策略、断点恢复、自进化拒绝门、API/前端和 125 问批量入口”可运行。若以后恢复正式实验，先解决 `P-146` 的两个 major；若要批量真实生成其余 124 问，需要单独确认模型/检索成本，并为无兼容 pilot adapter 的题目保留 plan-only 状态，不能把 dry-run 冒充成完整输出。
+
+---
+
+## 2026-08-13 15:49:19 +08:00 - Codex 子 Agent `/root/stable_references` - 通用 5–10 条真实参考文献稳定产出合同
+
+- 用户请求/活动任务：不是手工给 Q1 补文献，而是修复系统，使 fresh 研究计划稳定包含 5–10 条高质量、实际相关、可追溯参考文献；模型不得自造，不能因正文未逐条提及而把 bibliography 缩到 2 条；未知被引不得解释为 0，撤稿/撤回条目不得进入正向计划。
+- 使用技能：`nature-citation`。依其“结构化元数据优先、相关支撑优先于数量、被引只作 tie-breaker、撤稿/更正状态显式处理、不补造缺失字段”原则审计现有 retrieval→planning shortlist→direct plan/revision→render 链；本任务没有限定 Nature/CNS 范围，因此未套用期刊族白名单。
+- 变更文件：新增 `src/autoresearch/competition/contest_reference_policy.py`、`tests/unit/competition/test_contest_reference_policy.py`；更新 `contest_direction_plan_cli.py`、`contest_direct_plan.py`、`contest_direct_plan_revision.py`、`contest_direction_research_loop_cli.py`、`science125_batch.py`、`contest_direction_scientific_amendment_cli.py`、`contest_direction_targeted_scientific_repair_cli.py` 及对应 direct/revision/direction/research-loop 测试；追加 `Problem.md` 的 `P-20260813-147` 与本记录。未修改 renderer、预实验执行代码或历史 Q1 制品。
+- 选择与真实性合同：规划完整记录预算从 14K 调到 64K，production 选择目标固定为 5–10 条；相关性权重仍最高，被引年龄归一化、带来源的 IF、发表状态/DOI、跨源、查询主题与题名多样性只作软信号。长查询记录必须在同一 query theme 命中至少三个独立 token 或命中一个多词 query clause，阻断把 `prime`/`zeta` 的 T-cell 高引论文及跨主题 generic-token 认知论文误收为数论文献。authorless review、review venue 与疑似整本目录摘要仅软降权；withdrawn/retracted 仍排除，citation unknown 仍为 `None`。选择保留完整摘要、不截断，并为至少五条可行记录预留预算。
+- 模型与程序责任：Qwen 仍从锁定真实目录选择关键编号；程序只在同一既定质量排序目录中补足到 5 条、最多 10 条。artifact 新增兼容可选的 `reference_projection`，分别记录模型选中的索引、程序补充索引和最终数量；历史无该字段的 direct/revision artifact 仍可按旧 hash 读取，但不能绕过新的 delivery gate。真实 pilot 先完成文件与语义核验，再把其程序内置 DOI 方法来源和检索 shortlist 按 DOI identity 去重并锁定为最多 10 条。Science125 plan-only、fresh/resume provisional 与 final revision、scientific amendment、targeted repair 均在最终渲染前显式校验 5–10、唯一且全部属于 locked catalog。
+- 验证：`poetry run pytest -q --no-cov` 对 reference/direct/revision/direction/research-loop/Science125 batch/amendment/targeted repair 最终共 `97 passed, 1 skipped`；Ruff 通过；Mypy 8 个生产模块通过；py_compile 通过。新增 duplicate-padding 和 same-DOI-different-text gate。Q1 真实旧 literature artifact 只读重投影：120 eligible → 10 selected、总上下文 19,113 字符、top 5 中 4 条正式发表来源、unknown citation 3、withdrawn/retracted 0、T-cell/认知同形词/authorless Choice review 均为 0；与真实 pilot 方法来源合并为 10 条，其中 9 条含 DOI URL。未联网、未调用模型、未写历史工件。首次 stdout 输出含 Unicode 乘点时受 Windows GBK 限制失败；改为 JSON ASCII escaping 后同一 smoke 成功。共享 worktree 并行更新期间首轮 96-test 联合采样有 2 个 batch 断言失败，两项隔离重跑通过；随后收集 98 项的完整同命令稳定为 97/1。另验证旧 provisional/revision 的 2 条书目 artifact 可兼容读取且 `reference_projection=None`，证明它们是历史而非新合同产物。
+- 问题新增或更新：新增并解决 `P-20260813-147`。主链 fresh/resume 已同时接入 provisional 与 final revision gate；Q1 旧 2-reference completed checkpoint 的只读 smoke 确认兼容加载后被新 5–10 gate 预期拒绝，必须新版本重生成，不能冒充新合同交付。
+- 交叉验收：`/root/self_contained_evidence` 在当前共享 worktree 额外运行 reference-policy + embedded-evidence + direct-plan-render + research-loop，结果 `40 passed in 14.55s`；对应 4 个生产文件 Ruff/Mypy 全绿，确认 5–10 locked reference gates 与 render-v3 自包含表图/resume 同时通过、无代码冲突。
+- Git：相关生产文件和测试在共享工作树中整体仍为其他任务先创建的 untracked 文件，无法安全区分或 focused stage；为避免把其他 Agent 的大量既有内容纳入提交，本 Agent 未 staging、未 commit。
+
+---
+
+## 2026-08-13 16:04:34 +08:00 - Codex 子 Agent `/root/self_contained_evidence` - 通用自包含预实验表图与公开计划 v3
+
+- 用户请求/活动任务：修复系统而不是手工补 Q1 文档，使未来所有带真实预实验的研究计划稳定把原始指标直接写成表格/图和中文分析，不再要求读者打开 JSON/CSV/log；机器 ID 仅在内部证据层保留，公开研究计划使用人类可读名称。无预实验时必须诚实且不造表图。保持引用数量逻辑由独立任务处理。
+- 使用技能：`scientific-visualization` 用于从已核验数据生成色盲友好、带零线、类别标签、数值标签和解释边界的确定性区间图；`pdf` 用于真实 CTeX/PGFPlots 编译、`pdfinfo`/`pdftotext` 检查和原尺寸页面目检。
+- 变更文件：新增 `src/autoresearch/competition/contest_plan_embedded_evidence.py`、`tests/unit/competition/test_contest_plan_embedded_evidence.py`；更新 `src/autoresearch/competition/contest_direct_plan_render.py`、`contest_direction_research_loop_cli.py`、`contest_direction_scientific_amendment_cli.py`、`contest_direction_targeted_scientific_repair_cli.py`、`contest_prime_feedback_cli.py`、`src/autoresearch/api/research_service.py` 及对应 renderer/loop/amendment/repair/feedback/API 单测；追加 `Problem.md` 的 `P-20260813-148` 和本记录。生成只读验收制品 `runs/manual-live/task-q1-self-contained-evidence-smoke-v4/`，未改历史 Q1 完成制品或真实预实验。
+- 实现摘要：新 builder 对完成态 pilot 的 artifact/metrics/manifest/原始 evidence 做 hash、大小和 root containment 验证，再程序派生总体 7 列对照表、固定单元表、水平区间图、中文分析与 scope；没有可报告数值则返回空而非编造。renderer v3 把内部 raw payload 留在 `_private/research-plan-source.json`，公开 JSON 使用科学内容白名单投影，MD 内联 SVG，TeX/PDF 内嵌表图；machine values、内部 token、本机路径和 sidecar 文件名不再进入公开正文。fresh/resume、amendment、targeted repair/finalize、feedback 全部复用该 builder。resume 拒绝 v1/v2 raw render；API 不公开 private source，且 internal artifacts 不再冒充最终计划入口。
+- 图表与可读性：总体表把恒定的 interval/draw 数移入表注以避免 9 列缩小，保留全部关键数字；图中四个零模型均显示中文标签，区间/点之外直接显示 delta 数值，并明确范围仅为固定分析单元的描述性重采样结果。future adapter 未知字段使用通用中文表头，JSON schema key 仍保留以便机器追溯。
+- 验证：`poetry run pytest -q --no-cov` 对 7 组相关测试得到 `61 passed in 11.42s`；Ruff 全绿；Mypy 7 个生产模块 `Success: no issues found`。真实 Q1 smoke 的 public 表格数值逐字段等于原 `metrics.json`；manifest v3 为 2 tables/1 figure/19 verified bindings；公开 JSON/MD/TeX 对 `.json/.csv/.log`、path/hash/run/adapter/record/revision ID 和 machine values 零命中。真实 PDF 经 TeX Live 编译为 A4 5 页、未加密，`pdftotext` 可提取四个类别标签和四个 delta，page 4 原尺寸目检通过。既有 `P-20260813-144` GBK reader warning 仍出现但不影响 PDF。
+- 问题新增或更新：新增并解决 `P-20260813-148`；沿用 open low `P-20260813-144`。真实 smoke 沿用历史两条文献，只验表图链，不冒充已满足 `P-20260813-147` 的 5–10 条参考文献最终交付。
+- 后续：等待主链 human-delivery validator 与 fresh Q1 重跑把 5–10 reference contract、render-v3、自包含 evidence 和一次独立科学评审合并验收。本子任务处于高度共享 dirty/untracked 工作树，未 staging、未 commit，以免把其他 Agent 改动混入提交。
+
+---
+
+## 2026-08-13 16:13:43 +08:00 - Codex 子 Agent `/root/delivery_contract_audit` - 统一人类交付验收门与 API/batch 完成态接线
+
+- 用户请求/活动任务：把“系统稳定产出，而不是手工补一份”落实为最终系统验收合同；独立核对 fresh/revision/render/API/batch，阻止参考文献少于 5、正文泄漏机器 ID/外部文件、真实 pilot 没有表图/配文分析的结果被写成 completed。父任务随后授权新增独立 validator，并只对 API 与 Science125 batch 做最窄接线。
+- 变更文件：新增 `src/autoresearch/competition/contest_human_delivery_validator.py`、`tests/unit/competition/test_contest_human_delivery_validator.py`；更新 `src/autoresearch/competition/science125_batch.py`、`tests/unit/competition/test_science125_batch.py`、`src/autoresearch/api/research_service.py`、`tests/unit/api/test_research_api.py`；追加 `Problem.md` 的 `P-20260813-149` 与本记录。未修改 renderer、reference selector、research-loop 科学流程或历史 Q1 制品。
+- 实现摘要：统一 validator 只读重验 manifest v3、五项文件 binding、private source/public payload canonical hash 和真实 PDF 文字层；bibliography 要求 5–10、唯一，并使用 caller locked catalog exact-subset 或 manifest/source/public 逐项 URL/DOI projection binding。公开 JSON 的内部 key 与 JSON/Markdown/TeX/PDF 文本中的本机路径、artifact 文件名、64 位 hash、run/adapter/record/revision ID 和已知 machine value 全部拒绝。真实 pilot 强制至少一张有数据/分析的表、一张结构化区间图、综合分析和逐文件私有 provenance；无 pilot 强制无 evidence 且明确“尚未执行预实验”。
+- 完成态接线：batch fresh 只有 validator 通过后才写 completed receipt；resume 每次重验，旧/篡改 completed 或缺当前 validation receipt 时新开 attempt，不把旧状态原地升级。API runner 返回后先验收，不合格统一进入 `failed`，只有通过才写 `completed`；validation receipt 只含数量/布尔值和 binding 模式，不泄漏路径/hash。
+- 验证：`tests/unit/competition/test_contest_human_delivery_validator.py` → `11 passed`；validator+batch+API → `32 passed`；reference/direct/revision/render/evidence/direction/research-loop/amendment/repair/validator/batch/API 联合 → `141 passed, 1 skipped in 17.99s`。六个本轮生产/测试文件 Ruff 全绿；validator、batch、API 三个生产模块 Mypy 均 `Success: no issues found`；py_compile 通过。对真实 `runs/manual-live/task-q1-self-contained-evidence-smoke-v4/` 执行新门，按预期拒绝 2 条旧书目；用 TeX Live `pdftocairo` 转出第 4 页并原尺寸目检，7 列总体表、分析单位表、四个中文标签和 delta 数值均可读。
+- 问题新增或更新：新增并解决 `P-20260813-149`。沿用 `P-20260813-147` 的边界：当前 v4 只是表图 smoke，仍有 2 条旧书目，因此不是最终交付。另沿用 open low `P-20260813-144` 的 Windows TeX stdout warning，本任务未触碰编译 helper。
+- 后续：必须从新 5–10 locked catalog 生成 fresh Q1 最终计划并让本门通过，不能给 v4 补字或改 receipt 冒充。共享 worktree 含大量其他 Agent 的既有/并行改动，相关新生产文件本身也是 untracked；为避免混入无关内容，本 Agent 未 staging、未 commit。
+
+---
+
+## 2026-08-13 17:06:00 +08:00 - Codex 子 Agent `/root/two_stage_literature_core` - 广搜证据后聚焦方向与定向检索核心
+
+- 用户请求/活动任务：将“先原始广泛检索核对，基于证据慢慢选出可证伪方向，再围绕该方向检索最近工作、方法/基线与反证”的研究质量要求实现为独立核心；不直接改主 research loop、API、renderer 或 reference policy，供并行集成任务接线。
+- 使用技能：完整读取并采用 `literature-review` 的多查询、检索记录、去重、主题综合、反例和 citation chaining 方法；采用 `scholar-evaluation` 的问题清晰度、证据相关性、可证伪性、方法可行性、替代解释与结果—主张边界。没有把 Skill 自带的期刊/被引阈值当生产硬门，也没有在本独立组件中生成综述文档或示意图。
+- 变更文件：新增 `src/autoresearch/competition/contest_direction_focus_literature.py`、`tests/unit/competition/test_contest_direction_focus_literature.py`；追加 `Problem.md` 的 `P-20260813-150` 与本记录。未修改主 loop、Skill router、API、render、reference selector、历史 Q1 制品或任何外部状态。
+- 实现摘要：从 upstream hash/provenance 已验证且无 Skill 的 broad literature artifact 程序选择最多 16 条完整 discovery records；它不是最终书目，未知被引不变成 0，发表状态明记未在本阶段重验。第一调用生成 2–4 个暂定 focus，第二个独立调用只选择不改写；每项含 `focused_direction_cn`、可证伪目标、nearest-work、methods/metrics/baselines、counterevidence/failure 查询组和 evidence indices。程序生成 candidate/focus ID、hash、status，明确 novelty 尚待第二轮最近工作核对。
+- 回执/恢复：brainstorm、selection、targeted query 的完整 `LLMJsonCompletionResult` 均先通过既有 provider checkpoint write-once 保存，再写严格 raw-response receipt；loader 重算消息、输入、原始响应、模型投影、文件大小/SHA 和所有 artifact hash。一次科学不完整/格式残缺响应直接失败，没有机械修复循环；selection 中断时 resume 只补第二次调用，completed resume 零 provider 调用。
+- 第二轮检索：`run_contest_direction_targeted_retrieval` 把 selected focus 及三组检索线索交给既有 `retrieve_contest_direction_literature`，始终 `selected_method_skills={}`，通过既有 source/provider checkpoint 串行执行。API 强制 caller 注入 searchers，production 集成需在 broad/targeted 两轮复用同一客户端实例，不能由 core 重建默认客户端重置限流器。strict binding 锁定 broad/focus/targeted artifact/catalog/raw receipt；merged catalog 与 Skill routing 由独立接线任务实现，本模块不伪造单次 retrieval artifact。
+- 验证：新专项 `5 passed in 2.19s`；与既有 direction literature、plan selection、stage checkpoint 联合为 `37 passed, 1 skipped in 2.79s`。生产/测试 Ruff 全绿；生产模块 Mypy `Success: no issues found`；py_compile 通过。测试覆盖宽容 alias、两次且仅两次模型调用、partial/completed replay、空 Skill、串行 source calls、raw receipt、文件/回执篡改拒绝和不完整候选无重试。未联网、未调用真实 Qwen，因此没有冒充 live retrieval 或实际方向选择。
+- 问题新增或更新：新增 `P-20260813-150`，状态为 core resolved / production integration pending。已向 `/root/two_stage_integration_audit` 与 `/root/merged_literature_router` 冻结 strict class、runner/loader、path/hash 和 caller-shared limiter 合同。
+- Git：共享 worktree 含大量其他 Agent 的并行/untracked 变更，未 staging、未 commit，以免把非本子任务文件混入提交。
+- 后续：主 Agent/集成 Agent 应新增真实的 broad+focus+targeted merged artifact，按 DOI/URL/title identity 去重并保留 origin phase；Skill router、hypothesis、pilot 和 final plan 必须消费 `focused_direction_cn` 与 merged verified catalog。旧 completed v1 不能被原地升级。完成接线后再做一次外部 live smoke 和第一问 fresh full-loop 验收。
+
+---
+
+## 2026-08-13 17:39:00 +08:00 - Codex 子 Agent `/root/two_stage_literature_core` - focus 可执行 pilot 能力安全投影 follow-up
+
+- 用户请求/活动任务：在不修改主 research loop 的前提下，让 focus 构思和独立选择知道当前系统能真实执行哪些 pilot，避免只按科学吸引力选中随后必然无 adapter 的方向；能力不得变成 Skill、事实证据、预定方法或强制选择。
+- 变更文件：继续更新 `src/autoresearch/competition/contest_direction_focus_literature.py`、`tests/unit/competition/test_contest_direction_focus_literature.py`，并更新 `Problem.md` 的 `P-20260813-150` 与本记录。未修改 loop/API/router/renderer。
+- 实现：`run_contest_direction_focus_selection` 与严格 loader 新增默认空的 `executable_adapter_capabilities`。输入 mapping 只投影 `adapter_id/scientific_object/observable/supported_metrics/supported_nulls/execution_boundary_zh/description`，按 adapter ID 规范排序；重复、保留 ID 或不完整能力拒绝。runner path、study phase、Skill body 和任意额外字段被程序丢弃，既不进消息也不进 artifact。能力目录和程序 hash 加入 base input、两次 raw receipt 消息、focus artifact 与最终 artifact hash。
+- 模型自主权与诚实边界：brainstorm output 增加 `pilot_adapter_id` 与 `pilot_feasibility_cn`；只允许已声明 ID 或 `no_adapter`。能力只是可行性上下文，模型仍可提出或选择无适配器方向；selector prompt 要求此时在 rationale 中诚实说明不能立即执行真实 pilot。缺少机械字段时宽容归一为 `no_adapter` 和明确的不可执行说明，不触发格式修复循环；未知 adapter 仍拒绝，不能虚构能力。
+- 验证：core 专项 `6 passed in 2.77s`；focus+merged 联合 `13 passed in 3.20s`；生产/测试 Ruff 全绿，生产 Mypy 和 py_compile 全绿。新增消息级测试向输入故意加入 secret runner 与 Skill body，确认两次 prompt、receipt 和 artifact 均零泄漏，同时 capability 七个白名单字段可见、候选仍由模型生成并可诚实选择 `no_adapter`。
+- 共享树注意：与 research-loop 测试联合采样为 `28 passed, 1 failed`。唯一失败是并行新增 fixture 的两篇 broad paper 题名只差数字，被既有诚实 dedupe 合并成 1 条，但第二候选引用不存在的 evidence index 2；该测试同时尚未向新 API 传 `_ADAPTER_DESCRIPTOR`。已通知主 Agent，应修正 fixture/接线，不能为让测试通过而放宽 evidence index。该失败不来自本 follow-up core，且本 Agent遵循要求未修改 loop 或其测试。
+- Git：共享 worktree 有并行/untracked 变更，未 staging、未 commit。
+
+---
+
+## 2026-08-13 17:29:56 +08:00 - Codex 子 Agent `/root/two_stage_integration_audit` - 两阶段文献协议接入轻量科研主循环
+
+- 用户请求/活动任务：把现有广搜/聚焦/定向检索核心与 strict merged catalog 接入 `contest_direction_research_loop_cli`，落实“先广泛核对原始文献，证据化收敛方向，再定向找最近工作/方法/反证，然后才选 Skill、构思假设和做真实兼容预实验”；优先稳定产出 5–10 条相关文献与自包含中文计划，不启动真实付费 run。
+- 使用技能：完整读取并采用 `literature-review` 的多查询、去重、检索日志、最近工作/方法/反证综合原则，以及 `scholar-evaluation` 的证据相关性、可证伪性、可执行性、替代解释与结论边界。实现中始终让 relevance 主导，把 citation/venue 作为软先验，不设被引或期刊硬门。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`、`Problem.md` 的 `P-20260813-150`/`P-20260813-151`，并追加本记录。未修改 focus core、merged core、Skill router、API、renderer 或历史 Q1 制品。
+- 主链实现：input/delivery 升为 v2，固定 12 阶段 broad→focus→targeted→merged/planning lock→Skill→hypothesis→provisional→real pilot→postpilot review→final revision→render→independent review。broad/targeted/finalist verifier 共用 caller 注入的同一客户端实例与 limiter；focus 只看到安全可执行能力投影，不看到 Skill；merged 记录显式绑定两次不同检索。最终 5–10 条书目只按聚焦方向和 targeted queries 排序，宽搜 query 不等权回流；Skill router 使用 v3 两阶段 evidence context，旧 single-retrieval 字段保持空。
+- 科学与恢复边界：Skill、假设、adapter gate、pilot、计划和终审全部使用 `focused_direction_cn`；原 Q1 母题不再绕过 prime+gap+information 的真实 adapter 能力判断。报告同时保留 parent/focused direction 以及 broad/focus/targeted/merged/planning hashes。fresh/new v2、普通 partial resume 和 completed fast resume 已接通；旧 v1、旧 source delivery 和 legacy completed artifact 在任何模型/检索调用前拒绝，必须另起新目录，不能原地补字段冒充新协议。
+- 上下文/记忆/计账：九类模型阶段继续走官方模型最大上下文导出的 80% 压缩、OB 原始记忆、Dreaming recall 和 provider escrow；报告分别列 scientific calls、outer escrow 和 context-compaction calls。新增组合故障测试覆盖 focus brainstorm 成功而 selection 超时时的 inner receipt + outer escrow + context journal：resume 不重放 brainstorm、不重复付费，只补 selection；selection 晋升后可被下一任务上下文读取，已中止 brainstorm 的独有 response 只留 raw memory。该窄 completed-history 缺口保留为 open low `P-151`，没有为交付扩张 crash reconciliation。
+- 测试修复：并行 fixture 原用只差数字的 broad 题名，被诚实去重合并后使 evidence index 2 无效；改为六个语义不同题名，没有放宽去重或 evidence 门。research-loop 专项最终 `19 passed`。loop + focus + merged + router + Science125 batch + API + human-delivery validator 联合 `77 passed in 9.82s`；相关生产/测试 Ruff `All checks passed`；10 个生产目标 Mypy `Success: no issues found`；关键生产模块 py_compile 通过。
+- 问题新增或更新：`P-20260813-150` 更新为 code resolved / live pending，并记录主链、迁移和联合验收；`P-20260813-151` 保持 Open Low，补充真实故障注入证据与后续幂等 context reconciliation 方向。
+- 后续：没有联网、没有调用真实 Qwen，也没有启动 Q1 live。下一步应由主 Agent 在确认当前共享树稳定后新建 fresh 输出目录跑一次真实 Q1 broad→focus→targeted→merged→plan，随后用统一 human-delivery validator 验收；不能复用旧 completed artifact。共享 worktree 含大量其他 Agent 的 dirty/untracked 文件，未 staging、未 commit，以免混入无关变更。
+---
+
+## 2026-08-13 17:38:03 +08:00 - Codex 子 Agent `/root/two_stage_batch_api_compat` - 两阶段 Science125 plan-only、batch 与 API 兼容闭环
+
+- 用户请求/活动任务：审计并最窄修复两阶段主 research loop 与 Science125 plan-only fallback、batch/API 的兼容；不得修改并行 Agent 正在更新的主 `contest_direction_research_loop_cli.py`，不得启动真实模型或网络。
+- 变更文件：更新 `src/autoresearch/competition/science125_batch.py`、`tests/unit/competition/test_science125_batch.py`、`src/autoresearch/api/research_service.py`、`tests/unit/api/test_research_api.py`；新增 `Problem.md` 的 `P-20260813-152` 和本记录。未修改主 research loop、focus/merged 核心、renderer、文献选择算法、真实运行制品或外部状态。
+- 实现摘要：Science125 无 adapter fallback 不再读取旧 `literature/direction-literature.json` 或把父问题直接当科研方向，而是调用 frozen strict loader 重验 broad、focus、targeted、merged、finalist status 和 5–10 planning lock，消费 `focused_direction_cn`、v3 literature-bound Skill routing 与同方向 hypothesis，且只生成诚实标注“尚未执行预实验”的中文计划。plan-only 报告绑定所有两阶段工件，并继续由 human-delivery validator 检查 render-v3、5–10 书目、自包含/无伪造证据。
+- 版本与恢复：batch request/report、direction-loop checkpoint、question completion 和 plan-only delivery 升为 v2，并统一绑定 `two_stage_literature_v1`；旧 direction delivery 或旧 completed receipt 不会被补字段升级，resume 会创建隔离新 attempt。API 在 validator 前先验 runner schema/protocol，batch service 返回也必须是当前 v2；进程重启加载旧 completed API job 时降级为 `failed/LegacyDeliveryContract`。API 阶段状态从旧 9 段同步为主链真实 1–12 段。顺带修复 API 数字题号传给 batch 时 `.strip()` 崩溃，以及 API 暴露 batch 不支持的 `if_supported` 值。
+- 验证：`tests/unit/competition/test_science125_batch.py tests/unit/api/test_research_api.py` → `27 passed in 4.52s`；focus/merged/router/main-loop/batch/API/adapters 联合 → `76 passed in 10.60s`。四个相关生产/测试文件 Ruff format/check 通过；`science125_batch.py` 与 `research_service.py` Mypy `Success: no issues found`；scoped `git diff --check` 通过。测试覆盖 focused plan-only 上下文、零重复 retrieval、legacy runner 拒绝、legacy batch report 拒绝、legacy completed resume 新 attempt、API restart 降级和 12-stage 投影。未联网、未调用 Qwen。
+- 问题新增或更新：新增并解决 `P-20260813-152`。保留 `P-20260813-150` 的真实 live pending 边界；本兼容任务不能替代主 Agent 后续 fresh Q1 外部检索/模型/真实 pilot 验收。
+- 后续：当前 plan-only 复用同包 private `_load_completed_two_stage_literature`；将来可在无并行冲突时抽成公共 strict loader。另一个独立科学边界是 plan-only 仍沿用单次计划作者、尚未接独立终审；若用户的“一次独立科学评审”覆盖所有无 adapter 问题，需另做有界模型阶段，不能把 Q1 主链评审冒充覆盖。共享工作树包含大量既有/并行 untracked 文件，本任务未 staging、未 commit，以免混入无关改动。
+
+---
+
+## 2026-08-13 17:40:10 +08:00 - Codex 子 Agent `/root/two_stage_science_quality` - 两阶段检索科学质量审计与 DOI 身份最窄修复
+
+- 用户请求/活动任务：独立只读审计 broad→focus→targeted→merge→Skill→hypothesis 的科学质量，重点核对无 Skill 的方向选择、最近工作/方法/反证覆盖、targeted 文献是否真实进入下游、高引噪声/撤回/DOI 风险及非机械验收；父任务随后授权只修 DOI 身份误合并，不重构主 loop。
+- 使用技能：`literature-review` 用于多源检索、查询扩展、引文链、去重、撤稿/预印本与反证审计；`scholar-evaluation` 用于问题清晰度、文献覆盖、可证伪性、方法适配、替代解释及结果—主张边界。未照搬技能中的期刊/被引硬阈值：生产系统继续让语义相关性主导，并把引用、载体和有来源的 IF 仅作为软信号。
+- 变更文件：更新 `src/autoresearch/literature/models.py`、`tests/unit/literature/test_literature_models.py`；在并行新增的 `src/autoresearch/competition/contest_direction_merged_literature.py`、`tests/unit/competition/test_contest_direction_literature.py`、`tests/unit/competition/test_contest_direction_merged_literature.py` 中加入严格命名空间身份逻辑与反例；追加 `Problem.md` 的 `P-20260813-153` 和本记录。未修改 focus、planning、Skill router、hypothesis 或主 loop 的科学流程。
+- 修复摘要：阶段内和跨阶段去重均把 publication DOI 与 repository DOI 分成独立命名空间。同类相等判同，同类冲突判异且禁止 title fallback，跨命名空间碰撞也判异；仅在没有 ID 冲突时允许 Unicode-safe 高相似题名且至少一位规范作者重叠。这样同题异 DOI 不会再混用摘要、被引数、发表状态或来源日期。
+- 审计结论：broad/focus 的 Skill-free 合同成立，最多 16 条完整 broad 证据足以产生“暂定方向”，但 focus 模型预先看到唯一可执行 adapter 的对象、指标和零模型，仍存在方法能力锚定偏差。更重要的 P0 是 targeted 三类意图目前被压成 flat query，planning/14KiB Skill 投影不保证采用 targeted origin，hypothesis 丢失 source stage 且允许空 `reference_indices`，pilot brief 还会机械补第一条引用；targeted binding 的 novelty 状态没有经过 nearest-work comparison 转为已验证。建议新增显式 targeted evidence assessment：允许“采用真实 record IDs”或“未找到相关记录并保持 novelty unverified”，而不是每格强塞文献。
+- 建议验收：固定 broad/focus 后替换高度相关 targeted 最近工作，必须使采用证据、Skill evidence hash、hypothesis task hash 和最近工作差异论证改变；仅有高引同形词噪声时允许零采用，但必须记录排除理由、不得自动补引用且评审保持 major/unverified。三类查询 receipt 应能回溯 purpose；纯中文与英文学术同义词查询都应可召回相关工作；withdrawn nearest work 不得作正面创新支撑。fresh live 再逐项核对“最近工作→具体差异、方法/基线/指标迁移、反证/失败或明确未找到”是否绑定真实 fetch/record/hash。
+- 验证：最窄 identity 专项 `30 passed in 3.08s`；literature unit/property + focus + merged + router + hypothesis + plan + research-loop 联合 `126 passed, 1 skipped in 18.21s`；相关 Ruff `All checks passed`；Mypy 两个生产模块 `Success: no issues found`；scoped `git diff --check` 通过。未联网、未调用 Qwen、未写 live 制品。
+- 问题新增或更新：新增并解决 `P-20260813-153`。其余 targeted 因果接地、adapter 锚定、纯中文 query token、recent 软信号、bounded citation chaining、focus shortlist 状态复核与 source-stage 可观测性已向主 Agent 按 P0/P1 报告，但本子任务遵循最窄授权未改生产主链。
+- Git：共享工作树含大量并行 dirty/untracked 文件，尤其 merged 模块及其测试为并行任务整体新增，无法安全 focused stage/commit；本子任务未 staging、未 commit，以免把其他 Agent 内容混入提交。
+
+---
+
+## 2026-08-13 17:43:09 +08:00 - Codex 子 Agent `/root/two_stage_literature_core` - focus 入围 arXiv 状态核对 P0 follow-up
+
+- 用户请求/活动任务：在 broad evidence 用于 focus 构思前，对真正入围 shortlist 的 arXiv 记录做 caller-injected、低频串行发表状态核对；withdrawn/retracted 不能影响方向选择，失败/unknown 不能被伪判，并要求 write-once receipt、防篡改和断点恢复零网络。遵循父任务边界，仅改 focus core 与最窄测试，不扩展 targeted assessment、不改主 loop。
+- 变更文件：继续更新 `src/autoresearch/competition/contest_direction_focus_literature.py`、`tests/unit/competition/test_contest_direction_focus_literature.py`，更新 `Problem.md` 的 `P-20260813-150` 并追加本记录。未修改主 loop/API/router/renderer/reference policy 或运行制品。
+- API 与执行边界：`run_contest_direction_focus_selection(..., publication_status_verifier: Callable[[AcademicPaper], AcademicPaper] | None = None)`；默认 `None` 保留旧行为与明确的 `upstream_provenance_retained_status_not_rechecked`。启用时从 16 条目标 shortlist 加 8 条有界 reserve 中按程序排名串行核对；仅 arXiv 调 caller verifier，withdrawn/retracted 在 prompt 前剔除并补位，非 arXiv 零调用，异常或无法得出新状态时保留 upstream 值并标 degraded。core 不创建客户端、不改变 limiter；production caller 必须注入与 broad/targeted 共用的 ArxivClient verifier。
+- 回执与恢复：新增严格 `ContestDirectionFocusStatusCheck` / `ContestDirectionFocusStatusReceipt` 与固定路径 `direction-focus-status-verification.json`。每条 check 绑定 candidate rank、record ID/hash、source URL、核对前后 status/source/as-of、outcome、保留/排除、错误和内容 hash；receipt 绑定 broad artifact/catalog、完整候选池及 hash、目标/保留/排除/degraded 计数和总 hash。receipt 在任何 focus 模型调用前 write-once；status 后的 evidence、核验标签与 receipt hash 进入 base input、两次 prompt receipt 和最终 focus artifact。strict loader 从本地 receipt 重推 evidence 并重验文件/hash，completed resume 即使传入 verifier 也不会联网。
+- 验证：`poetry run pytest tests/unit/competition/test_contest_direction_focus_literature.py -q` → `9 passed in 35.69s`；top-ranked withdrawn arXiv 被排除、调用第 17 条补满 16 条且两次 prompt 不含撤回题名；verifier 全失败时 16 条 upstream `unknown` 原样保留并整体 degraded；completed resume 的 verifier/模型均零调用；篡改 receipt 后 strict load 拒绝。focus + merged + router + main loop 联合 `--no-cov` → `50 passed in 7.94s`，确认共享 verifier 接线和下游严格加载兼容。`poetry run ruff check ...` → `All checks passed!`；生产模块 Mypy → `Success: no issues found`；生产/测试 py_compile 通过。
+- 问题新增或更新：扩展 `P-20260813-150`，core P0 已解决；真实外部 smoke 仍 pending，且主 loop 注入同一 shared arXiv verifier 属于独立 integration 任务，不能由 mock 单测冒充已完成。
+- Git：共享 worktree 含大量其他 Agent 并行/untracked 改动，本 Agent 未 staging、未 commit，避免混入非本子任务内容。
+
+---
+
+## 2026-08-13 18:25:02 +08:00 - Codex 子 Agent `/root/adapter_semantic_compat` - focus/hypothesis/pilot adapter 科学语义兼容门
+
+- 用户请求/活动任务：修复真实 Q1 暴露的 P0：focus 提议“素数签名 ℓ∞ 度量诱导相邻素数间隙”，但唯一 prime pilot runner 只计算普通连续整数素数的算术 gap；要求建立最窄通用/adapter-specific 语义兼容门，普通 gap 继续支持，派生 signature gap 必须 `no_adapter`/拒绝，focus 与 hypothesis 矛盾时不得执行。不得修改文献排序或 batch validator。
+- 变更文件：新增 `src/autoresearch/competition/contest_adapter_semantics.py`；更新 `src/autoresearch/competition/contest_direction_focus_literature.py`、`src/autoresearch/competition/contest_direction_hypothesis_stage.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`；更新对应三个 unit test 文件；新增 `Problem.md` 的 `P-20260813-154` 和本记录。
+- 实现摘要：共享兼容器先精确核对 adapter ID、scientific object、observable、supported metric 和全部 null-model 子集，再按已注册 runner 检查科学 prose 是否把普通算术 gap 改成素数签名/嵌入/映射的派生距离、ℓ∞ 度量诱导 gap 或未支持主指标。focus raw 声明若越界只降级其可执行性为 `no_adapter`，不删除方向；hypothesis raw response 仍原样保存在 batch receipt，但可信 projection 降级 `no_adapter`；最终 selector 将 focused direction 与完整 candidate 一并评估，语义冲突时返回无兼容候选。focus/hypothesis strict artifact validators 也重验同一合同。prompt 明确禁止仅复制关键词/机器字段冒充兼容。
+- 误杀控制：执行门只检查候选实际研究方向、目标、假设、证伪和迁移方法，不因 evidence rationale、nearest work 或 strongest counterevidence 中仅提及不执行的 signature 模型而拒绝普通 gap 候选。
+- 验证：`poetry run pytest tests/unit/competition/test_contest_direction_focus_literature.py tests/unit/competition/test_contest_direction_hypothesis_stage.py tests/unit/competition/test_contest_direction_research_loop_cli.py -q --no-cov` → `45 passed in 12.20s`；相关生产/测试 Ruff format/check → `All checks passed!`；4 个生产模块 Mypy → `Success: no issues found`。覆盖普通 gap 正例、signature ℓ∞ focus 降级、同方向 hypothesis 降级、focus/hypothesis 矛盾拒绝和反证文字不误杀。
+- 问题新增或更新：新增并在代码层解决 `P-20260813-154`。真实 Q1 外部链续跑由主 Agent 负责；旧 raw focus response 可重放，但不得把旧错误 adapter 声明当执行授权。
+- Git：共享 worktree 中相关模块和测试均为多 Agent 并行形成的 untracked/dirty 文件，且 `Agent.md`/`Problem.md` 已有他人变更；未 staging、未 commit，避免混入非本子任务内容。
+## 2026-08-14 15:27:18 +08:00 - Codex 子 Agent `/root/qwen_contract_audit` - Qwen3.7 Max 官方参数契约闭环
+
+- 用户请求/活动任务：只做通用系统架构修复，使当前 Qwen3.7 Max 能力缓存、上下文预算、OpenAI-compatible HTTP payload 和 thinking 模式严格遵循官方参数；先写失败测试，再最小实现，并补 deterministic tests 与官方页 live assertions。新增硬边界是禁止任何 Q1/素数/题目 adapter/科学内容优化；不切 DeepSeek、不运行完整 Q1、不提交 Git。
+- 必读刷新：在改动前刷新 `AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md`、`.kiro/specs/auto-research-system/tasks.md`、`Problem.md`、`Agent.md`。未使用额外 skill；本任务是现有代码的窄参数契约实现。
+- 变更文件：更新 `src/autoresearch/llm/model_capabilities.py`、`src/autoresearch/llm/client.py`、`src/autoresearch/llm/task_context.py`、`configs/campaign/qwen-dashscope.yaml`、`tests/unit/llm/test_model_capabilities.py`、`tests/unit/llm/test_client.py`、`tests/unit/llm/test_task_context.py`、`tests/live/test_official_model_capability_live.py`、`tests/smoke/test_qwen_reasoning_live.py`、`tests/unit/competition/test_contest_direction_context_runtime.py`、`tests/unit/competition/test_model_authorship_context.py`，并追加 `Problem.md` 的 `P-20260814-001` 与本记录。未修改 `contest_direct_plan_revision.py`、`contest_direction_research_loop_cli.py` 或任何题目/adapter/科学内容文件。
+- 实现摘要：官方页 parser 从默认模型六值表新增冻结 `maximum_reasoning_tokens=262144`；capability 继续绑定官方 URL、原 HTML hash 和 source replay，旧五字段 cache pointer 仅通过官方页刷新升级，其他损坏仍失败关闭。context hard input 变为 `min(mode input cap, 1,000,000 - requested completion - 10)`，预算 artifact 可自验 mode cap、full-completion reserve、10-token allowance、reasoning cap 与 thinking budget；enabled budget 必须为 1..262,144，disabled 必须为 None。
+- 请求链：Qwen3.7 Max 将公开兼容参数 `max_tokens` 映射为官方 `max_completion_tokens`，因此预算覆盖 reasoning 与 visible answer；其他 provider 不变。Qwen3.7 的省略模式按实际 provider 默认显式化为 `enable_thinking=true/thinking_budget=4000`，不再在 context artifact 中伪装 disabled；task-context 还会把计算出的默认输出预算写回调用 kwargs，保证 context reserve 与 HTTP payload 一致。campaign 陈旧模型名已改为 `qwen3.7-max`。
+- test-first 与验证：首轮专项测试按预期出现 capability 参数不支持、262,144 extra field、`max_completion_tokens`/`enable_thinking` 缺失共 `8 failed, 3 passed`；随后分别以单测复现旧 cache pointer 和默认输出未写回。最终 `tests/unit/llm/{test_model_capabilities,test_task_context,test_client}.py` 加两个通用 context integration 文件为 `67 passed in 5.19s`；官方公开技术页 live test 为 `1 passed in 1.43s`，确认 context 1,000,000、input 991,808/983,616、output 131,072/131,072、reasoning 262,144 与 18,000 completion 对应 hard input 981,990；两个主链 capability fixture 定向回归 `2 passed`。相关 Ruff `All checks passed`；三个生产模块 Mypy `Success: no issues found`；py_compile 通过；campaign config parser 输出 `qwen-dashscope qwen3.7-max`；targeted `git diff --check` 无 whitespace error（仅现有 CRLF 提示）。
+- 问题新增或更新：新增并解决 `P-20260814-001`。旧 context-budget artifact 不会被静默改写成新契约；新运行必须生成新 artifact。默认 capability cache 已通过公开官方页刷新并成功 replay。未输出任何密钥，未发起付费生成，未启动或优化 Q1。
+- Git/后续：共享 worktree 包含大量其他 Agent 的 dirty/untracked 工作，本 Agent 未 staging、未 commit。后续主 Agent可在其通用回归完成后继续系统级流程；不得把旧错误预算 receipt 冒充新契约结果。
+
+---
+
+## 2026-08-14 16:07:35 +08:00 - Codex 主 Agent `/root` - Task 272.1/272.2 通用机制科研循环计划与首个实现切片
+
+- 用户请求/活动任务：先交叉检索自动科研、机制发现与 Open Science 资料，形成系统级重构计划后再实施；随后明确硬规则：只改系统架构，禁止针对任何具体科研题目做优化。本轮完成 Task 272.1 的计划冻结与 272.2 的本地合同切片，不执行 272.3/272.4，不运行具体研究。
+- 必读与技能：修改前刷新 `AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md`、`.kiro/specs/auto-research-system/tasks.md`、`Problem.md`、`Agent.md`；完整使用 `deep-research` 做多源系统级证据检索，使用 `scientific-critical-thinking` 校准机制、因果、预注册、失败分母和发表主张边界。另安排三个只读子 Agent 分别审计自动科研证据、机制/Open Science 与新合同 P0/P1。
+- 证据结论：The AI Scientist v1/v2、其独立评估、Agent Laboratory、AIDE/MLE-bench、PaperBench、ResearchGym 与 Co-Scientist 共同表明，当前公开系统主要处于工作流串联、标量 objective 代码搜索和专家参与的局部闭环；没有证据支持通用系统稳定、独立地产出可发表发现。OPHIS 的准确状态经直达链接纠正为 MetaCircle 团队发布 + 两个公开结果快照，不是已同行评审或已独立复现论文；其数字不进入系统门槛。Robot Scientist Adam、AutoRA、主动干预、W3C PROV 与 RO-Crate 用于建立长期先例和开放谱系边界。
+- 计划先行：在 `AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md` 和 tasks 中冻结 Task 272 五阶段：Mechanism Research Cycle 使用 Observation → Problem → competing Hypotheses → discriminating Intervention → independent Evaluation；Evaluation 取代 Speed-up 作为通用终态；循环只投影到既有 Knowledge 平面。claim 必须按 idea → literature_grounded → executable → observed → replicated → independently_validated → publication_eligible 逐级晋升。新 Vault 笔记保存来源、反证、硬题目防火墙、Open Science 映射和跨域 benchmark。
+- 变更文件：更新 `AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md`、`.kiro/specs/auto-research-system/tasks.md`、`src/autoresearch/kernel/__init__.py`、`Problem.md`、`Agent.md`；新增 `src/autoresearch/kernel/scientific_cycle.py`、`tests/unit/kernel/test_scientific_cycle.py`、`autoresearch-vault/exploration/mechanism-research-cycle-system-refactor-2026.md`。为完成既有 Qwen 子任务门禁，仅机械运行 Ruff format 于 `src/autoresearch/llm/client.py`、`src/autoresearch/llm/model_capabilities.py`、`tests/smoke/test_qwen_reasoning_live.py`，未改变其逻辑。
+- 本地合同：新增严格 `ContentAddressedRef`、`ScientificCycleParentRef`、`ProvenanceBinding`、Observation/Problem/Hypothesis/ScientificIntervention/Evaluation/assessment 与内容寻址 snapshot。合同要求测量、结果、不确定性、竞争解释、prediction/falsifier、判别干预、对照、changed/frozen factors、estimand/metric/decision rule 和三态评估；引用按正确阶段解析，首版无 parent，后续只接受同 cycle 紧邻 parent。它不执行实验、不验证外部 hash、不判断 novelty、不 promotion/publication。
+- 测试先行与独立复审：首轮实现前专项按预期以 `ImportError: cannot import name ContentAddressedRef` 失败；首版达到 `27 passed`。独立复审发现投影前未重验 hash、声明裁决被写成已验证态、不可能谱系可表达、四平面/反例覆盖不足 4 个 P1。再次先加失败测试，再修复为投影入口 `verify_integrity()`、`Declared`/`declared_assessment`/`external_validation=unverified`、typed immediate-parent lineage 和纯 Knowledge 属性；最终复审确认无剩余 P0/P1。
+- 验证：`tests/unit/kernel/test_scientific_cycle.py` → `39 passed`；`tests/unit/kernel` → `179 passed`；Qwen capability/task-context/client 与两个通用 context integration 文件 → `67 passed`；官方能力页 opt-in live smoke → `1 passed`；focused Ruff format/check、4 个生产模块 Mypy、py_compile、task dependency JSON（227 waves，末项 `226:272.5`）和 campaign YAML（`qwen3.7-max`）均通过。新增机制生产模块、合成测试与新 Vault 笔记对具体题目术语扫描零命中。
+- 问题新增或更新：新增 `P-20260814-002`；本地语义生命周期缺口已解决，外部验证与架构因果有效性仍明确开放。Qwen 子 Agent 已独立记录并解决 `P-20260814-001`。
+- 边界与后续：未调用付费模型、未运行任何研究实验、未修改领域 adapter/指标/prompt、未生成论文、未授权发布。下一切片只能是 272.3 只读 bridge；随后 272.4 在至少两个无关 vertical 上 shadow 验证，旧路径保持权威。共享 worktree 包含大量并行且重叠的既有修改，无法安全形成任务要求的 focused commit，故 272.1/272.2 保持未勾选、未 staging、未 commit，避免混入用户或其他 Agent 的工作。
+
+---
+
+## 2026-08-14 16:44:48 +08:00 - Codex 子 Agent `/root/cycle_authorship_contract` - Task 272.3 通用记录作者归属与语义哈希契约
+
+- 用户请求/活动任务：仅扩展通用系统架构，为五类科研生命周期记录补齐可由只读验证桥解析的作者归属、计划归属、记录实体与版本化语义哈希；禁止触碰验证桥、计划文档、具体题目模块或具体研究优化。
+- 必读与范围：修改前刷新 `AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md`、`.kiro/specs/auto-research-system/tasks.md`、`Problem.md`、`Agent.md`。未使用额外 skill；本切片只修改 `src/autoresearch/kernel/scientific_cycle.py`、`tests/unit/kernel/test_scientific_cycle.py`、`src/autoresearch/kernel/__init__.py` 并追加本记录。
+- 实现摘要：`ProvenanceBinding` 新增必填 `record_entity_id`、`authoring_activity_id`、非空 `author_agent_ids` 与非空 `plan_ids`，所有列表确定性排序并拒绝重复，前三类作者角色分别要求绑定到既有 entity/activity/agent ID 集合。`ResearchEvaluation` 新增必填 `evaluation_subject_hash`。公开 `scientific_record_semantic_hash` 只接受五类生命周期记录，摘要显式包含 schema version 与记录类型，排除 provenance；评估记录额外排除 report reference、保留 subject hash，从而切断 report 与 provenance 的循环哈希但不丢失评估对象绑定。
+- test-first 与验证：实现前专项测试按预期在收集阶段以缺少 `scientific_record_semantic_hash` 导出失败；实现后 `poetry run pytest tests/unit/kernel/test_scientific_cycle.py -q --no-cov` 为 `48 passed in 0.52s`。目标 Ruff check 与 format-check 全绿，目标 Mypy 最终 `Success: no issues found in 2 source files`，py_compile 通过。一次扩展 kernel 回归收集到并行验证桥刚加入的预期红测，因尚缺 `ScientificCycleValidationError` 退出；该文件不在本子任务范围且未被修改，已即时告知主 Agent。
+- 问题与边界：未新增或修改 `Problem.md`；中间 Mypy 的异构列表推断问题已通过显式联合类型消除。未运行实验、未调用模型、未写入具体研究内容、未 staging、未 commit。后续由主 Agent 将这些字段与语义摘要接入只读验证桥，并完成全 kernel 回归。
+
+---
+
+## 2026-08-14 17:02:06 +08:00 - Codex 子 Agent `/root/cycle_authorship_contract` - Task 272.3 通用完整验证夹具
+
+- 用户请求/活动任务：只新增一个无题目特化的完整 happy-path 测试夹具，使用当前公开合同返回 cycle、单一 provenance bundle、HarnessSpec、LoopSpec、三组不同 EpisodePackage、对应 terminal LoopRunSnapshot 与 EvaluationReport；不修改生产验证桥或现有测试。
+- 变更文件：新增 `tests/unit/kernel/_scientific_cycle_validation_fixtures.py`，并追加本记录。未修改生产模块、既有测试、计划文档或 `Problem.md`。
+- 实现摘要：公开 `ScientificCycleValidationFixture` 与 `build_scientific_cycle_validation_fixture()`。夹具形成五类生命周期记录的完整同 bundle 链，记录语义实体逐一绑定 author activity/agent/plan；判定证据包含 source usage、artifact generation、PASSED validation、独立 grader validation 与 decision lineage；objective result digest 绑定真实 episode output hash，uncertainty digest 绑定 EvaluationReport uncertainty hash。三次 episode、loop run、trial、trajectory 与 snapshot 身份均唯一且 exact-match。
+- 哈希闭环：先用占位 evidence bundle hash 构造 report subject 和记录语义摘要，再生成单一 provenance bundle；随后以真实 bundle hash 重建 EvaluationReport。夹具显式断言两次 report 的 evaluation subject hash 相同，并断言绑定真实 bundle 前后五类记录的 semantic hash 不变，避免 report/bundle 循环引用。
+- 验证：`poetry run python -m py_compile tests/unit/kernel/_scientific_cycle_validation_fixtures.py` 通过；目标 Ruff check 为 `All checks passed!`，format-check 为 `1 file already formatted`；连同生产 bridge 的目标 Mypy 为 `Success: no issues found in 2 source files`。直接调用当前 `validate_scientific_cycle` 的 smoke 输出 `3 3 verified [] 5`，即三组 episode、三组 terminal loop、唯一 assessment 为 verified、无降级原因、五类记录全部通过结构化作者归属。题目特化术语扫描零命中。
+- 问题与边界：未发现使合法夹具不可构造的生产合同冲突，未新增 `Problem.md` 条目。未运行模型或研究实验，未 staging、未 commit；后续现有 bridge 测试可直接导入该 builder 生成正例及变异反例。
+
+---
+
+## 2026-08-14 17:08:28 +08:00 - Codex 子 Agent `/root/cycle_authorship_contract` - Task 272.3 grader independence 夹具参数化
+
+- 用户请求/活动任务：仅在通用 validation fixture 增加 `grader_independence` 参数，使 EvaluationReport 内全部 GraderRecord 可构造成指定独立性；保持默认 happy path 和全部 bundle/cycle subject 绑定，不修改生产或既有测试。
+- 变更文件：更新 `tests/unit/kernel/_scientific_cycle_validation_fixtures.py` 并追加本记录。未修改生产模块、既有测试、计划文档或 `Problem.md`。
+- 实现摘要：`build_scientific_cycle_validation_fixture()` 新增默认值为 `GraderIndependence.INDEPENDENT` 的参数，并同时传入两阶段 EvaluationReport 构造。每个公开 projection 在统一覆写 grader independence 后重新通过 `EpisodeEvaluationProjection.model_validate`，避免未校验对象进入 report；原有 evaluation subject 稳定性和五类记录 semantic hash 稳定性断言保持生效。
+- 验证：默认 INDEPENDENT fixture 经当前 bridge 仍返回 `verified` 且 reason codes 为空；UNKNOWN fixture 的 report、bundle 与 cycle 均成功内容寻址并被 bridge 返回 `inconclusive`，原因码为 `independent_grader_not_verified`、`recomputed_science_core_not_passed`、`required_science_gate_not_passed`。目标 Ruff check/format-check、py_compile 全绿；连同生产 bridge 的 Mypy 为 `Success: no issues found in 2 source files`。
+- 问题与边界：UNKNOWN 未被错误晋升，当前行为符合失败关闭预期；未新增问题。未运行模型或研究实验，未 staging、未 commit。
+
+---
+
+## 2026-08-14 17:14:19 +08:00 - Codex 子 Agent `/root/cycle_authorship_contract` - Task 272.3 loop exact-binding 夹具参数化
+
+- 用户请求/活动任务：仅为通用 validation fixture 增加 `omit_loop_binding_key` 参数，在 terminal LoopRunSnapshot 中删除指定 episode-binding variable，并让后续 snapshot、report、bundle 与 cycle 哈希自然重建；不修改生产或既有测试。
+- 变更文件：更新 `tests/unit/kernel/_scientific_cycle_validation_fixtures.py` 并追加本记录。未修改生产模块、既有测试、计划文档或 `Problem.md`。
+- 实现摘要：`build_scientific_cycle_validation_fixture()` 新增默认 `None` 的 `omit_loop_binding_key`；每个 loop snapshot 在创建已校验 `LoopRunState` 前从独立 variables 字典删除该键，之后按现有两阶段闭环重建 snapshot hashes、EvaluationReport、evaluation subject、provenance bundle 与 cycle。默认路径不变。
+- 验证：默认 fixture 经当前 bridge 仍返回 `verified`。指定 `omit_loop_binding_key="harness_journal_seal_hash"` 后，所有内容寻址对象均成功构造，bridge 精确抛出 `ScientificCycleValidationError: loop snapshot does not bind the episode`。目标 Ruff check 为 `All checks passed!`，format-check 为 `1 file already formatted`，py_compile 通过；连同生产 bridge 的 Mypy 为 `Success: no issues found in 2 source files`。
+- 问题与边界：缺失 loop 绑定未被哈希不一致提前掩盖，也未被 bridge 接受；未新增问题。未运行模型或研究实验，未 staging、未 commit。
+
+---
+
+## 2026-08-14 17:49:09 +08:00 - Codex 子 Agent `/root/cycle_authorship_contract` - Task 272.3 assessment/validation 夹具参数化
+
+- 用户请求/活动任务：仅扩展通用 validation fixture，使 decisive assessment 与 Evidence/Counterevidence、验证记录、决策和绑定形成一致的正向或反向谱系，并允许指定 evidence validation status；补充要求 objective result 实体绑定全部 episode 输出摘要。不修改生产桥或既有测试。
+- 变更文件：更新 `tests/unit/kernel/_scientific_cycle_validation_fixtures.py` 并追加本记录。未修改生产模块、既有测试、计划文档或 `Problem.md`。
+- 实现摘要：`build_scientific_cycle_validation_fixture()` 新增默认 `HypothesisAssessment.SUPPORTED` 的 `assessment` 与默认 `ValidationStatus.PASSED` 的 `evidence_validation_status`。SUPPORTED 路径构造 `EvidenceDirection.SUPPORTS` 的 Evidence，CONTRADICTED 路径构造 `EvidenceDirection.CONTRADICTS` 的 Counterevidence；assessment evidence IDs、ResearchEvaluation provenance、Validation subject 与 Decision outcome 均取同一方向来源。`entity.evaluation.result` 的 content digest 改为 `canonical_sha256({"episode_output_hashes": sorted(all non-None episode output hashes)})`，方向证据继续指向该聚合实体。
+- 验证：直接桥接 smoke 同时调用 bundle/cycle/report 完整性校验；默认 SUPPORTED/PASSED 返回 `verified`、无原因码，CONTRADICTED/PASSED 返回 `verified`、无原因码。WARNING 可内部自洽构造，但当前桥按失败关闭返回 `inconclusive`，原因码为 `decisive_evidence_not_passed` 与 `independent_grader_not_verified`。`tests/unit/kernel/test_scientific_cycle_validation.py` 为 `12 passed in 0.83s`；目标 Ruff check 为 `All checks passed!`，format-check 为 `1 file already formatted`，py_compile 通过；连同生产 bridge 的 Mypy 为 `Success: no issues found in 2 source files`。
+- 问题与边界：WARNING 的降级是当前桥行为，未修改其规则，也未新增 `Problem.md` 条目。未运行模型或研究实验，未 staging、未 commit。
+
+---
+
+## 2026-08-14 21:05:59 +08:00 - Codex 子 Agent `/root/planning_coverage_contract` - 方向 A-1 规划文献语义覆盖合同
+
+- 用户请求/活动任务：为冲刺方向 A-1 的文献数量与质量恢复新增通用、题目无关的 planning-literature coverage 合同；只提供独立确定性分类/选择能力，不接入现有 research loop，不改题目、CLI、历史运行制品或具体科研内容。
+- 必读与范围：修改前刷新 `AGENTS.md`、`AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md`、`.kiro/specs/auto-research-system/tasks.md`、`Problem.md` 与 `Agent.md`。只新增 `src/autoresearch/competition/contest_planning_literature_coverage.py`、`tests/unit/competition/test_contest_planning_literature_coverage.py` 并追加本记录；未使用额外 Skill，未修改任何旧主链模块。
+- 实现摘要：新增四类非补偿语义角色 `direct_core`、`method_foundation`、`mechanism_or_null`、`counterevidence`，并显式区分 `method_transfer` 与 `off_topic`。`role_query_from_boolean` 把可靠的顶层 AND/组内 OR 查询解析为 AND-of-OR must groups，清理引号与尾部通配符并保留 prefix 语义；歧义优先级、NOT、字段限定、内部通配符、括号/引号不配对全部失败关闭。候选记录保留 title/abstract、retrieval query、source stage、引用量、层内质量和可选 context 字符数；完整命中逐 query ID、role、must-group、命中字段、retrieval lineage 与 source stage 留痕，同一文献可多角色。
+- 选择与哈希：硬门固定为 direct 至少 2、method 至少 1、mechanism/null 至少 1、counter 至少 1；引用量/质量只在既有语义层内排序，不能跨层晋升。缺角色或上下文/条目上限无法满足必需覆盖时返回 `passed=false` 且 selected 子集为空；通过后继续用合格记录填充到 `maximum_records`，method-transfer 不得成为真实 selected record 多数，off-topic 永不补位。回执包含完整分类、可用/入选角色计数、`selected_record_ids`、原 catalog indices、selected records、字符预算和内容寻址 hash；加载时重放分类并拒绝嵌套篡改。
+- test-first 与验证：实现前专项按预期以缺少新模块的 `ModuleNotFoundError` 失败。最终新模块专项为 `17 passed`；与既有 reference policy、two-stage merged literature 联合回归为 `35 passed in 2.99s`。目标 Ruff check、Ruff format-check、Mypy 与 py_compile 全绿。反例覆盖高引用异领域方法不能占 direct、20 篇方法文献不能补 core/null/counter、Unicode/变音词与 CJK 不丢、多角色逐 query 可追溯、通过后填满上限、off-topic 不补位、context 预算失败关闭、receipt 篡改，以及多角色计数不能稀释 method-transfer 多数门。
+- 问题与后续：未新增或修改 `Problem.md`；开发中一次 format-check 与一次 Mypy 类型推断红项已在本任务内修复并最终全绿。该模块尚未接入生产 literature protocol/status verifier；后续只能在全新 attempt 中由集成层把四类 LLM 查询编译成 role query、先做完整元数据/状态/预算核验，再将同一 selected 子集送入计划。历史 attempt-002 保持不可变，不因新模块获得兼容升级或恢复资格。按父任务明确要求及共享 dirty worktree 边界，未 staging、未 commit。
+
+---
+
+## 2026-08-14 21:08:35 +08:00 - Codex 子 Agent `/root/source_query_compiler` - 方向 A-1 学术源查询编译与 v1/v2 严格兼容
+
+- 用户请求/活动任务：修复 attempt-002 暴露的长 Boolean/通配符逻辑查询被原样送给不同学术源、OpenAlex 连续 HTTP 400 且真实执行查询未与逻辑计划区分的通用检索协议缺陷。仅修改 `src/autoresearch/competition/contest_direction_literature.py` 与 `tests/unit/competition/test_contest_direction_literature.py`，末尾追加本记录；未修改 planning selector、research loop、CLI、任何具体题目内容或历史运行制品。
+- 必读与设计：修改前刷新项目两份计划、tasks、`Problem.md` 和 `Agent.md` 中的检索/竞赛/两阶段协议及近期故障记录。未使用额外 Skill；本任务是现有学术源边界的窄协议修复。实现前向主 Agent 冻结设计：逻辑 query 与 source-executed query 分离、v2 默认、v1 只读原语义重放、编译器版本与谱系哈希绑定。
+- 新 v2 协议：新制品默认 `contest-direction-literature-v2`，绑定 `query_compiler_version=source-query-compiler-v1`。`queries` 永远保留模型的源中立逻辑计划；`fetch.query` 和 paper retrieval pointer 保留每个 source 实际收到的字符串。query-plan hash 新增 compiler version，validator 按 source/query index 确定性重算执行串，并把 pointer 的 source/query/time 与对应 fetch 精确绑定；即使篡改者重算 fetch ID/hash，编译语义不匹配仍失败关闭。
+- source compiler：arXiv 将顶层 AND/AND NOT 概念组与组内 OR 确定性投影为合法 `all:"..."`/`AND`/`OR`/`ANDNOT`，去除通配符并限制组数、组内候选和 512 字符。OpenAlex 去除 `* ? ~`、字段/括号/布尔噪声与负向组，按概念组轮询保留词项，去重并限制为 12 词/240 字符，防止一个长组吞掉其他证据角色。其他注入 source 采用确定性 identity compiler，不破坏 provider-neutral 扩展。
+- 查询生成收紧：v2 新 prompt 必须按固定顺序产生恰好四条查询，分别覆盖 direct mechanism、method/measurement/data、direct foundational/mechanism prior 和 counterevidence；每条通常仅两个顶层 AND 概念组、组内少量 OR，且禁止字段语法、通配符和 source-specific 语法。第三条明确禁止把 review/survey/foundational/综述/奠基作为独立必中 AND 组，避免真正奠基论文被类型标签门误杀。
+- 历史兼容：v1 严格要求 `fetch.query == logical query` 且 compiler 字段为空，使用旧 query-plan/artifact hash 语义。validator 精确保留两个 v1-only prompt：attempt-002 实际使用的“四角色+同义词展开” quality-expansion 版，以及更早的一至四条简版；v2 只接受新 prompt。真实 attempt-002 broad/targeted v1 JSON 均成功加载、model dump 再加载且 schema/artifact hash 不变，未被静默升级。
+- test-first 与验证：首轮新协议测试按预期为 `3 failed, 11 passed`，分别红于 v2 schema、compiler 字段和编译篡改门。最终专项 `16 passed`；literature + focus + merged + plan + research-loop 联合回归 `83 passed, 1 skipped`（skip 为既有 opt-in live 测试）。目标 Ruff check/format-check、Mypy 与 py_compile 全绿。最终真实 source smoke 用新 v2 协议各访问一次 arXiv/OpenAlex，两源均 `succeeded` 且各返回 1 条；arXiv 收到字段化查询，OpenAlex 收到简化查询。历史 354 字符 attempt 查询的 OpenAlex 请求亦不再 HTTP 400；旧串含损坏字符且返回 0 条，因此不将它冒充为新协议质量证据。
+- 问题新增或更新：未修改 `Problem.md`。开发中 format-check 与 Mypy 的局部红项均已在交付前修复并复验全绿。本修复有意允许旧 v1 checkpoint 严格重放，因此不会自动拒绝 attempt-002 resume；要证明 v2 改善必须使用全新 output root/attempt，不得把旧 resume 冒充新协议结果。共享 worktree 含并行变更，未 staging、未 commit。
+
+---
+
+## 2026-08-14 21:41:30 +08:00 - Codex 子 Agent `/root/coverage_lineage_dedup_fix` - 方向 A-1 coverage 谱系、独立锚点与撤稿替补闭环
+
+- 用户请求/活动任务：修复 planning-literature coverage 接入的通用上线前缺陷：完整角色命中必须绑定精确 targeted logical query 谱系；Q1/Q3/Q4 必须共享具体核心对象；同一 exact-metadata work family 不能重复占预算或角色；五个必需 quota 必须由五个独立锚点承担；context 预算选择需要可行性前瞻；撤稿代表退出后允许同 family 次优版本替补；fresh、receipt replay、fast resume 与 planning lock 必须一致。禁止题目特化、历史制品改写、计划/Problem 修改和提交。
+- 变更文件：更新 `src/autoresearch/competition/contest_planning_literature_coverage.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`src/autoresearch/competition/contest_direction_literature.py`、`tests/unit/competition/test_contest_planning_literature_coverage.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direction_literature.py`，并追加本记录。未修改计划、`Problem.md`、题目内容或运行制品。
+- coverage v2：完整 role match 现在同时要求 `retrieval_queries` 含逐字相等的 role raw query 且 `source_stages` 含 `targeted_direction`；大小写或空白近似、空 lineage、仅 broad 命中全部不计 coverage。候选新增内容寻址 work-family `anchor_id`；回执升级为 `contest-planning-literature-coverage-v2` 并写入五项 `anchor_assignments`。每项绑定 role、query ID、record ID、原 candidate index 与 family anchor；两项 direct 加 method/mechanism/counter 各一项，record/index/family 全部唯一，且必须是 selected 成员并有完整谱系。回执加载会重放分类、24-state 选择纯函数和内容哈希，重算 hash 的 assignment 篡改同样失败关闭。
+- 选择算法：按 anchor family 分组，每 family 只允许 skip 或选择一个 record-role；有限 DP 的覆盖状态为 `(direct 0..2, method 0..1, mechanism 0..1, counter 0..1)`，对 context characters 与 role-rank cost 保留 Pareto 前沿，使用既有层内质量键和稳定 identity tie-break。这样高质但过大的 direct 不能抢占预算导致虚假失败，同一 multi-role 记录也不能一稿多补。五个独立 anchor 成立后才按语义层/质量补到上限，继续禁止 off-topic 补位并保持 method-transfer 非多数。
+- 主链与查询边界：v2 prompt 明确第 1 条是核心对象+直接现象、第 2 条是方法基础、第 3/4 条分别是同对象+机制/理论基线/零模型和同对象+反证/失败/替代解释；第 1/3/4 条必须逐字复用对象 OR 组，generic model/system/method 不能冒充对象。loop 对解析后的 Q3/Q4 机械核对 Q1 首 must group并失败关闭。coverage 每轮先按现有 exact-metadata budget identity 保留确定性质量更优代表；代表被核为 withdrawn/retracted 后移出工作集，下一轮才允许同 family 次优记录进入。fresh 写 status receipt 后立即离线 replay，并以 replay catalog/context 重算同一 coverage 与 planning subset，再写 lock；因此撤稿+替补时 fresh/resume suppression 和 artifact hash 不再分叉。completed fast resume 不再无条件追加 fresh 未要求的 focus verifier 门，已有绑定 receipt 仍由 focus artifact 自身严格重验。
+- test-first 与验证：首轮联合反例为 `20 failed, 51 passed`，红项分别命中缺少 anchor/assignment、对象组未约束、fast-resume verifier 加强、重复版本提前消耗状态请求等预期缺陷。最终三文件专项为 `73 passed`；相邻 literature clients、focus、merged、plan、render、Science125 batch 与 research API 联合回归为 `184 passed, 1 skipped`。目标 Ruff check、Ruff format-check、三生产模块 Mypy 与 py_compile 全绿。对抗用例证明：文本偶合无 targeted lineage 不计数；两篇 multi-role 不能替代五个独立锚点；DP 会跳过导致预算死路的大记录；同 family 仅高质代表和撤稿后的次优替补各请求一次，第三版本不联网；status receipt 离线重放得到相同 coverage/selection；最终 lock 只记录仍合格 catalog 中低质重复到替补代表的 suppression；无 verifier 的合法 completed run 可 fast resume。
+- 问题与边界：未新增或修改 `Problem.md`。没有访问外部学术源、模型或真实实验，没有生成或改写研究制品；历史 attempt 保持不可变。共享 worktree 含大量既有并行修改，按父任务要求未 staging、未 commit。
+
+---
+
+## 2026-08-14 21:47:50 +08:00 - Codex 子 Agent `/root/coverage_lineage_dedup_fix` - DP Pareto 与同 family 互补谱系复核修正
+
+- 用户请求/活动任务：复核 coverage DP 的 Pareto dominance 是否与声明的最终 tie-break 一致，并修复 DP 前按最高质量记录预去重会丢失同 work family 互补 role lineage 的集成缺陷；仅修改 coverage、research-loop 接入及对应测试并追加本记录。
+- test-first 复现：最小双 family 反例中，两条 direct 分配路径的 `total_role_rank` 同为 3；按最终顺序应优先“rank 0 + rank 3”的逐角色质量前缀，但它比“rank 1 + rank 2”稍贵且仍在 context 预算内。旧 dominance 只比较 context 与总 rank，错误保留后者，专项按预期失败。第二个反例使用 exact metadata 相同的两条记录：高质版本只有 direct targeted lineage，低质版本只有 mechanism targeted lineage；主链在 DP 前只留高质版本后虚假报 `insufficient_mechanism_or_null`。
+- 修正：Pareto dominance 现在把完整非 context 质量前缀 `(total_role_rank, per-role quality keys)` 作为质量维度，与 context 组成前沿；只有 context 和该质量前缀都不劣才可支配。context 与质量前缀完全相同时才用稳定 role/family/record identity 决胜，最终排序语义与剪枝语义一致。主链删除 DP 前的 record-level family 预去重，把所有候选以相同内容寻址 `anchor_id` 交给 coverage-v2 family DP；DP 每 family 仍最多选择一个 record-role，填充与回执验证仍保持 family 唯一。这样互补谱系不会丢失，而被核为 withdrawn/retracted 的已选 record 从工作集移除后，同 family 其他 option 仍可在下一轮进入。
+- 验证：两个新最小反例均由红转绿；coverage + research-loop 专项为 `59 passed`。相邻 literature clients、focus、merged、plan、render、Science125 batch 与 research API 联合回归为 `186 passed, 1 skipped`。目标 Ruff check、Ruff format-check、两生产模块 Mypy 与 py_compile 全绿。既有撤稿对抗仍证明只请求被选高质版本与撤稿后的替补，第三版本不联网；最终 replay coverage、selection 与 lock suppression 保持一致。
+- 记录更正与边界：本条取代上一条中“coverage 每轮先只保留单一最高质代表”的实现描述；正确实现是“保留 family 全部候选 option，由 family-wise DP 只选一个，撤稿后删除该 record 再重算”。未修改 `Problem.md`、计划、运行制品或题目内容；未访问外部源/模型，未 staging、未 commit。
+
+---
+
+## 2026-08-14 22:07:27 +08:00 - Codex 主 Agent `/root` - Task 273.3 Qwen 双预算契约与 fresh-run 首请求修复
+
+- 用户请求/活动任务：对齐方向 A-1 冲奖主线，在通用检索/coverage 冻结后启动全新十二阶段运行；首次运行在首个 Qwen 请求 HTTP 400，要求按 Qwen 官方技术文档修复通用系统架构，不加入任何具体科研题目优化。
+- 变更文件：更新 `src/autoresearch/llm/client.py`、`src/autoresearch/llm/model_capabilities.py`、`tests/unit/llm/test_client.py`、`tests/unit/llm/test_model_capabilities.py`、`tests/unit/llm/test_task_context.py`、`tests/live/test_official_model_capability_live.py`、`Problem.md` 与本记录。未修改任何题目 adapter、提示内容、科研候选、预实验代码或历史运行制品。
+- 根因与 test-first：失败请求仅约 1,255 输入 tokens，却发送 `max_completion_tokens=768` 与 `thinking_budget=4000`。先把三个 Qwen payload 断言和 context hard-limit 断言改成正确语义，得到预期 `4 failed, 54 passed`；实网变体进一步返回明确 `max_completion_tokens [768] must be greater than thinking_budget [4000]`。官方文档定义 `max_tokens` 仅约束最终回答，`max_completion_tokens` 约束思维链+回答，因此不能把现有公共参数同值改名。
+- 实现：Qwen transport 恢复发送 `max_tokens`，思考继续由独立 `thinking_budget` 限制；ModelContextBudget v2 的 hard input 同时扣除回答、思考和 10-token allowance。预算 schema 升 v2，并新增 v1 原公式重放分支，保留旧回执可审计性。短回答不自动降思考或关闭思考；未来若采用待推荐的 `max_completion_tokens`，需另增显式总完成预算。
+- 验证：极小实网对照 `max_tokens=768 + thinking_budget=4000` HTTP 200，另一次 `max_completion_tokens=5000` HTTP 200；正式 smoke `tests/smoke/test_qwen_reasoning_live.py` 为 `2 passed`，正文与 reasoning 均非空。官方页面 live `1 passed`。LLM/context、literature、coverage、plan、render、direction-loop、Science125 batch 与 API 联合为 `252 passed, 1 skipped`；Ruff check、Mypy、py_compile 全绿。首次联合运行因 live 旧预期仍写 981,990 出现 1 个断言失败，更新为新 v2 真值 977,990 后重跑通过，已记入 `P-20260814-004`。
+- 问题与边界：新增并解决 `P-20260814-004`，更新 `P-20260814-003`。失败根 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v2-20260814/` 原样保留；没有文献请求或预实验发生。共享 worktree 含大量此前用户任务变更，未 staging、未 commit；下一步只能在另一全新空 root 冻结代码运行。
+
+---
+
+## 2026-08-14 22:17:28 +08:00 - Codex 子 Agent `/root/literature_empty_record_fix` - 通用文献自反去重与 OpenAlex 坏记录隔离
+
+- 用户请求/活动任务：修复 fresh run 暴露的两个题目无关文献边界缺陷；范围仅限 literature model/client 及其单元测试，不修改竞赛题、提示词、运行制品或下游科研内容。
+- 变更文件：更新 `src/autoresearch/literature/models.py`、`src/autoresearch/literature/clients.py`、`tests/unit/literature/test_literature_models.py`、`tests/unit/literature/test_clients.py` 并追加本记录。
+- test-first 与实现：新增对抗测试后专项如预期为 `2 failed, 30 passed`。去重身份判断现在先接受字段完全相同的 `AcademicPaper`，从而使无 DOI、无作者记录与其精确副本保持自反；同题但来源/URL 不同的 authorless work 仍不合并。OpenAlex 解析器在逐行边界跳过空串或纯空白 `display_name`，合法标题去除首尾空白，单条坏记录不再让同批合法记录全部丢失。
+- 验证：literature model/client 与 property dedup 联合 `34 passed`；目标 Ruff check 为 `All checks passed!`，format-check 为 `4 files already formatted`，Mypy 为 `Success: no issues found in 2 source files`，四文件 py_compile 与 scoped `git diff --check` 均通过。
+- 问题与后续：未修改 `Problem.md`；这两个缺陷已由确定性本地反例闭合，无需外部 API smoke。应由主任务在新的空 output root 重新执行 fresh run，不能改写既有失败目录。共享 dirty worktree 未 staging、未 commit。
+
+---
+
+## 2026-08-14 22:34:54 +08:00 - Codex 子 Agent `/root/fresh_targeted_failure_audit` - 通用概念短语保守匹配修复
+
+- 用户请求/活动任务：基于 fresh targeted literature 只读审计，以题目无关、test-first 方式修复 planning-literature coverage 的短语假阴性；范围严格限定为 coverage 模块、对应单测与本记录。保留精确 targeted logical-query 血缘、完整 AND-of-OR must groups、固定角色配额和五个独立 work-family 锚点；不修改 query compiler、prompt、loop、`Problem.md` 或运行制品。
+- 变更文件：更新 `src/autoresearch/competition/contest_planning_literature_coverage.py`、`tests/unit/competition/test_contest_planning_literature_coverage.py` 并追加本记录。生产代码和测试均只使用合成术语，不包含当前竞赛题对象、指标、方法或题目词表。
+- test-first 与实现：先加入四个应匹配反例和四个应拒绝反例；旧实现结果为应匹配 `4 failed`、应拒绝 `4 passed`。`_contains_term` 现对 ASCII 英语 token 支持保守的常见单复数等价（规则 `+s`、`+es`、辅音 `y→ies`、`is→es`），并仅对至少两个 token 的短语允许总计最多一个内部插入 token。匹配继续要求 token 顺序一致；不做同义词推测、词袋重排、跨两个插词、子词扩张或角色放宽，CJK 原连续匹配和显式 prefix 语义保持不变。
+- 验证：新增正反例最终 `8 passed`；coverage 专项 `33 passed`；research-loop coverage 接入回归 `3 passed, 31 deselected`。目标 Ruff check、Mypy 与 py_compile 均通过；首次 format-check 指出一个生产文件需格式化，执行 Ruff format 后复验通过。既有单测继续覆盖 exact raw-query lineage、`targeted_direction` stage、全部 AND 组、五个独立 anchor、family 去重、上下文预算与 receipt replay，因此本修复未改变这些非补偿门。
+- 问题与边界：未修改 `Problem.md`，未访问外部模型、学术源或实验，未生成或改写运行制品，未 staging、未 commit。该匹配修复只能消除保守词形/短语边界假阴性；检索真正零命中、来源查询低精度及缺口后的补检仍应由其各自通用层处理。
+
+---
+
+## 2026-08-14 22:39:54 +08:00 - Codex 子 Agent `/root/retrieval_source_resilience_design` - Task 273.2 OpenAlex Boolean 检索编译器 v2
+
+- 用户请求/活动任务：只读审查 fresh-v2b targeted 检索低召回后，以最小 test-first 方案实现题目无关的 source compiler 修复；范围限于 direction literature、OpenAlex client、对应两个单测与本记录。不得加入题目词表、改写历史制品或针对当前科学问题做优化。
+- 审查与证据：fresh-v2b 的 OpenAlex v1 compiler 将 AND-of-OR 逻辑查询拍平为最多 12 个词，删除组间必需命中语义与短语边界；OpenAlex 官方查询合同和手工 smoke 均表明 `title_and_abstract.search:` 可接收带引号的 AND/OR 表达式。本轮使用 `literature-review` Skill 约束来源审查，但只将可验证的源适配语义写入通用代码。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_literature.py`、`src/autoresearch/literature/clients.py`、`tests/unit/competition/test_contest_direction_literature.py`、`tests/unit/literature/test_clients.py` 并追加本记录；未修改 research-loop contract、计划、`Problem.md` 或任何运行制品。
+- 实现摘要：新运行默认绑定 `source-query-compiler-v2`；OpenAlex v2 将合法、有限的 AND-of-OR 源中立查询确定性编译为 `title_and_abstract.search:(...) AND (...)`，保留每个短语和 Boolean 组，限制最多 4 个必需组、每组 4 个候选、每词项 72 字符、整串 1,200 字符，并对 NOT、通配符、非法嵌套或超限输入在联网前失败关闭，不再截断或降级为词袋。OpenAlex client 仅对该显式前缀精确使用 `filter` 参数；未带前缀的旧调用仍逐字走历史 `search` 参数。
+- prompt 与历史兼容：默认 v2 prompt 产出四个可检索角色；方法查询固定为“方法族 OR 组 AND 定义/估计/偏差/验证 OR 组”，不强制具体研究对象或拟议专用 null，术语要求短、常用且可原样出现在题名/摘要；Q1/Q3/Q4 继续要求逐字复用对象组。冻结的 `source-query-compiler-v1` prompt 与 v1 OpenAlex 拍平算法保留独立分支，validator 按 artifact 中绑定的 compiler version 重建 prompt 和 fetch query，旧制品不会被静默升级。
+- test-first 与验证：先新增 v2 prefix/filter、Boolean 保留和 v1 prompt/execution replay 测试，首轮按预期因缺少 v1 builder 与 OpenAlex prefix 常量在收集阶段失败；最终两文件专项 `43 passed in 33.95s`，包括超限 OR 与 NOT 在 searcher 调用前拒绝。四个目标文件 Ruff check/format-check 全绿；两个生产模块 Mypy 为 `Success: no issues found in 2 source files`；py_compile 通过。无需修改 research-loop contract 测试。
+- 恢复边界：同一 attempt 只能严格重放已绑定的 v1 compiler/prompt，不能把已有 targeted artifact 原地换成 v2；fresh-v2b 已冻结 v1 targeted 结果，若要获得本修复的检索召回改进必须新建 output root。旧 fresh-v2b/attempt-002 实物加载和新 root 实网 smoke 由主 Agent 独立执行。未 staging、未 commit。
+
+---
+
+## 2026-08-14 23:10:51 +08:00 - Codex 子 Agent `/root/review_reference_integrity` - 独立评审引用编号一致性与历史兼容
+
+- 用户请求/活动任务：以题目无关、test-first 方式修复独立科学评审的引用一致性缺口：评审自然语言正文使用锁定目录编号时，结构化 `reference_indices` 可能遗漏；要求机械扫描全部正文、与模型结构字段取精确并集并排序、越界失败关闭，保证 JSON/Markdown/hash/作者回执重放一致，同时保留旧工件可读但不得静默视为已闭合。范围仅限独立评审模块、对应单测和本记录。
+- 变更文件：更新 `src/autoresearch/competition/contest_direct_plan_scientific_review.py`、`tests/unit/competition/test_contest_direct_plan_scientific_review.py` 并追加本记录。未修改题目 adapter、科研提示内容、检索、预实验、计划、`Problem.md` 或运行制品。
+- test-first：先加入结构字段与正文不一致、正文重复编号、中文别名字段、模型遗漏编号字段、正文无引用、正文越界和重载篡改等反例，旧实现得到预期 `5 failed, 9 passed`；失败分别证明正文编号未并入、遗漏字段未补全、正文越界未拒绝、重载未按作者回执重放及旧工件无显式兼容状态。
+- 实现：新生成路径在模型科学文字不变的前提下，扫描 `recommendation_text`、十个分项正文和 strengths/major/minor issue 全部自然语言字段中的 ASCII `[N]`，与模型结构字段取集合并集、去重并升序；任何编号小于 1 或大于锁定目录长度均在保留原响应和作者回执后失败关闭。新工件写入 `reference_index_integrity_status=verified_exact_union`，`mechanical_normalization_applied` 反映该确定性投影；JSON 与 Markdown均使用同一规范化 review。
+- 重放与兼容：新工件加载时重新读取已验证的 authorship receipt `parsed_payload`，重做同一引用规范化并逐字段比较 review、机械规范化标志和确定性 Markdown；即使篡改者重算 artifact hash，结构字段偏离原模型响应仍失败。历史 v1 JSON 若没有新增状态字段，仍按原始哈希组合加载，但模型对象明确呈现 `legacy_unverified_against_review_prose`，供恢复链记录并阻止静默晋级。实物 fresh-v2c 旧评审已成功加载为该 legacy 状态，原空结构编号未被改写。
+- 验证：专项最终 `14 passed`；相邻 scientific amendment + targeted repair 为 `10 passed`，generic review recovery 为 `3 passed`。目标 Ruff check、Ruff format-check、Mypy 与 py_compile 全绿。完整 research-loop 相邻集当时为 `34 passed, 1 failed`；唯一失败是并行文献质量门的未证明 citation count 仍保留极端数值，与本次两文件无关，已将证据发送给负责该层的并行 Agent，未越界修复。
+- 问题与后续：未修改 `Problem.md`。共享 worktree 含大量既有与并行变更；未 staging、未 commit。新独立评审可直接作为严格引用闭合证据，旧评审只能作为带显式 legacy 完整性状态的退修输入。
+
+---
+
+## 2026-08-14 23:23:11 +08:00 - Codex 子 Agent `/root/generic_literature_quality_gate` - 方向 A-1 通用文献质量门与规划锁收束
+
+- 用户请求/活动任务：只读审计 fresh-v2c 暴露的两类通用缺陷并最小修复：仓储、宽泛 `published` 与无来源被引数不能冒充高质量同行评审证据，同题名/作者/摘要的镜像不能重复占规划预算；postpilot adapter 内置引用只能重排已锁定规划条目，不能扩大最终目录。保持五个独立 role anchor、题目中立、test-first；新运行升级 v3，旧 v2 只允许冻结算法只读审计，不修改历史制品。
+- 变更文件：新增 `src/autoresearch/competition/contest_planning_literature_quality.py`、`tests/unit/competition/test_contest_planning_literature_quality.py`；更新 `src/autoresearch/competition/contest_planning_literature_coverage.py`、`src/autoresearch/competition/contest_reference_policy.py`、`src/autoresearch/competition/contest_direction_plan_cli.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`src/autoresearch/competition/science125_batch.py`、`src/autoresearch/api/research_service.py` 及其对应 competition/API 单测，并追加本记录。未扩展 `AcademicPaper` 或 OpenAlex 主数据模型，避免改变冻结工件身份。
+- 质量与去重合同：新增 provider-neutral、内容寻址质量 assessment，严格分离发表状态、文献类型、同行评审声明、出版身份与 bibliometric 证据；宽泛 `published` 不证明文献类型或同行评审，仓储/预印本单独降级，正向同行评审声明必须有显式来源，被引数只有同时具备来源和截至日期才可用且只进入 capped 次级排序。规划预算 family 仅用精确规范化的非空题名、作者顺序和摘要抑制内容相同镜像，不合并其书目身份。规划 lock 升 v3 并绑定全部候选 assessment 与哈希。
+- coverage 与引用锁：新 v3 仍先满足两项 direct、method、mechanism/null、counter 各一项且五个独立 work family；随后只允许质量至少 0.70 的强补充继续使用余额，0.50–0.70 的非权威近邻最多两项，弱项不机械补满 10。postpilot pilot references 只按 DOI/确定性文本身份提升规划锁中已存在条目，保留锁内原文；任何 adapter 独有引用被忽略，目录集合绝不扩大。
+- 历史兼容与协议：新增独立 `PlanningLiteratureCoverageReceiptV2` loader，按冻结 v2 原算法、阈值、selection semantics 与 hash 重放；v3 使用新算法。research-loop、Science125 batch 与 API 新请求统一绑定 `two_stage_literature_v3`；旧 protocol resume 在任何模型/API 调用前给出明确 fresh-run 错误。真实 fresh-v2c coverage 实物只读加载成功：schema v2、原 hash `42c0959d1118aa41f7ef0ec7e8d819b34830cd4b2a7d5209400ada5aed97567e`、10 条、passed；未改写文件。
+- 冻结目录只读重投影：以 fresh-v2c 的 226 条 eligible 候选、原 status receipt 和原四类查询在 v3 下重投影，45 条既有 truth-gate 排除，结果为 7 条且 coverage passed：5 个独立角色锚点 + 2 个近邻补充。七条均为 `published_unverified`（quality 0.600–0.620），明确说明现有冻结来源没有足以证明同行评审的类型/来源字段；这不是把它们宣称为已同行评审。新投影 receipt hash 为 `300eb290dcc6d60baaa95c9ea6e57d8d39e2d5855a0c29d1e0022fa21c68e798`，未写入历史目录。
+- test-first 与验证：新增质量、镜像占席、citation provenance/cap、pilot 注入、v2 冻结重放、v3 协议拒绝等对抗测试；首轮分别得到预期 import error/旧行为失败。最终专项联合 `136 passed, 1 skipped`；目标 Ruff check 全绿；7 个生产模块 Mypy `Success: no issues found`；py_compile 通过。旧 v2 实物 loader 与 v3 重投影均为只读本地 smoke，无外部检索或模型调用。
+- 问题与边界：未修改 `Problem.md`，无新增阻断。由于当前 `AcademicPaper`/OpenAlex 冻结字段不能可靠证明 peer review，本实现失败关闭为 `published_unverified`，不按刊名推断，也不以 citation 绝对值代替权威性；若未来要晋级 `peer_review_supported`，上游必须提供带来源的显式证据。共享 worktree 含大量并行修改，按父任务要求未 staging、未 commit。
+
+---
+
+## 2026-08-14 23:28:02 +08:00 - Codex 子 Agent `/root/generic_review_revision_design` - Task 273.4 通用一次性终审恢复闭环
+
+- 用户请求/活动任务：先只读审计 fresh-v2c 在 stage 12 `major_revision` 后的通用恢复路径，随后 test-first 实现题目无关的“独立终审→恰好一次模型修订→重渲染→一次全新独立复审”CLI。必须使用全新输出根、旧 blocked root 不由本路径写入，不扩展旧 `research-loop --resume`，不得加入任何具体题目词、结论或优化；复审再次阻断即终止，不能隐藏重试。
+- 必读与范围：修改前刷新 `AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md`、`.kiro/specs/auto-research-system/tasks.md`、`Problem.md` 与 `Agent.md`。新增 `src/autoresearch/competition/contest_direction_review_recovery_cli.py`、`tests/unit/competition/test_contest_direction_review_recovery_cli.py`，并追加本记录；未修改旧 research-loop、题目 adapter、历史运行制品、计划或 `Problem.md`。未使用额外 Skill。
+- 实现摘要：新 CLI 只接受 hash-valid、stage 5/8/10/11/12 完整且由独立评审明确判为 `major_revision` 的冻结 v2/v3 source；以 source 自身声明的 literature protocol 重放 block receipt，显式记录 `literature_protocol_migration_performed=false`。旧 review 的 `legacy_unverified_against_review_prose` 可作为不可变退修输入并写入 source receipt，但 fresh review 必须为 `verified_exact_union`。完整 feedback 作为 `verified_revision_context` 传入修订器并绑定 context hash；通用 requirements 不再夹带自由文本 JSON。锁定 catalog、Skill 顺序/内容哈希、pilot artifact/payload/metrics/files 全部原样继承；Skill 正文从旧 review 已验 authorship receipt 恢复，不依赖工作区文件后续状态。
+- 一次性、内容寻址与渲染门：每阶段在第二次 completion invocation 前拒绝，已有一个 escrow 时只允许完全相同请求本地重放，不同请求禁止新 provider call；唯一 provider escrow 的 stage input/request/messages/completion/provider/model/response/parsed payload/usage 与唯一 authorship receipt 精确对应。每个外部 callback 后立即复核 source inventory。修订必须实质变化并绑定 prior plan/feedback；private render 必须等于 amended flat payload 加同一 verified embedded evidence，public JSON 必须是 renderer 的确定性 projection，manifest 的 public/source/evidence/provenance hashes 必须重放一致。fresh review 逐字段绑定本次 public JSON/id/hash/file/scientific problem、同一 pilot、catalog、Skills 和 sidecars；`pass`/`minor_revision` 完成，其他 verdict 写 terminal blocked report，CLI 返回非零且不会二次修订。完成态 resume 校验 input/report/inventory 后零模型调用返回。
+- test-first 与验证：初始专项按预期因新模块不存在在 collection 阶段失败；第一版三项红于不完整 synthetic inventory，修复后逐步扩展到 13 个题目无关测试。最终 `poetry run pytest -q tests/unit/competition/test_contest_direction_review_recovery_cli.py --no-cov` 为 `13 passed in 2.57s`；对抗反例覆盖双 completion 只产生一次 provider response、escrow/receipt request 不一致、source 在 revision callback 中被改后 review 前 fail-fast、private/public render 分叉、复用另一计划的合法 review、embedded evidence 缺失、二次 major 终止、blocked CLI exit 2、完成态 resume 零调用、v2/v3 receipt 冻结重放与新旧根不重叠。
+- 相邻回归与静态检查：revision+render 为 `35 passed`，scientific-review+stage-checkpoint 为 `21 passed`，research-loop 为 `36 passed`。目标 Ruff check 与 format-check 全绿，目标 Mypy 为 `Success: no issues found in 1 source file`，py_compile 与 CLI `--help` 通过。真实 fresh-v2c blocked source 只读 smoke 成功加载：protocol `two_stage_literature_v2`、review 状态 `legacy_unverified_against_review_prose`、184 个冻结文件、10 条锁定 catalog、3 个原 review Skill context；没有模型或实验调用。
+- 问题与后续：未新增或修改 `Problem.md`；无未闭合阻断。Python 注入 callback 若蓄意写旧 root，只能由当前 inventory guard 在 callback 返回/抛错时立即发现，不能替代操作系统只读 ACL；生产路径本身不向 source 写入。后续由主 Agent 选择全新 recovery output root 执行恰好两次真实模型请求并审核 terminal report。按父任务要求未 staging、未 commit。
+
+---
+
+## 2026-08-14 23:28:47 +08:00 - Codex 子 Agent `/root/generic_literature_quality_gate` - v3 角色命中特异度与五档引用排序窄修
+
+- 用户请求/活动任务：最后一项题目无关、test-first 窄修；v3 同 authority quality 候选先比较其被分配完整 role match 的证据特异度，再比较有来源的 capped citation band；冻结 v2 必须保持原排序与实物可读，不再扩展范围。
+- 变更文件：仅更新 `src/autoresearch/competition/contest_planning_literature_coverage.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py` 的 v3 selection semantics 文本、`tests/unit/competition/test_contest_planning_literature_coverage.py`，并追加本记录。未修改质量 tier、检索模型、题目、prompt、历史制品或 `Problem.md`。
+- 实现：v3 `_quality_key` 的固定顺序为 authority `quality_score`、当前分配 role 的完整 `RoleMatch` distinct matched-term 总数、具有 title 命中的 must-group 数、citation band、规范化题名与 record ID。特异度只用于已通过全部 must groups 与精确 targeted lineage 的同层候选，不能制造 eligibility 或跨 authority tier 晋升；多角色记录按当前实际分配 role 计算。citation 仅保留 `0 / 1–9 / 10–99 / 100–999 / >=1000` 五档，百万级数值不会无限增加排序权重。`legacy_v2=True` 在独立早返回中继续输出原四元组：quality、原始 citation count、title、record ID，不读取新特异度。
+- test-first：先加入“同 quality 时完整机制 role 命中更多 distinct terms 的候选即使 citation 更低也优先”与“五档 citation 中 >=1000 优于 100–999，但绝不压过更高 authority quality；1000 与一亿同档”反例，旧实现按预期 `3 failed`；实现后新增三项均绿。
+- 验证：coverage + research-loop 为 `73 passed`；质量/reference/coverage/plan/research-loop/batch/API 联合为 `138 passed, 1 skipped`。目标 Ruff check 全绿，两个生产模块 Mypy `Success: no issues found`，py_compile 通过。真实 fresh-v2c coverage v2 实物再次按冻结算法只读加载：原 hash `42c0959d1118aa41f7ef0ec7e8d819b34830cd4b2a7d5209400ada5aed97567e`、10 条、passed。
+- v3 只读重投影：同一 226 条 eligible 候选、45 条既有排除仍选 7 条并 passed，结构保持 5 个独立 role anchors + 2 个近邻，全部仍为 `published_unverified` 0.600–0.620；新 receipt hash 为 `8fcf530df7549a2918324a55b1718c4197bbc7d2d5c89df836d72fa6b872a440`。角色更具体的 method/mechanism 条目替代旧同 quality 选择，未写入历史目录。
+- 问题与边界：未新增或修改 `Problem.md`；无阻断。特异度是 query 内明确词项命中证据，不是语义同义词推测；citation 仍是低于 authority 与角色特异度的封顶次级信号。未访问外部模型/学术源，未 staging、未 commit。
+
+---
+
+## 2026-08-15 00:12:59 +08:00 - Codex 子 Agent `/root/literature_v4_fix` - 通用文献质量与反证协议 v4
+
+- 用户请求/活动任务：在不加入当前题目词、研究对象或专用优化的前提下，test-first 修复真实 v2d 暴露的通用文献质量、角色排序、反证检索和锁定目录身份缺陷；冻结 v2/v3 loader、哈希和旧算法继续精确重放，不提交共享工作树。
+- 变更文件：更新 `src/autoresearch/literature/clients.py`、`src/autoresearch/competition/contest_planning_literature_quality.py`、`src/autoresearch/competition/contest_planning_literature_coverage.py`、`src/autoresearch/competition/contest_direction_literature.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`src/autoresearch/competition/science125_batch.py`、`src/autoresearch/api/research_service.py`，以及对应的 7 个单元测试文件；追加 `Problem.md` 的 `P-20260815-002` 与本记录。保留并发 Agent 在 research loop 新增的两处 `require_exact_reference_catalog=True`，未触碰 reference policy、revision、review、recovery 或 render 模块。
+- test-first 与身份边界：先加入缺失历史模型、旧 prompt builder、Zenodo DOI、仓储锚点、语义排序、弱/否定反证和锁定重编号等合成对抗测试；首次分别按预期在 collection 或旧行为断言处失败。DOI 边界现将 `10.5281/zenodo.*` 归为 `repository_doi`；质量 v2 显式给出 `required_anchor_eligible`，仅允许合法 publication identity 或 arXiv preprint 充当 required anchor，其他 repository-only 文献只能按质量门作为补充。
+- v4 选择与反证合同：coverage 新 schema 为 `contest-planning-literature-coverage-v4`，required-role 固定先比较完整 must-group 角色特异度与题名覆盖，再比较 authority 与封顶 citation band；补充选择仍质量优先。source compiler v3 的 Q4 必须含 limitations/failure modes/artifacts/null explanations/negative results/bias/confounding 等真实反证概念，拒绝仅 anomalies/deviations/counterexamples/irregularities 的弱组以及 no/zero/without/not 等否定命中。v2/v3 质量/coverage/compiler 分支按旧字节和旧算法独立重放。
+- 锁定身份与协议传播：research loop、Science125 batch 和 API 新请求统一绑定 `two_stage_literature_v4`。planning subset 会把来源全库首行旧 `[N] record_id=...` 按锁定顺序确定性重编号为 `[1..k]`，校验 record identity，并使 context hash、lock 与最终 catalog 绑定同一顺序；重复投影幂等。纯合成无目录编号 context 保持原兼容行为。
+- 验证：最终联合命令覆盖 client、quality、coverage、compiler、research loop、batch 与 API，共 `165 passed in 7.80s`；14 个目标文件 Ruff check 为 `All checks passed!`、format-check 为 `14 files already formatted`；7 个生产模块 Mypy 为 `Success: no issues found`，py_compile 通过。测试新增内容均为题目无关合成词，没有把真实问题的词表或策略写入系统。
+- 冻结实物与只读投影：旧 v3 coverage 实物以原 hash `2791e025adf1e5d6b534bf8f632c1245937b7587f2acae776184817f68d81363`、7 条、passed 精确加载。真实 v2d 冻结候选只读投影为 v4 receipt hash `9788b72ed124d0103928dbd079239ed2b4ea108e67a8331dccda174c99e3e422`、7 条、coverage passed；method 不再选择泛化 ARIMA 记录，Zenodo required anchor 数为 0，arXiv preprint 仍可保留。没有联网、模型调用、实验或历史工件写入。
+- 问题与后续：新增并标记已修复 `P-20260815-002`。旧 v2d 的 Q4 查询属于 v4 会拒绝的弱反证组，因此只读投影只证明排序、仓储身份与历史兼容，不能证明旧运行整体达到 v4；必须在全新空 root 以 compiler-v3 / literature-v4 重跑。共享工作树含大量并行修改，本任务未 staging、未 commit。
+
+---
+
+## 2026-08-15 00:31:19 +08:00 - Codex 子 Agent `/root/v4_query_limit_fix` - 查询 compiler-v4 全矩阵预编译与无损边界
+
+- 用户请求/活动任务：从真实 fresh-v4 检索在部分外部请求后才因 OR 候选超限失败的现场出发，以题目无关、test-first 方式闭合生成 prompt、plan validator 和 source compiler 的精确上限。不截断模型查询、不放宽上限、不增加自动重试或修订 stage，不写入当前科学题目词表，并冻结 v1/v2/v3 历史重放。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_literature.py`、`tests/unit/competition/test_contest_direction_literature.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`；追加 `Problem.md` 的 `P-20260815-003` 和本记录。未修改检索 client、coverage 门、科学 adapter、假设、预实验、计划或历史运行工件。
+- test-first：先在定向文献测试中引入冻结 v3 builder、prompt 机器可读上限、合法 4 项、超限 5 项、单项组、3/5 条 query 和后位 source/query 编译失败反例；首轮按预期在 collection 阶段因缺少 `_build_source_query_compiler_v3_messages` 失败。实现后专项 `28 passed`。
+- 生产实现：默认新增 `source-query-compiler-v4`；v4 prompt 把 Q4 组内示例限为 4 项，并在 `query_shape` 中结构化声明恰好 4 条 query、每条恰好 2 个 must-group、每组 2–4 个术语以及超限整份拒绝。程序先验证完整计划，再于任何 searcher 调用前预编译全部 `query × source` 组合；任一组合失败时外部检索调用为 0。v4 arXiv 有独立 strict/non-lossy 编译路径，不再继承 v1 `_select_evenly_spaced` 的静默丢项；OpenAlex 错误会标注实际 compiler version。执行阶段只消费预编译字符串。
+- 版本兼容：原 source-query-compiler-v3 prompt 以独立 builder 原字节冻结，v3 artifact loader 仍重做原 validator 和原 source 编译；v1/v2 路径未更改。新 compiler version、messages、query plan hash 和 artifact hash 已提供独立内容寻址，因此顶层 `two_stage_literature_v4` 不需为这一子工件版本再升级；旧 literature-v4/compiler-v3 成功工件不会被静默升级。
+- 验证：联合 compiler、quality、coverage、literature client、research-loop、Science125 batch 和 API 的回归为 `172 passed in 7.85s`。反例确认超限 Q4 在 arXiv/OpenAlex 两路调用前失败，合法 4 项在两路完整保留，后位 source/query 失败时 `search_calls == []`，模型仍只调用一次且无 revision/retry。三个变更文件 Ruff check 全绿、format-check 为 `3 files already formatted`；生产模块 Mypy `Success: no issues found in 1 source file`，生产和测试 py_compile 通过。未联网、未调用 Qwen、未运行实验。
+- 问题与后续：新增并标记已修复 `P-20260815-003`。真实失败根 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v4-20260815/` 保留 4 个 arXiv + 3 个 OpenAlex 的历史 checkpoint 和原失败回执，不得 resume 或复用部分结果。后续必须由主 Agent 在全新空 output root 使用 compiler-v4 重跑。共享工作树含其他 Agent 与用户的大量变更，本任务未 staging、未 commit。
+
+---
+
+## 2026-08-15 01:04:48 +08:00 - Codex 子 Agent `/root/gap_merge_design` - 缺口 R2 稀疏检索与分层文献谱系
+
+- 用户请求/活动任务：在不修改旧 `contest-direction-merged-literature-v1`、research loop、router、batch 或 recovery 的前提下，test-first 新增题目中立的缺口修复检索与分层文献视图。R2 只能执行 coverage 诊断确认的缺口角色乘实际来源，不得伪造完整四角色 fetch；必须保留 R1/R2 的精确来源谱系、重放确定性和内容寻址，并在任何检索副作用前预编译整个稀疏矩阵。
+- 变更文件：新增 `src/autoresearch/competition/contest_direction_gap_repair_retrieval.py`、`src/autoresearch/competition/contest_direction_layered_literature.py`、`tests/unit/competition/test_contest_direction_gap_repair_retrieval.py`、`tests/unit/competition/test_contest_direction_layered_literature.py`；追加 `Problem.md` 的 `P-20260815-004` 与本记录。未修改旧 merged-v1 模型/哈希、主循环、路由、批处理、恢复流程、题目 adapter 或历史工件。
+- 稀疏修复合同：新增 plan/artifact/loader，把 immutable base merged artifact/catalog、failed coverage receipt、gap-repair projection、round、缺口角色和 projection 原样给出的 R2 query ID/raw query 一并哈希绑定；强构造器拒绝非缺口角色、父子 query ID 相同、缺失锚点数小于 1、首 must-group 漂移或第二 must-group 未变化。执行前先预编译全部 `deficit roles x sources`，任一后位编译失败时 search call 为 0；成功、空结果和失败 fetch 均保存规范化 raw payload、实际执行 query、结果哈希与回执。loader 重算 payload/fetch/catalog/lineage/artifact 哈希并从原始 fetch 重新去重，不能只信派生 records。
+- 分层视图合同：新增 `contest-direction-layered-literature-v1`，要求 repair round 从 2 连续递增且每轮绑定同一 immutable base。对外继续暴露 merged-v1 兼容的 `records`、`record_ids`、objective retrieval/literature catalog 与 broad/focus/targeted hashes；records 继续使用 `ContestMergedLiteratureRecord`，repair origin 保持旧允许的 `targeted_direction` stage，同时在新 binding 中显式记录 round/role/query/fetch。R1 的 merged 指针只表示来源实际执行 query，因此 base lineage 的 `logical_query=None`，并明确提示须由原 targeted artifact 恢复 raw logical query；R2 同时保存精确 logical/executed query。base-to-layered 映射显式记录旧 record 到新 deduplicated record，loader 重新读取 base+repairs 并重建整层，拒绝自洽但不可重导出的篡改工件。
+- 验证：gap-repair projection、稀疏检索和 layered 联合 `26 passed in 2.24s`；主 Agent 后续五模块联合回归为 `76 passed`。四个新增生产/测试文件 Ruff check 与 format-check 全绿；两个生产模块 Mypy 为 `Success: no issues found`，py_compile 通过。对抗测试覆盖后位编译失败零副作用、跨迭代异常不复用旧 executed query、仅缺口角色 fetch、失败/空 fetch 回放、raw payload 篡改、R1 logical query 不伪造、R1/R2 合并去重、跨轮谱系与不可重导出篡改。
+- 问题与后续：`P-20260815-004` 记录旧 merged-v1 测试夹具仍生成 1--3 条 query、与 compiler-v4 恰好四角色合同漂移，11 项均在 merged 构建前失败；本任务按边界未修改该旧夹具。下一步由主 Agent将 projection → sparse R2 → layered view 接入研究计划闭环，并在独立任务修复旧 fixture 漂移。共享工作树含大量并行修改，本任务未 staging、未 commit。
+
+---
+
+## 2026-08-15 01:06:48 +08:00 - Codex 子 Agent `/root/v4b_coverage_audit` - coverage v5 方法—焦点桥接门与冻结历史重放
+
+- 用户请求/活动任务：先只读审计 fresh-v4b 的 `insufficient_distinct_required_role_anchors`，随后以题目无关、test-first 方式修复方法查询含多个不相干方法族时的高分假阳性。限定只改 coverage 模块、专项测试及 Agent/Problem；不修改 research loop、gap 模块或题目文件，不联网、不调用模型，不放宽五锚点、authority、work-family 或 context 门。修改前刷新了项目两份计划、任务表、`Problem.md` 与 `Agent.md`。
+- 变更文件：更新 `src/autoresearch/competition/contest_planning_literature_coverage.py`、`tests/unit/competition/test_contest_planning_literature_coverage.py`；追加 `Problem.md` 的 `P-20260815-005` 与本记录。未修改 research loop、gap-repair、检索 client/compiler、题目 adapter、历史运行工件或科研内容。
+- 实现：当前 `PlanningLiteratureCoverageReceipt` 升为 `contest-planning-literature-coverage-v5`，原 v4 独立冻结为 `PlanningLiteratureCoverageReceiptV4`，`PlanningLiteratureCoverageReceiptAny` 和 parser 精确区分 v5/v4/v3/v2。v5 固化完整 `method_focus_basis_queries`、从直接查询对象/焦点和方法首组确定性推导的 `method_bridge_contract`、每候选带 title/abstract 字段证据的 `method_bridge_assessments`，以及 `eligible_role_family_counts`。required method anchor 与 method supplement 均须 bridge；未桥接候选仍留在完整分类目录但不能进入 shortlist；v5 排序不再奖励同一 must-group 的多个 OR 命中。所有新增字段进入 receipt hash 并从候选/查询重放。
+- 迭代稳定性与迁移 API：`select_planning_literature` 新增 keyword-only `method_focus_basis_queries=None`。R1 省略时冻结当前四 role queries；R2 必须显式传 R1 receipt 的 `method_focus_basis_queries`，因此修复后的 direct query 不会改变初始 method-focus 意图。fresh loader 使用当前 v5 alias；读取历史 v4 时使用 union parser 或 `PlanningLiteratureCoverageReceiptV4`，绝不把历史回执按 v5 重选。外层 planning lock 仍需由主链独立升级并绑定 v5 schema/hash，本任务按范围未接线。
+- test-first 与验证：桥接、R2 frozen basis、trace/hash 篡改、未桥接 supplement、v4 exact replay 和 v5 OR 排序反例均为通用合成数据。最后新增“bridge kind/eligible 为真却没有任何 term trace”的独立模型反例，旧实现按预期 `1 failed`，补齐 validator 后通过。coverage 专项 `46 passed`；coverage + gap-repair `59 passed`；coverage/gap/layered/runner/quality 联合 `75 passed in 3.47s`。目标 Ruff check 为 `All checks passed!`、format-check 为 `2 files already formatted`、生产 Mypy 为 `Success: no issues found in 1 source file`，生产与测试 py_compile 通过。
+- 问题与边界：新增并解决 `P-20260815-005`。只读现场审计确认 v4b 的直接角色仍因外部召回不足独立失败；v5 只消除方法族假阳性，不能伪装为 coverage 已通过。未联网、未调用模型、未运行实验、未写题目词或专用阈值，未 staging、未 commit。后续由主 Agent 将 R1 basis 接入 R2 selector 并升级主链 lock，然后以全新版本运行；旧 v2/v3/v4 工件保持只读。
+
+---
+
+## 2026-08-15 01:05:02 +08:00 - Codex 子 Agent `/root/gap_repair_contract` - coverage 缺口诊断与证据约束 R2 查询投影
+
+- 用户请求/活动任务：在不修改既有 literature、research-loop 或 merge 文件、不接主链且不联网的前提下，test-first 新增题目中立的 coverage 失败诊断与查询修订纯合同。R1 失败必须按 authority-aware 角色缺口判断是否允许补检；R2 必须保持完整四查询、仅修改缺口角色第二 must-group，并以 focus/broad 原文约束词项来源、内容寻址和篡改重放。随后按并行 coverage v5 与 sparse retrieval 接口要求，保留冻结 v4 读取并为改写 query 派生独立 R2 ID。
+- 变更文件：新增 `src/autoresearch/competition/contest_planning_literature_gap_repair.py`、`tests/unit/competition/test_contest_planning_literature_gap_repair.py`；追加 `Problem.md` 的 `P-20260815-006` 与本记录。未修改 `contest_planning_literature_coverage.py`、既有 direction literature/loop/merge、runner、batch、API、题目 adapter 或历史运行工件；共享树中这些文件的并发变化均由其他 Agent 所有。
+- 诊断合同：`diagnose_planning_literature_gap` 只接受完整 hash-valid 且失败的 v4/v5 receipt，并把完整 parent receipt 嵌入诊断以独立重放。固定四角色分别记录 semantic、authority-eligible 与最终 selection-eligible work-family ID/数量、authority 排除项、最小缺失锚点数、`semantic_shortfall` / `authority_shortfall` / `distinct_anchor_conflict` / `method_focus_bridge_shortfall` 和是否可补检；Hall-deficient 最小子集用于定位独立 family 冲突。maximum records、context 等结构失败保守返回不可补检。v5 method bridge assessment 进入 selection-eligible 计算，v4 则按冻结 authority 语义重放。
+- R2 与证据边界：`project_planning_literature_query_repair` 要求 repair roles 与诊断集合精确相等，每角色 2--4 个唯一 term；每项绑定 `focus|broad` source artifact、record、title/abstract field 与 evidence hash，规范化词组必须逐字存在于该字段。R2 始终为 canonical 四角色；非缺口 raw query 与 ID 原字节不变，缺口只替换第二组、首组不变，query ID 确定性变为 `<parent>-r2`（超长 ID 使用有界 hash 后缀）。最终复用 compiler-v4 的四查询/2组/2--4项/Q1-Q3-Q4 同对象组/Q4 强反证门，并离线预编译 arXiv/OpenAlex 两路，禁止弱/否定反证、静默截断或超限计划。
+- 内容寻址与持久化：diagnosis、focus/broad evidence catalog、R2 role-query objects/query-plan 和 projection 均绑定 parent hash；`write/load_planning_literature_gap_*` 使用确定性 JSON，loader 从内嵌 R1、证据和 repair spec 重算角色诊断、完整 R2、编译门和所有 hash。对诊断计数、非缺口 query、source title/abstract、term provenance、query ID 或任一 hash 的篡改均失败关闭。冻结 v4 failure 经独立 `PlanningLiteratureCoverageReceiptV4` 测试继续按原 hash 可诊断；v5 unbridged method 测试只开放 Q2 第二组。
+- test-first 与验证：首轮按预期因模块不存在在 collection 阶段失败；实现后纯合同最终 `13 passed`。coverage、纯投影、单次响应回执、稀疏补检和 layered merge 联合 `76 passed`；加入 direction compiler 与文献质量门的相邻回归为 `110 passed`。目标 Ruff check 为 `All checks passed!`、format-check 为 `2 files already formatted`、生产 Mypy 为 `Success: no issues found in 1 source file`，生产/测试 py_compile 通过。coverage v5 并发中间态曾使 9 项统一报未定义 helper；完成后消失。第一次五模块联合又有 runner 旧 method fixture 触发新 bridge gap而 3 项失败；fixture 对齐 v5 后同一命令 76/76 通过，未放宽纯投影合同。
+- 问题与后续：新增并解决 `P-20260815-006`。本模块没有 provider、searcher 或实验调用，不承诺补检成功，也不自行循环。主 Agent 的独立 runner/sparse/layered 模块已消费 projection 字段；正式接线仍必须限制为一次 R2、向 v5 selector 原样传 R1 `method_focus_basis_queries`，再次失败即保留失败终止。共享 dirty worktree 未 staging、未 commit。
+
+---
+
+## 2026-08-15 01:19:36 +08:00 - Codex 子 Agent `/root/gap_protocol_surfaces` - bounded gap-repair 外围协议 v5 适配
+
+- 用户请求/活动任务：只做通用 bounded gap-repair 主线的外围适配，不修改 research-loop 主逻辑或任何具体科研题词：让 Skill router 消费 layered R1+R2 证据；把 Science125 batch 协议切到 v5；让一次性独立评审恢复严格接受并重放 source-declared v5 lock/gap chain，同时保留 v2--v4 冻结恢复行为。修改前刷新了两份系统计划、执行任务、`Problem.md` 与 `Agent.md`；未使用额外 Skill。
+- 变更文件：更新 `src/autoresearch/competition/contest_direct_skill_router.py`、`src/autoresearch/competition/science125_batch.py`、`src/autoresearch/competition/contest_direction_review_recovery_cli.py`、`tests/unit/competition/test_contest_direction_layered_literature.py`、`tests/unit/competition/test_science125_batch.py`、`tests/unit/competition/test_contest_direction_review_recovery_cli.py`，并追加本记录。未修改 research-loop 主逻辑、题目 adapter、科研计划、历史运行制品或 `Problem.md`。
+- Skill 路由：`from_two_stage_artifact` 新增明确 `two_stage_with_bounded_gap_repair` 来源种类，并先重新验证 `ContestDirectionLayeredLiteratureArtifact`。layered 分支逐条使用 `record_bindings.round_query_lineage` 与完整 `record.origins/retrievals` 交叉投影 round、base/repair kind、role、query ID/hash、logical/executed query、原记录/论文/catalog hash 与 fetch hash；任何 retrieval 或 origin 未被完整覆盖即失败关闭。14 KiB UTF-8 门仍对完整记录统一执行，不截断摘要。旧 `two_stage_merged` 分支保持原字段投影与 JSON provenance 形状，routing schema 继续为 v3，单检索 v1/v2 行为不变。
+- Batch 与恢复：Science125 顶层协议常量及全部对应期望升级为 `two_stage_literature_v5`，旧 completed state 不会原地升级。review recovery 允许 v5 source 且要求 stage 04；加载 R1/final coverage-v5 与 immutable base merged，零轮要求 R1 已通过并拒绝任何残余 gap/R2/layered 文件；一轮则完整加载 diagnosis、唯一 provider response、projection，从 projection 重建 sparse plan并校验 retrieval，重导 layered，核对 R2/final role queries 与冻结 R1 method basis。v5 planning lock 还逐字段绑定 base/effective merged、0/1-round chain/hash、R1/final coverage schema/hash、thresholds、role counts/query IDs、method basis、eligible family counts、anchor assignments、selected catalog/context 与 exact-order review references。v2/v3 无 stage-04 路径及 v4 独立 lock verifier未改。
+- test-first 与验证：layered router 初始专项按预期 `2 failed, 5 passed`（旧 router 拒绝 layered），batch 协议期望初始 `10 failed, 4 passed`（生产仍为 v4），实现后分别转绿。最终 router/layered/research-loop/recovery/batch 联合 `88 passed in 8.72s`。早期相邻联合唯一失败为并行主链测试仍期待 v4，主 Agent 对齐后复跑全绿；旧 compiler-v4 单查询 fixture 漂移也由其独立兼容修复后 router 专项 `11 passed`。目标 Ruff check 为 `All checks passed!`、format-check 为 `7 files already formatted`；三个生产模块 Mypy `Success: no issues found`；生产与对应测试 py_compile 通过。第一次 Ruff check 仅发现 recovery import 顺序，机械修复后复验通过。
+- 问题与后续：未新增或修改 `Problem.md`；本任务未联网、未调用模型/学术源、未执行实验，因此不把本地合同测试冒充真实补检效果。下一步由主 Agent在全新空 root 执行一次真实 v5 R1→至多一次 R2→计划→独立评审链；任何 R2 或复审失败继续保留并终止。共享工作树含大量既有与并行修改，按父任务要求未 staging、未 commit。
+
+---
+
+## 2026-08-15 01:25:32 +08:00 - Codex 子 Agent `/root/gap_protocol_surfaces` - review recovery v5 完整查询谱系 P1 修复
+
+- 用户请求/活动任务：按红队发现 test-first 修复 review recovery v5 的结构查询一致性缺口；只改恢复器、对应测试及日志，不修改 research-loop 主逻辑、题目、检索策略或历史工件。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_review_recovery_cli.py`、`tests/unit/competition/test_contest_direction_review_recovery_cli.py`；新增 `Problem.md` 的 `P-20260815-007` 并追加本记录。
+- test-first 与修复：先对 R2/final `role_queries` 和 R2/final `method_focus_basis_queries` 四个边界加入“query ID 相同但 raw/结构不同”反例；旧实现按预期未抛错，专项失败。恢复器不再抽取 ID 比较，而是要求 R2/final role query 完整元组逐对象等于 projection 的 `r2_role_queries`，并要求 R2/final method basis 完整元组逐对象等于 R1 冻结 `method_focus_basis_queries`。因此 raw query、must-groups、prefix terms 或其他模型字段任一漂移都会失败关闭。
+- 验证：专项反例由红转绿；recovery、research-loop、Science125 batch 相邻联合最终 `69 passed in 8.43s`。两个目标文件 Ruff check 为 `All checks passed!`、format-check 为 `2 files already formatted`；生产模块 Mypy `Success: no issues found`；生产与测试 py_compile 通过。未联网、未调用模型/学术源、未执行实验，未 staging、未 commit。
+- 后续：P1 已闭合，无额外恢复轮或迁移操作。主 Agent可继续全新 v5 实网运行；恢复时若任何同 ID 查询对象发生结构漂移将终止而不是接纳。
+
+---
+
+## 2026-08-15 01:24:35 +08:00 - Codex 子 Agent `/root/merged_fixture_v4_update` - compiler-v4 旧测试夹具兼容修复
+
+- 用户请求/活动任务：只修复 merged-v1 与 focus-literature 测试中仍返回 1--3 条查询的旧夹具，使其显式满足当前 `source-query-compiler-v4` 的四角色查询合同；保持原检索、merge、去重、身份判断、focus/replay 语义，不修改生产代码、题目逻辑或历史工件，不提交共享工作树。
+- 变更文件：更新 `tests/unit/competition/test_contest_direction_merged_literature.py`、`tests/unit/competition/test_contest_direction_focus_literature.py`；将 `Problem.md` 的 `P-20260815-004` 保留原现场并更新为已解决；追加本记录。未修改任何 `src/` 文件。
+- 最小修复：两个测试文件各自增加小型 `_v4_query_plan` helper，生成恰好 4 条、每条恰好 2 个 must-group、每组 2 个候选的 Boolean 查询；Q1/Q3/Q4 原样复用同一对象组，Q4 使用 `limitations`/`artifacts` 强反证组。原宽检索与定向检索概念分别保留在 direct/method/mechanism 角色中，假搜索器仍消费同一论文数据。focus targeted-retrieval 夹具原有 3 条角色查询同步改为 4 条，因而串行 source 调用断言从 3 调整为冻结合同要求的 4；其一次 query provider 调用与完成态零调用重放断言未变。
+- test-first 与验证：先完整复现 merged 单文件 `11 failed`，均为 `requires exactly 4 queries; received 1/2`；父任务联合回归暴露 focus 文件后又独立复现 `11 failed`，均在两个宽检索夹具处收到 2 条。修复后 merged `11 passed`、focus `11 passed`，最终联合 `22 passed in 2.23s`。两文件 `python -m ruff check` 为 `All checks passed!`，`ruff format --check` 为 `2 files already formatted`，`python -m py_compile` 通过。merged 文件第一次 format-check 报需格式化，执行 Ruff formatter 后复验全绿；这只是机械排版修复。
+- 问题与后续：`P-20260815-004` 已解决；没有剩余测试阻断。未联网、未调用 Qwen、未执行实验、未写题目专用生产策略。共享工作树含其他 Agent 和用户修改，本任务未 staging、未 commit。
+
+---
+
+## 2026-08-15 01:29:29 +08:00 - Codex 子 Agent `/root/gap_merge_design` - layered 正式发表元数据晋级 P1 修复
+
+- 用户请求/活动任务：按红队发现 test-first 最小修复 layered R1 仓储版与 R2 同作品正式发表版合并时丢失 publication DOI、venue 和 published status 的 P1；必须保持 R1 不可变和全部 origins，沿用冻结 merged-v1 合并语义，避免 DOI 冲突误合并，并运行相邻 coverage/quality 回归。禁止修改主链、题目或历史工件。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_layered_literature.py`、`tests/unit/competition/test_contest_direction_layered_literature.py`；新增 `Problem.md` 的 `P-20260815-008` 并追加本记录。未修改 merged-v1、gap-repair 检索、research loop、router、batch、recovery、coverage/quality 生产规则或任何题目文件。
+- test-first 与修复：合成 R1 仅有 Zenodo repository DOI/preprint、R2 为同题名同作者且带正式 publication DOI/published 的反例，旧实现正确去重却输出 `doi=None`，测试按预期失败。修复只改变 layered 派生字段选择：对 base+repair records 复用 merged-v1 的 representative、最长摘要、完整作者、最新日期、可核验 citation、status 安全优先级、published/DOI 优先 venue/URL，以及 publication/repository DOI 分字段一致性语义。R1 artifact/record 不改写，所有 base/R2 origins 与 retrievals 原样汇集并进入新记录哈希。
+- 冲突与质量边界：同题名/作者但两个不同 publication DOI 仍由 `_same_work` 保持为独立记录；若无 DOI 的仓储记录形成传递桥，将两个冲突 publication DOI 拉进同组，新一致性门抛出 `ContestDirectionLayeredLiteratureError`，不生成误合并记录。修复后的投影同时保留正式 DOI 与仓储 DOI，quality v2 将其识别为 `publication_doi` 且 `required_anchor_eligible=true`；没有降低 authority 或 coverage 门。
+- 验证：layered 专项 `11 passed`；layered + sparse gap retrieval + merged-v1 + quality + coverage 相邻联合 `82 passed in 3.66s`。两个目标文件 Ruff check 为 `All checks passed!`、format-check 为 `2 files already formatted`；生产模块 Mypy 为 `Success: no issues found in 1 source file`；生产与测试 py_compile 通过。未联网、未调用 Qwen/学术源、未执行实验。
+- 问题与后续：`P-20260815-008` 已闭合，无需 schema v2；layered artifact 的内容哈希会自然反映新的派生字段，loader 仍从 immutable base+repairs 重导并拒绝旧算法伪装的新工件。正式有效性仍须由全新 v5 实网运行验证，不能把合成回归宣称为真实文献覆盖成功。共享 dirty worktree 未 staging、未 commit。
+
+---
+
+## 2026-08-15 01:46:36 +08:00 - Codex 子 Agent `/root/gap_accounting_fix` - v5 gap 终态、恢复与失败分母 P1 收口
+
+- 用户请求/活动任务：test-first 修复题目无关的 bounded gap-repair v5 外围记账与终态恢复：两种 no-adapter 终态、completed/partial-resume/plan-only 的模型调用和 R1/R2/final 制品必须完整且真实；Science125 在 provider escrow 后失败也须给出可验证的调用与来源分母；路由允许相关性顺序的非前缀子集。按红队追加，completed/required no-adapter 的 direct resume 必须完全本地复验并零模型调用稳定返回或重放 blocked。不得修改科研题目、实验、检索门槛或历史运行制品；按父任务要求不提交。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_stage_checkpoint.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`src/autoresearch/competition/science125_batch.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`、`tests/unit/competition/test_science125_batch.py`；新增并解决 `Problem.md` 的 `P-20260815-009`，追加本记录。共享工作树的其他修改均未触碰。
+- 终态与恢复：`_TwoStageLiteratureState` 现携带并重验 R2 pre-status coverage；统一 artifact binding 要求 one-round 成套包含 immutable base、effective/layered、R1/R2/final coverage 及 diagnosis/response/projection/retrieval，zero-round 则拒绝残余 R2。fresh、no-adapter、completed、plan-only 与 partial resume 均显式累计 gap provider 调用；resume 通过运行前后 hash-valid gap escrow 差分区分本次调用与历史调用。新增 no-adapter terminal fast path，在创建 runtime 前本地重验 direction、两阶段文献、routing、hypothesis、adapter、完整 bindings、模型/来源记账与最终 receipt；completed 零调用返回，required blocked 零调用稳定重放，不再错误加载不存在的 independent review。
+- 失败分母与 plan-only：新增本地 literature checkpoint accounting，逐文件校验安全路径、请求身份、request/checkpoint/papers hash、状态及 `AcademicPaper` payload，并把 completed 与 failed 都纳入真实来源分母。Science125 failure receipt 从已验证 outer-stage escrows 与 literature checkpoints 派生计数，并绑定 attempt-relative `research-loop` 文件清单和 inventory hash；任何本地验证失败只报告验证错误，不猜计数或读取未验证内容。plan-only 路由门改为非空、无重复、全部属于 planning lock 且精确等于 routing artifact 自身绑定的 evidence IDs，保留相关性顺序，允许 `(5,0,1)` 一类合法非单调子集。
+- test-first 与验证：新增 one-repair 两策略 no-adapter、direct zero-call resume、R2/完整 chain、非单调 plan-only、成功+失败文献 checkpoint 分母和 gap-escrow 后故障等合成反例。最终专项三文件为 `63 passed in 49.11s`；两阶段检索、focus/merged、quality/coverage、gap contract/runner/sparse/layered、router、research-loop、recovery 与 batch 的相邻联合为 `231 passed in 12.17s`。六个变更目标 Ruff check 为 `All checks passed!`、format-check 为 `6 files already formatted`；三个生产模块 Mypy 为 `Success: no issues found in 3 source files`；生产与测试 py_compile 通过。未联网、未调用 Qwen/学术来源、未运行实验。
+- 问题与后续：`P-20260815-009` 已在本地合同与相邻回归中闭合。真实来源质量与 v5 全链效果仍须主 Agent 在全新空 output root 的 opt-in live run 验证；这些本地合成结果不等于真实检索已成功。共享工作树含大量并行变化，本任务未 staging、未 commit。
+
+---
+
+## 2026-08-15 01:49:09 +08:00 - Codex 主 Agent `/root` - 方向 A-1 文献缺口反馈主链接线与 fresh-v5 上线门
+
+- 用户请求/活动任务：恢复上下文丢失期间的冲奖主线，对齐方向 A-1“科学假设生成与研究计划设计”；系统应从输入问题自主完成真实文献整合、候选假设、探索性预实验反馈、自迭代计划和独立评审，交付截止研究计划。当前重点是提高文献检索数量与质量；禁止为当前具体科研问题写专用优化、降低门槛、隐藏重试或把预实验冒充发表级结果。
+- 变更文件：新增 `src/autoresearch/competition/contest_planning_literature_gap_repair_runner.py` 与对应测试；更新 `src/autoresearch/competition/contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`，将独立 gap diagnosis/projection、单次 Qwen 修订、稀疏 R2 检索、layered evidence、coverage-v5、planning-lock-v5 与终态报告接成零轮/一轮主链；更新 `src/autoresearch/competition/contest_direction_review_recovery_cli.py` 及测试，补零轮完整查询对象重放；更新 `tests/unit/competition/test_contest_direction_context_runtime.py` 的微型官方能力夹具，使默认 4,000 thinking 预算下仍满足 trigger < history < hard limit；机械格式化 `src/autoresearch/competition/contest_direction_merged_literature.py`。此前同一连续任务还对 `contest_direction_plan_cli.py` 的历史兼容投影视图使用安全可选读取。追加 `Problem.md` 的 `P-20260815-010` 与本记录。
+- 主链语义：R1 coverage 无论成功失败先落盘。只有可补检的角色级语义/权威/family 缺口可调用一次 repair；模型响应严格限 evidence-bound terms，非缺口 query 保持字节不变；R2 只跑缺口角色×来源，随后用 immutable R1 method-focus basis 重选。R2 不通过即终止。planning lock 绑定 base/effective merged、R1、diagnosis、response、projection、retrieval、layered、R2 pre-status 与 final coverage；completed loader/resume 不重新调用 provider。生产模块与合成测试没有当前题目词表或阈值。
+- 红队收口：修复同 family 的 R1 仓储版遮蔽 R2 正式 DOI、恢复器只比 query ID、零轮 final query 漂移、no-adapter/plan-only/failed 终态漏调用分母与 R2 制品、非前缀路由误拒及 no-adapter 无法零调用 resume。最终审计无 P0；所有 P1 均由题目中立反例闭合。context runtime 旧 20k 假能力因新双预算公式使 80% trigger 高于 hard limit，先试 21.1k/30k 仍因完整摘要请求开销不足，最终用 50k capability + 41k 历史构造保留原测试意图并通过，未改生产预算门。
+- 验证：主 Agent 最终联合运行 19 个测试文件共 `325 passed in 14.88s`；另有 layered/quality/coverage `82 passed`、旧 merged/focus fixture `22 passed`、context runtime `3 passed`、review recovery `18 passed`。18 个生产模块 Ruff check 为 `All checks passed!`，Mypy 为 `Success: no issues found in 18 source files`，py_compile 通过；format-check 仅发现 merged 模块机械排版，执行 Ruff format 后复验通过。只读 preflight 核验题册 SHA-256、125 题/q001 身份、Qwen3.7-Max 官方 1M 能力缓存、API key 存在、全新 output root 不存在、XeLaTeX/Poppler/磁盘和调用预算，结论为 GO。
+- 问题与后续：新增并解决 `P-20260815-010`；子任务还解决 `P-20260815-004` 至 `P-20260815-009`。本记录前尚未启动 fresh-v5 付费运行，因此测试通过不等于真实文献覆盖或计划已产生。下一步只允许在新根 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v5-20260815/` 首次运行，不带 `--resume`；任何 R2/预实验/独立评审失败都保留并停止。共享 dirty worktree 包含既有用户和多 Agent 变更，未 staging、未 commit，避免误提交不相关文件。
+
+---
+
+## 2026-08-15 02:01:10 +08:00 - Codex 子 Agent `/root/failure_accounting_audit` - fresh-v5 失败分母 P0 审计与通用修复
+
+- 用户请求/活动任务：先只读审计 fresh-v5 失败回执为何在 broad artifact 和 8 个 source checkpoint 已完成时仍报 `literature_searches=0`，核对 checkpoint parser/路径、receipt/inventory hash 与两次模型调用；父任务确认按参赛审计 P0 后，test-first 最小修复通用 research-loop 文献分母聚合。禁止修改科研题、查询、证据选择或历史运行工件；本任务未联网、未调用模型/学术源、未执行实验。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_stage_checkpoint.py`、`src/autoresearch/competition/science125_batch.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`、`tests/unit/competition/test_science125_batch.py`；新增并解决 `Problem.md` 的 `P-20260815-011`，追加本记录。
+- 审计结论：局部计数器的 hash/status/paper validator 没有把失败清零；batch 传错了层级，使它查找不存在的 `research-loop/checkpoints/literature-searches`，而真实回执在 `literature/broad/checkpoints/literature-searches`。目录不存在的合法零值因此掩盖了 8 个真实请求。现场 broad artifact 经 Pydantic/内部 hash 重验有效：4 queries、8 succeeded fetches、160 raw hits、157 deduplicated records；provider escrow 严格计数为 broad=1、focus=1，本轮两份成功响应回执的总数 2 正确。
+- 最小修复：保留原 stage-local 校验器，新增只聚合 `literature/broad`、`literature/refinement`、`literature/gap-repair` 三个注册根的 research-loop 计数器。每个 checkpoint 仍必须通过 request 身份、文件名、payload/checkpoint/papers hash、status 和 `AcademicPaper` 验证才进入分母；未注册根、重复根、路径别名、symlink 文件和路径逃逸均拒绝。batch failure receipt 仅把调用点替换为新聚合器，没有修改其他终态、阈值或科学内容。
+- test-first 与验证：新生产布局测试首次在 collection 阶段按预期因聚合 API 不存在失败。实现后 stage-checkpoint + Science125 batch 为 `28 passed in 2.83s`；包含 literature/focus/merged/quality/coverage/gap/layer/router/research-loop/recovery/batch 的 14 文件相邻联合为 `236 passed in 12.54s`。same-root 合成 resume 验证已完成 source 不二次调用、新 failure receipt 保留原分母；未注册/重复/逃逸反例全部失败关闭。真实 fresh-v5 只读重放返回 arXiv 4 + OpenAlex 4 = `8/8 completed`，并确认 state receipt hash、inventory hash 和每个 inventory 文件绑定仍有效。四个变更目标 Ruff check/format-check 全绿，两个生产模块 Mypy 全绿，生产与测试 py_compile 通过。与并行 raw-memory 隐私策略修复的最终联合快照再跑 raw-memory/context-runtime/stage-checkpoint/research-loop/batch 共 `94 passed in 13.34s`；首次联合命令曾在并行模块尚未落盘时以 `ModuleNotFoundError` 中止，随后又捕获并修复冻结 v1 paper-verification 路径的本地重放漏口；双读单写兼容完成后原命令复跑全绿，真实旧 source checkpoints 也重新只读得到 `8/8`。
+- 问题与后续：`P-20260815-011` 已闭合。旧 `failed-receipt-001.json` 保持 write-once，不用新值篡改旧 hash；同根 resume 会本地重放已有 broad 检索，新 state/后续 failure receipt 将记录真实聚合分母。当前 `RawMemoryPolicyError` 属于父任务的独立恢复前置，本修复不改该策略。共享 dirty worktree 含大量既有与并行修改，未 staging、未 commit，避免误提交不相关文件。
+
+---
+
+## 2026-08-15 02:11:33 +08:00 - Codex 子 Agent `/root/raw_memory_failure_audit` - 学术元数据隐私边界与 v1 精确回放兼容
+
+- 用户请求/活动任务：只读定位 fresh-v5 focus 阶段 `RawMemoryPolicyError` 的精确来源与调用链；父任务确认后，test-first 实现题目无关的上游学术元数据隐私归一化、TaskContext provider 前置拒绝和冻结 v1 checkpoint 精确只读兼容。不得泄露真实 key/大段模型正文，不得修改科研题、查询、门槛、实验或旧运行工件；修复后只允许新 root 首次运行。
+- 变更文件：新增 `src/autoresearch/literature/privacy.py`、`tests/unit/literature/test_privacy.py`；更新 `src/autoresearch/competition/contest_direction_stage_checkpoint.py`、`src/autoresearch/competition/contest_direction_literature.py`、`src/autoresearch/llm/task_context.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`、`tests/unit/llm/test_task_context.py`；新增并解决 `Problem.md` 的 `P-20260815-012`，追加本记录。未修改历史运行目录、raw-memory detector、科研题或其他并发 Agent 文件。
+- 现场审计：唯一实际 focus 命中来自一条 OpenAlex 摘要中的公开 CONTACT 邮箱，位于 focus request 的证据消息；response/reasoning 无敏感命中，也没有 Bearer、API-key-like 或私钥。内层 validator 报 direct email identifier，外层转为 `RawMemoryPolicyError`。这是真实直接标识，不是凭据泄漏或 detector 假阳性；系统缺陷是直到付费 focus 响应落 escrow 后才在完成对话 raw capture 阶段拒绝。
+- 最小实现：`scholarly-metadata-privacy-v1` 递归处理所有 `AcademicPaper` 字符串字段，替换既有 detector 同边界的 email、Bearer、API-key-like 与私钥材料，随后调用原 `validate_persistable_content`。count-only `scholarly-metadata-privacy-receipt-v1` 保存 policy version、逐字段/类别计数、总数及整体 receipt hash，不保留原值或逐值 hash。source 返回在写 checkpoint 和交给聚合器前归一化；聚合器对任何注入 searcher 再做防御性归一化；paper verifier 的 request/response 均在持久化或下游使用前归一化。TaskContext 对 active、summary 与最终 delivered messages 在任何 context artifact/provider 调用前 fail-close，且错误不回显原值。
+- schema/兼容边界：新写 source 与 paper-verification checkpoint 分别固定为 v2，并把隐私回执纳入 checkpoint hash；冻结 v1 按原 request-derived path、原 request/payload/checkpoint hash 严格双读，不扫描 fallback、不调用 provider/source、不改旧文件，也不把旧值伪称为已归一化。compiler/query 语义未变，保持原协议；新聚合内容 hash 自然绑定归一化后的元数据。新运行 v2 单写，旧失败 root 仅只读取证、不得 resume。
+- test-first 与验证：隐私测试初次 collection 因模块尚不存在按预期失败；实现后专项 `27 passed in 3.64s`。OpenAlex CONTACT 形态、三来源、四类敏感模式、无命中等值、v1 source/paper verifier 零调用原字节回放、v2 篡改拒绝和敏感 TaskContext 零 provider/context/raw-memory side effect 均覆盖。文献、focus、merged、layered、context、research-loop 与 batch 相邻联合 `147 passed in 12.41s`。7 个目标文件 Ruff check 为 `All checks passed!`、format-check 为 `7 files already formatted`；4 个生产模块 Mypy 为 `Success: no issues found`；生产/测试 py_compile 通过。
+- 真实旧根只读验证：聚合器返回 arXiv `4/4` + OpenAlex `4/4` = `8 requested / 8 completed / 0 failed`；state 的 22 项 inventory 逐文件复算为 `missing=[] / changed=[]`，确认本任务零改写旧失败根。首次只读命令误从 research-loop CLI 导入聚合函数而出现 `ImportError`，改从定义模块导入后重跑成功，不影响工件。
+- 后续：必须从不存在的新 output root 启动且不带 `--resume`，让 v2 安全语义从第一条 source response 生效。共享 dirty worktree 含大量用户与并行 Agent 变更，本任务未 staging、未 commit，避免误提交不相关文件。
+
+---
+
+## 2026-08-15 02:33:29 +08:00 - Codex 子 Agent `/root/raw_memory_failure_audit` - 中央敏感规则统一与双 escrow 零副作用 P0 收口
+
+- 用户请求/活动任务：按隐私红队 test-first 最小修复中央 journal detector 与 scholarly normalizer 漂移，补全高置信凭据、Unicode/IDNA 邮箱、private-key 完整/错配/截断边界，消除 Bearer 普通短语误删；同时堵住 standalone provider escrow 与 literature source escrow 在安全校验前 hash、落盘或调用外部系统的 P0。禁止联网、改科研题/实验/检索门、修改旧 run 或放宽真实 credential 拒绝。
+- 变更文件：更新 `src/autoresearch/kernel/journal.py`、`src/autoresearch/kernel/__init__.py`、`src/autoresearch/literature/privacy.py`、`src/autoresearch/competition/contest_direction_stage_checkpoint.py`；更新 `tests/unit/kernel/test_journal.py`、`tests/unit/knowledge/test_raw_memory.py`、`tests/unit/literature/test_privacy.py`、`tests/unit/llm/test_task_context.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`；新增并解决 `Problem.md` 的 `P-20260815-013`，追加本记录。`journal.py` 与其测试因当前 Ruff 基线做了机械格式化，未改变邻接逻辑；未触碰旧运行目录。
+- test-first 现场：红队给出虚构的错配/截断/encrypted/DSA/PGP private-key、GitHub/AWS/Google/Hugging Face 前缀、显式 key assignment、Unicode/IDNA email、Bearer noun phrase、恶意 receipt field path，以及绕过 TaskContext 的 provider/source request。第一轮 123 项为 `40 failed / 83 passed`；其中 3 个 NameError 是新测试漏导入 validator，立即修正测试，剩余失败均对应旧生产缺口。没有使用真实凭据或大段模型正文。
+- 中央策略：`kernel.journal` 新增唯一共享的 category/rule table、Unicode/IDNA email candidate 校验与 `redact_sensitive_text`。validator 与 scholarly normalizer 不再各自维护 regex。Bearer 只有 Authorization header 或长度至少 16 且包含数字/credential punctuation 时命中，普通 certificate/纯字母无上下文短语保留。API 检测限定明确供应商前缀和显式 key/value 上下文，不猜任意高熵文本。完整或异 label private-key block 整块清除且保留 `safe-tail`；截断块抛 `SensitiveTextRedactionError`，scholarly 层包装为带 count-only receipt 的 `ScholarlyMetadataPrivacyError`，绝不吞掉后续证据后伪称成功。
+- 边界与回执：`field_path`/receipt keys 只接受安全结构路径并过中央 validator。新 privacy policy/receipt 均升级 v2；同一 receipt model 双读冻结 v1/v1 与当前 v2/v2，版本错配、字段计数、总数或 receipt hash 任一不一致即拒绝。source/paper checkpoint 保持 v2 单写并绑定 receipt-v2；旧 v2+receipt-v1 与 v1 checkpoint 继续原路径/原 hash/原字节只读。截断 source result 写安全 failed checkpoint、空 papers、通用 error 与 private-key count，不泄正文。v2 loaders 重验 request/error/paper/receipt/checkpoint。
+- 零副作用：source request 在 hash/路径/searcher 前验证整个 request；provider request 在 hash/路径/旧 escrow lookup/provider 前验证全部 string leaves。新增 current/新 token/Unicode 三类反例均断言 source/provider calls=0、checkpoint=0；provider-visible schema 字符串也覆盖。历史含敏感 request 的 provider escrow 保留 bytes 但不再向调用方重放，且 provider calls=0。
+- 验证：最终中央 journal + RawMemory + privacy + TaskContext + stage checkpoint 为 `132 passed in 12.46s`；加入 literature/focus/merged/layered/context/research-loop/batch 的宽回归为 `252 passed in 20.66s`。11 个目标文件 Ruff check 为 `All checks passed!`、format-check 为 `11 files already formatted`；6 个生产模块 Mypy 为 `Success: no issues found`；生产/测试 py_compile 通过。旧 fresh-v5 聚合仍为 `8 requested / 8 completed / 0 failed`，22 项 state inventory `missing=[] / changed=[]`，新 fresh-v6 root 确认不存在。
+- 后续：只允许在 `runs/manual-live/science125-q001-a1-prize-sprint-fresh-v6-20260815/` 首次运行且不带 `--resume`。共享 dirty worktree 含用户与并行 Agent 修改，本任务未 staging、未 commit，避免误提交不相关文件。
+
+---
+
+## 2026-08-15 02:56:59 +08:00 - Codex 子 Agent `/root/gap_v5_adversarial_audit` - broad/targeted 查询最小 strict JSON Schema 传输修复
+
+- 用户请求/活动任务：只读确认 broad/targeted 文献查询生成的 schema 传输路径与 Qwen 官方支持子集，然后 test-first 做最小通用修复：只为 query-list 生成调用传 `object{queries: array[string]}`、`required`、`additionalProperties=false`，保持 thinking disabled；数量、Boolean、长度等仍由本地 compiler-v4 验证。禁止语法猜修、隐藏重试、fallback、题目词和历史制品改写；机械核对 768/1200 容量但不得伪造绝对上界。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_literature.py`、`src/autoresearch/competition/contest_direction_focus_literature.py`、`tests/unit/competition/test_contest_direction_literature.py`、`tests/unit/competition/test_contest_direction_focus_literature.py`；新增并解决 `Problem.md` 的 `P-20260815-014`，追加本记录。未修改 prompt、compiler version、artifact schema、CLI 预算、科研题、实验、检索门槛或历史运行目录。
+- 设计与实现：共用 query 入口新增一个每次返回新字典的最小 schema 和稳定 schema name，并显式传 `thinking_mode=disabled` / `thinking_budget=None`。targeted 的内层 write-once response wrapper 原样透传 schema/name，brainstorm/selection 其他模型阶段保持原 transport。schema 不含数量、长度、唯一性或 Boolean 约束，现有 v4 精确四查询、两组、2–4 alternatives、source 编译与反证门不变；无第二次模型调用或响应修补。官方文档确认 Qwen3.7-Max 支持 JSON Schema，最小所用关键字均在文档支持/示例范围。
+- 容量审计：原始合法 JSON 可通过词法空白无限增长，且现有 query parser 会归一化内部空白，因此不存在有限的绝对最坏字节/Token 上界。按父任务决定，本轮保留 broad=768、targeted=1200 的运营 answer cap，不把它们描述为绝对保证，也不把既有失败归因为截断；只有后续新失败 escrow 的 `finish_reason=length` 才能支持容量调整。
+- test-first 与验证：新增 broad 与 targeted 实际 completion kwargs 捕获，红测分别命中缺失 thinking/schema；实现后两项 `2 passed`。最终 literature、focus、stage checkpoint、context runtime、research loop 与 LLM client 联合 `168 passed in 8.27s`；四个目标 Ruff check 为 `All checks passed!`、format-check 为 `4 files already formatted`，生产/测试 py_compile 通过。严格递归 Mypy 因共享快照的无关 requests stubs、既有 imported-module no-any-return 及并发 checkpoint arg-type 共 14 项失败；目标隔离检查 `--follow-imports=skip --disable-error-code=no-any-return` 为 `Success: no issues found in 2 source files`。
+- 问题与后续：`P-20260815-014` 已在本地合同层闭合。下一步只能由主 Agent/独立 preflight 在不存在的新 root 做单次 fresh live；若 schema provider 返回 4xx 或 `finish_reason=length`，必须保留原始失败 escrow 后停止，不得重试、改写或同根补跑。共享工作树的目标源/测试本身已是并行未跟踪文件且 `Agent.md`/`Problem.md` 有其他 Agent 修改，因此未 staging、未 commit，避免将整批不相关变更误提交。
+
+---
+
+## 2026-08-15 02:59:07 +08:00 - Codex 子 Agent `/root/privacy_normalization_redteam` - HTTP 200 业务 JSON 失败 escrow 与零重付恢复 P0
+
+- 用户请求/活动任务：先只读审计 LLM/TaskContext/StageCheckpoint 在 provider 已返回 HTTP 2xx、但业务正文 JSON 解析失败时丢失原响应和 usage、恢复再次付费的问题；随后按主 Agent 授权 test-first 最小实现题目无关修复。必须保存安全 response/usage/finish/trace、同请求零调用重放、失败分母区分 completed/parse_failed，并以 preflight reservation 对未知结果 fail-close；冻结 v1 成功 escrow 精确兼容。禁止联网、模型调用、语法猜修、隐藏重试及科研题逻辑改动。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_stage_checkpoint.py`、`src/autoresearch/competition/science125_batch.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`、`tests/unit/competition/test_science125_batch.py`；新增并解决 `Problem.md` 的 `P-20260815-015`，追加本记录。未修改 `llm/client.py`、`llm/task_context.py`、题目、查询、阈值、实验或历史运行制品。
+- test-first 与根因：注入本地 opener 的最小复现连续两次得到 opener calls `1→2`、成功 escrow `0`，证明旧 wrapper 只在 `LLMJsonCompletionResult` 成功返回后写 v1，业务 parse `LLMClientError` 直接穿透。新增 API 红测先在 collection 阶段因 `provider_checkpoint_accounting` 不存在失败；实现前还单独复现严格自定义 callable 被新 hook 关键字破坏，随后只对明确支持该参数或 `**kwargs` 的 callable 注入。
+- 最小实现：复用 client 既有同步 preflight hook，在 opener 前写 request/stage 与精确 transport payload hash 绑定的 write-once reservation。安全的 HTTP-2xx business parse failure 另写内容寻址 escrow，保存 response text、usage、finish reason、secret-free transport trace、固定失败消息和仅含 line/column/position 的机械 parse diagnostic；reasoning 原文不落盘。loader 重验唯一终态、request/path/content/checkpoint hash、reservation/trace 一致、HTTP status、visible/usage hash、中央隐私门和本地 parser diagnostic，再本地抛同一 `LLMClientError`，不调用 provider。reservation-only、终态冲突、篡改或缺 reservation 全部失败关闭。
+- 隐私/兼容：敏感 malformed response 不保存原文或 failure escrow，只留下预调用 reservation；首次转为不回显原值的安全错误，resume 报 outcome unknown 并零调用。冻结成功回执继续写/读 `contest-direction-provider-response-checkpoint-v1` 原路径/原 payload；不支持 hook 关键字的旧自定义 completion 仍可成功 v1 回放。相同 root/stage/input/request 的嵌套 wrapper 只生成一份 write-once 成功回执和一次真实调用。未新增 syntax repair stage，也未改变 client parser 的既有 transport normalization。
+- 记账：新增严格 `provider_checkpoint_accounting`，按请求身份去重并返回 `attempt/completed/parse_failed/outcome_unknown`。Science125 failure accounting 继续提供旧 completed escrow 字段，同时新增逐 stage 分类；observed attempts 改用 `attempt_count`，因此已付费但不可解析的响应不再记零。
+- 验证：安全 malformed JSON 对 `finish_reason=stop/length` 均覆盖，精确 usage、trace、parse diagnostic 与零重付通过；usage/diagnostic 在重算外层 hash 并同步重命名内容地址后仍被内层门拒绝；敏感 response 零原文、transport unknown、旧严格 callable、嵌套 wrapper、batch 分类均通过。专项 stage+batch `54 passed in 2.56s`；client/task-context/context-runtime/research-loop/recovery/stage/batch 相邻联合 `172 passed in 11.47s`；再叠加中央 journal、RawMemory、scholarly privacy、broad/focus/merged/layered 文献链后的宽回归为 `328 passed in 20.61s`。四个目标 Ruff check 为 `All checks passed!`、format-check 为 `4 files already formatted`，生产/测试 py_compile 通过；checkpoint 隔离 Mypy 全绿，batch 因共享基线 line 783 的既有 `no-any-return` 以单项禁用后全绿。未联网、未调用 Qwen/学术源、未执行实验。
+- 问题与后续：`P-20260815-015` 已闭合生产调用链 P0。外层 provider envelope 非 JSON、HTTP 非 2xx，或进程在响应与 failure escrow 之间崩溃时仍只有 reservation，语义是 outcome unknown/no automatic repay，不伪造可重放正文。无 preflight 参数的测试/第三方 callable 只保证旧成功兼容，不获得未知失败的 transport 证明。共享 dirty worktree 含大量用户与并行 Agent 变化，本任务未 staging、未 commit，避免提交不相关文件。
+
+---
+
+## 2026-08-15 03:33:34 +08:00 - Codex 子 Agent `/root/v7_failure_forensics` - gap-repair 最小结构化输出传输合同
+
+- 用户请求/活动任务：在已刷新五份必读文档后，test-first 将通用 `planning-literature-gap-repair-query` 收紧为 Qwen 官方结构化输出路径：只发送已承诺的最小 JSON Schema 子集并显式关闭 thinking；本地 Pydantic 继续承担 2—4 个术语、证据 hash 和语义校验。禁止修改 prompt、Q1 词、coverage/authority 门、查询语义、`max_tokens`、重试/fallback 或旧持久化响应精确重放；不得创建 v9 或运行模型。
+- 变更文件：更新 `src/autoresearch/competition/contest_planning_literature_gap_repair_runner.py`、`tests/unit/competition/test_contest_planning_literature_gap_repair_runner.py`；新增并解决 `Problem.md` 的 `P-20260815-016`；追加本记录。未修改任何历史 run、科研题、实验、文献选择或其他并行模块。
+- test-first 与实现：新增 completion kwargs 捕获测试，生产修改前单测按预期失败；runner 随后只在唯一 live completion 调用增加 `response_schema_name=contest_planning_literature_gap_repair`、最小 `repairs/role/replacement_terms/term/evidence_hash/matched_field` object/array/string schema、`thinking_mode=disabled` 与 `thinking_budget=None`。递归断言拒绝 `$defs/$ref/anyOf/minItems/maxItems`。已有 Pydantic、证据投影、消息、hash receipt 与 output-path fast replay 原样保留；`max_tokens=768` 和一次调用边界未变。
+- 验证：runner 专项先为 `6 passed in 22.93s`，格式化后复跑 `6 passed in 26.16s`；gap contract、gap retrieval、layered literature、research-loop CLI 与 Science125 batch 相邻联合 `95 passed in 40.08s`。两个目标 Ruff check 为 `All checks passed!`，format-check 为 `2 files already formatted`；生产 runner Mypy 为 `Success: no issues found in 1 source file`；生产/测试 py_compile 通过。额外包含共享 stage-checkpoint 的宽跑为 `133 passed / 4 failed in 44.25s`；四个失败均位于其 transport physical-retry 测试，调用栈不经过本次 runner，且该文件不在本任务改动范围，故没有越界修补。
+- 问题与后续：`P-20260815-016` 已在本地合同层闭合。fresh-v8 的 WinError 10060 只证明 gap-repair stage 的 transport 结果未知，不能归因于本次 schema/thinking 差异；新的 provider 行为只能由主 Agent 在完成 v9 透明 precommit 后从不存在的新 root 单次验证，并完整披露 v6—v8，不能 same-root retry 或跨 run 择优。本任务未联网、未调用 Qwen/学术源、未运行实验、未 staging/commit，避免夹带共享 dirty worktree 的无关变化。
+
+---
+
+## 2026-08-15 03:52:40 +08:00 - Codex 子 Agent `/root/privacy_normalization_redteam` - 严格 transport trace、单次物理重试与 canonical owner 合同
+
+- 用户请求/活动任务：在完整刷新 `AutoResearch_System_Research_Plan.md`、`AutoResearch_System_Execution_Plan.md`、`.kiro/specs/auto-research-system/tasks.md`、`Problem.md`、`Agent.md` 后，test-first 实现题目无关的严格 transport failure trace 与“同一逻辑请求最多一次物理重试”合同。资格必须由持久化证据证明尚未收到 HTTP response；HTTP/parse/schema/scientific 不得重试；attempt-1/2 都要计账；crash/resume 和嵌套 wrapper 必须 fail-close 且只能有一个 retry owner；冻结 v1 成功回执精确兼容。禁止联网、模型调用、JSON 猜修、隐藏重试、科研题/prompt/文献门槛修改。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_stage_checkpoint.py`、`src/autoresearch/llm/client.py`、`src/autoresearch/llm/task_context.py`、`src/autoresearch/competition/contest_direction_context_runtime.py`、`src/autoresearch/competition/science125_batch.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`；更新 `tests/unit/competition/test_contest_direction_stage_checkpoint.py`、`tests/unit/competition/test_contest_direction_context_runtime.py`、`tests/unit/competition/test_science125_batch.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`；新增并解决 `Problem.md` 的 `P-20260815-017`；追加本记录。未改历史运行目录、科研问题、查询计划、科学评价或 provider 配置。
+- test-first 与核心实现：初始 transport/HTTP/nested/cross-terminal/read-stage 红队矩阵为 `37 passed / 10 failed`。实现 write-once v2 physical-attempt reservation、严格 transport failure escrow、HTTP/nonretry terminal escrow 和 attempt-aware parse/success terminal 绑定；只有完整重验 `response_text=null`、`failure_stage=transport`、`transport_attempted=true`、`http_response_received=false` 的 attempt-1 才产生 attempt-2。两次 request bytes hash/size 相同、request ID 不同；attempt-2 任意终态或 outcome unknown 都禁止第三次。旧 reservation-only 不升级，冻结 v1 successful escrow 继续原 schema/path/hash 重放。
+- client、嵌套与恢复：HTTP opener 返回 response 前的异常才可形成 transport-eligible trace；HTTPError、完整 HTTP response 的状态/envelope/UTF-8/顶层失败写 nonretry terminal，response 已取得但 `read()`/status/header 异常只保留 outcome unknown。ContextRuntime completion 标记 canonical provider owner，下游 focus wrapper 不再创建不同 root/logical request 的第二 owner；实际 nested 测试中第一次 transport 失败后 opener 精确为 2，inner alias 为 0。覆盖 attempt-1 failure 后、attempt-2 reservation 前 crash 恢复，以及 attempt-2 parse/HTTP/transport 终态零第三次。
+- 完整性、隐私与计账：读取成功/parse/terminal 前先重验全部 attempt/failure，强绑定 attempt index、request ID、payload SHA/size、内容地址、路径及 outcome 互斥；terminal failure code 必须与 HTTP-status failure trace 或成功 HTTP/decode trace 的种类一致。transport/terminal escrow 不保存原始异常正文；attempt-2 仅抛固定安全错误并 `from None`，测试确认异常、完整 traceback 和全部 JSON 不含虚构 secret。`provider_checkpoint_accounting` 返回 physical attempt 及 completed/parse/transport/terminal/outcome-unknown 分类。成功 delivery 新增权威 lifetime physical total/by-stage/semantics；原三个 provider-request 字段保留 logical-scientific-call v1 兼容值并显式标注，避免混算历史物理成本。Science125 failure accounting 同步增加 transport/terminal 分类。
+- 验证：最后两条“底层异常链泄密”和“terminal code/trace 可互换重哈希”测试先为 `2 failed`，修复后 `2 passed`。最终 stage checkpoint、ContextRuntime、research-loop/focus、Science125 batch、LLM client 与 TaskContext 相邻联合 `186 passed in 14.55s`。10 个目标文件 Ruff check 为 `All checks passed!`、format-check 为 `10 files already formatted`；6 个生产模块 Mypy 为 `Success: no issues found in 6 source files`；生产与目标测试 py_compile 通过。未联网、未调用 Qwen/学术源、未运行实验。
+- 问题与后续：`P-20260815-017` 的核心 P0 已闭合。未扩展的成功态 accounting 表面为 no-adapter/legacy loader、Science125 plan-only fallback 与 review-recovery；它们应在独立任务中接入同一 authoritative physical fields。并发同 identity dispatch 锁、partial-body 专用 schema 和 request identity 的 `reasoning_effort` 纳入分别保留为 P2/P1，不得通过同根重付或旧回执改写处理。共享 dirty worktree 含大量用户与并行 Agent 修改，本任务未 staging、未 commit，避免夹带不相关文件。
+
+---
+
+## 2026-08-15 04:04:21 +08:00 - Codex 子 Agent `/root/v7_failure_forensics` - 次级终态 physical-attempt 账本收口
+
+- 用户请求/活动任务：完整刷新五份必读文档后，test-first 补齐 strict transport retry 在 no-adapter fresh/loader、Science125 plan-only fallback 与 review-recovery 三类次级终态的物理调用账本。必须保留全部旧逻辑字段和值、兼容缺少新字段的 legacy 报告，严格复算新报告；禁止修改科研 prompt、门槛、题目、历史 run 或运行模型。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_research_loop_cli.py`、`src/autoresearch/competition/science125_batch.py`、`src/autoresearch/competition/contest_direction_review_recovery_cli.py`；更新 `tests/unit/competition/test_contest_direction_research_loop_cli.py`、`tests/unit/competition/test_science125_batch.py`、`tests/unit/competition/test_contest_direction_review_recovery_cli.py`；新增并解决 `Problem.md` 的 `P-20260815-018`；追加本记录。未改旧 run、科研内容、查询计划、coverage/authority 门、provider 配置或模型预算。
+- test-first 与实现：新增 transport retry 分类、物理总数/逐 stage、篡改拒绝、legacy 缺字段加载、plan-only final stage、completed resume 零 delta 与 partial resume 精确 delta 反例；初始 6 项全部失败。no-adapter 仅为 fresh two-stage 报告追加 authoritative checkpoint accounting 与语义标记，loader 精确接受完整新 accounting 或冻结 legacy accounting；plan-only 同时统计 6 个上游阶段和 `plan-only-final-plan`，不改 historical/current/total 逻辑值；review-recovery 新增 by-stage/lifetime/current physical delta，完成态 resume 返回 delta=0，中断恢复按调用前后耐久 attempt 差量计算。旧 response 字段和值不变。
+- 验证：定向 `6 passed in 24.22s`；三份完整业务测试 `77 passed in 42.35s`；stage checkpoint + ContextRuntime 相邻回归 `60 passed in 29.34s`。6 个目标文件 Ruff check 为 `All checks passed!`，format-check 为 `6 files already formatted`；3 个生产模块 Mypy 为 `Success: no issues found`；生产与测试 py_compile 通过，`git diff --check` 无目标文件问题。未联网、未调用 Qwen/学术源、未执行实验。
+- 问题与后续：`P-20260815-018` 已闭合三类次级交付表面。物理 attempt 的权威口径仍是 canonical owner 下的 durable reservation；无法据此推断 provider SDK 内部未落 checkpoint 的隐藏行为。共享 worktree 含大量用户与并行 Agent 修改且目标文件当前为未跟踪的并行开发文件，本任务未 staging、未 commit，避免把无关变化纳入提交。
+
+---
+
+## 2026-08-15 04:18:27 +08:00 - Codex 主 Agent `/root` - v9 单次冲奖运行事前证据与透明承诺
+
+- 用户请求/活动任务：在方向 A-1 冲奖目标下继续系统级闭环，截止研究计划；要求真实高质量检索、可复核预实验信号、反馈迭代、独立评审和 PDF，同时硬性禁止用当前科学问题反向优化系统架构。v6--v8 失败必须保留，不允许隐藏重试、跨运行择优或降低门槛。
+- 变更文件：新增 `runs/manual-live/science125-q001-a1-prize-sprint-v9-preflight-evidence.json` 与 `runs/manual-live/science125-q001-a1-prize-sprint-v9-precommit.json`；追加本记录。未修改任何生产代码、科研 prompt、查询编译器、覆盖/权威门、预实验指标、旧运行目录或 `Problem.md`。
+- 事前冻结：preflight evidence canonical hash=`832ed5d1c8e79ebba5ea0cfbeb284069d5beef227fb73a4a243766024eef98cf`、文件 SHA256=`2953993dbdf0aee7af7ae0417a7a00899056dd443b8a572fb306a3ac85cbec07`；precommit canonical hash=`515a889ae8b5942bc4d2ad3d8fd1693aecfe78d35a8b229b470c56481de0dfad`、文件 SHA256=`2206a5952001695d04733f55b688b3b7b6cf37bc7b677228d0d6fdaed5c32595`。目标 root 在两者封存时不存在。
+- 透明边界：v8 终态失败继续有效；v9 是由题目无关的 transport/recovery/physical-accounting/structured-output 合同变化授权的前向版本，不以 v8 科学质量授权。v9 使用 full fresh，明确会重新抽样中间科学内容，但禁止从 v6--v9 中择优，v9 首个终态无条件绑定。新架构修复没有 Q1 词、阈值或指标；主循环中既有垂直预实验适配器仍如实披露为冻结执行层能力，未宣称整个仓库题目无关。
+- 前代取证：为 v6--v8 新增明确 inventory 算法 `ordinal-relposix-size-sha256-tab-lf-utf8-v1`，权威值分别为 `f9328407...409e8`、`e09eac8...9322`、`5c057178...2848`；同时保留并标注历史 pipe/no-final-LF 与 literal-backtick-t 算法产生的旧值，不覆盖旧声明。旧 roots 只读。
+- 验证：主 Agent 重新执行 22 个相关测试文件，`420 passed in 31.23s`；21 个生产文件 Ruff check、format-check、Mypy（仅禁用已记录的 `no-any-return` 基线项）与 py_compile 全绿。独立 `/root/v9_final_preflight` 另得 `200 passed`、静态检查全绿并给出 `CONDITIONAL GO`：只允许单进程、fresh、无 `--resume`。21 个冻结实现文件、config、env 仅 hash、dependency lock、capability cache 与 precommit/evidence 交叉绑定均重验通过。
+- 问题记录：沿用已解决的 `P-20260815-016`、`P-20260815-017`、`P-20260815-018`；未新增重复问题。保留非阻断 P2：若外部错误地让两个进程复用同一 request ID，尚无全局 dispatch lock，因此本次预承诺固定单进程串行运行且不得并发启动。
+- 后续：只允许按 precommit 固定 CLI 创建 `science125-q001-a1-prize-sprint-fresh-v9-20260815` 一次；任何代码/config/Skill/参数变化都必须在启动前使本 precommit 失效。v9 无论成功或失败均保留其首个终态与全部物理调用/来源分母；独立评审若 major revision，最多执行一次已预声明、绑定原批评的 review recovery，第二次 major 即终止。
+
+---
+
+## 2026-08-15 04:28:05 +08:00 - Codex 子 Agent `/root/finalist_url_fix` - finalist 双标识 URL 身份与冻结 v1 回放修复
+
+- 用户请求/活动任务：完整刷新五份必读文档后，针对 fresh-v9 暴露的 `finalist status receipt source URL mismatch`，test-first 做最小题目无关修复。只允许改文献状态、层叠身份/回放边界及测试；禁止科研提示词、Q1 词、coverage/authority 门、adapter、预实验指标、旧 run、联网/模型调用、创建 v10 或提交。
+- 变更文件：更新 `src/autoresearch/competition/contest_direction_plan_cli.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`tests/unit/competition/test_contest_direction_plan_cli.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`；新增并解决 `Problem.md` 的 `P-20260815-019`；追加本记录。未修改任何运行目录或其他并行模块。
+- 独立取证与根因：fresh-v9 中失败记录的 canonical URL 为正式 DOI，同时存在 arXiv repository DOI；base→layered 身份和哈希未漂移，状态 checkpoint 也精确绑定派生的 arXiv 查询 URL。真正冲突是 `_verify_arxiv_finalist` 把派生查询 URL 写进 `receipt.source_url`，而 `_apply_finalist_status_verification` 把该字段当 canonical record URL。只读诊断 Agent 独立得到同一结论后才开始修改，没有凭错误字符串猜修。
+- test-first 与最小实现：新增四个纯合成、题目中立反例，生产修改前精确得到 `4 failed`。新回执现在始终保留目录 `source_url/url`；实际 preprint verifier 仍收到由同一记录精确派生的 arXiv URL。冻结 v1 回放只额外接受该记录自身 `_arxiv_status_url`，不做模糊 URL canonicalization、不接受任意第三 URL；伪造 URL 反例继续失败关闭。fresh 回执测试实际执行 write→load→apply，证明新写回执可立即零网络重放。
+- 验证：四个红测修复后 `4 passed`；两份完整专项 `63 passed, 1 skipped in 9.40s`；merged、layered 与 paper-verification checkpoint 相邻回归 `77 passed in 3.14s`；Science125 batch 相邻回归 `17 passed in 2.61s`。四个目标文件 Ruff check 为 `All checks passed!`、format-check 为 `4 files already formatted`；正常递归 Mypy（`--disable-error-code=no-any-return`）为 `Success: no issues found in 2 source files`；生产与测试 py_compile 通过。一次不适用的 `--follow-imports=skip` 隔离检查使既有运行时 union alias 失去类型语义并报 42 项，去掉该选项后原目标全绿，未因此扩张代码修改。
+- 问题与后续：`P-20260815-019` 已在本地合同和相邻回归中闭合。fresh-v9 失败根、回执和调用分母继续作为绑定终态保留；本任务没有续跑、联网、调用 Qwen/学术源、执行实验、创建 v10、staging 或 commit。后续若要前向验证，必须由主 Agent 另立新版本、precommit 与不存在的新 root，不能 same-root 重付或改写旧制品。
+
+---
+
+## 2026-08-15 05:02:47 +08:00 - Codex 子 Agent `/root/paper_status_accounting` - 文献源 physical HTTP attempt 账本与全终态报告收口
+
+- 用户请求/活动任务：审计 fresh-v9 的文献来源分母并在 v10 前以 test-first 最小实现通用 source physical-attempt accounting。必须把 search 与 paper-status verification 分开，逐真实 HTTP transport attempt 落 reservation/outcome，覆盖 success/failure/no-adapter/plan-only/Science125 completion，精确兼容冻结 legacy 且禁止 logical→physical 回填；只改 checkpoint/accounting/report/client 边界，禁止科研题、查询优化、门槛、模型、联网和旧 run。
+- 变更文件：更新 `src/autoresearch/literature/clients.py`、`src/autoresearch/competition/contest_direction_stage_checkpoint.py`、`src/autoresearch/competition/contest_direction_research_loop_cli.py`、`src/autoresearch/competition/science125_batch.py`；更新 `tests/unit/literature/test_clients.py`、`tests/unit/competition/test_contest_direction_stage_checkpoint.py`、`tests/unit/competition/test_contest_direction_research_loop_cli.py`、`tests/unit/competition/test_science125_batch.py`；新增并解决 `Problem.md` 的 `P-20260815-020`；追加本记录。未修改任何历史运行目录或其他科研/模型配置。
+- 取证与口径：fresh-v9 的 `18/18` 是 logical search checkpoints，另有 8 个 logical paper-status calls；内置 clients 最多三次 transport attempt，旧真实 physical 总数只能界定 26—78，不能精确重建。新协议把每次实际 `http_get` 的 reservation、completed/failed outcome 题目无关地持久化，reservation-only 诚实记为 unknown 且禁止恢复重发；logical searches、logical status verifications 及两类 physical attempts 分桶聚合。冻结旧 checkpoint 只返回 `legacy_unavailable`，custom/no-adapter 不伪造 physical=logical。
+- 完整性与隐私：exact built-in type/method 才获得 tracing trust；write-once dispatch owner 关闭同 logical identity 并发双发；nested observer fan-out 保留外层可见性。registration 持久化安全 logical request，并把 search 的 source/query/limit 与各内置 adapter endpoint/params、paper status 的完整 paper/URL 逐项交叉绑定；未注册 root、孤儿文件、跨源/同源换标、hash 重算和不完整链均失败关闭。OpenAlex key/mailto、S2 key header value、response body、原始异常和动态异常类名不落盘，只保存固定错误码与 response hash/size。
+- 报告与恢复：同一权威聚合进入成功、失败、no-adapter 和 plan-only；fresh direction input 用 hash-bound `physical-source-http-attempt-ledger-v1` marker 区分 current 与真正 legacy，禁止删除新字段再重算未签名 report hash 的降级。Science125 current completion state 同时重验 state、已绑定 delivery report 与 `attempt_root/research-loop` 本地账本，`requested=1→999` 即使重算 receipt hash 也拒绝；legacy marker 缺失行为保持原样。
+- test-first 与验证：多轮红测覆盖 retry、429 circuit、malformed JSON、status failure replay、crash unknown、并发 owner、observer nesting、隐私、tracer spoof、identity swap、q_old/q_new 重绑、未注册 root、四类报告面和 completion terminal aggregation。格式化后联合 `poetry run python -m pytest tests/unit/literature/test_clients.py tests/unit/competition/test_contest_direction_stage_checkpoint.py tests/unit/competition/test_contest_direction_research_loop_cli.py tests/unit/competition/test_science125_batch.py -q --no-cov` 为 `155 passed in 11.34s`；拆分为核心 `93 passed`、相邻报告 `62 passed`。独立红队另报相邻 literature `59 passed`，exact completion 与同源换绑反例拒绝。8 个目标 `ruff check` 为 `All checks passed!`、`ruff format --check` 为 `8 files already formatted`；4 个生产模块 Mypy 为 `Success: no issues found in 4 source files`；py_compile 通过。
+- 问题与后续：`P-20260815-020` 已在本地协议与报告面闭合。physical 的权威边界是内置 client 对 HTTP transport 的调用，不推断 TCP 或外部 SDK 隐藏行为。任何下一次 live 验证必须由主 Agent 先重做 precommit，使用不存在的新 root；本任务没有创建 v10、联网、调用模型/学术源、执行实验、staging 或 commit，以免夹带共享 dirty worktree 的并行变化。
+
+---
+
+## 2026-08-15 05:13:18 +08:00 - Codex 主 Agent `/root` - v9 终态取证与 v10 单次冲奖运行事前冻结
+
+- 用户请求/活动任务：继续方向 A-1 冲奖闭环并截止研究计划；在不利用 v9 科学结果择优、不修改科研 prompt/查询语义/覆盖门/预实验指标的前提下，保留 v9 首个失败终态，并仅以 `P-20260815-019` 与 `P-20260815-020` 两个题目无关系统正确性修复授权前向 v10。
+- 变更文件：新增 `runs/manual-live/science125-q001-a1-prize-sprint-v9-terminal-evidence.json`、`runs/manual-live/science125-q001-a1-prize-sprint-v10-preflight-evidence.json` 与 `runs/manual-live/science125-q001-a1-prize-sprint-v10-precommit.json`；追加本记录。未修改 v6--v9 运行目录、生产代码、科研问题、候选文献、预实验、计划或评审制品。
+- v9 终态：终态证据 canonical hash=`a6b72dad453dcfdbc680ecece697c6f4f49b8188662c7f88306e7afc330cb99b`、文件 SHA256=`81438135c1f3b659902e705717589885f463ebd8db4db072fd83a424211849a7`。v9 root 重算仍为 `88 files / 9,689,680 bytes / 150cb76428b25e3a51ddbee3817c8683671d5824e7dec2bdfc9528a4bf97f6b0`，最新写入早于终态证据。它如实记录 R1 失败、唯一一次 gap repair、R2 通过、随后 canonical/derived URL 本地回放失败；planning lock、Skill、hypothesis、pilot、plan、review、PDF 均未启动。v9 失败继续有效且禁止 same-root resume。
+- v10 事前冻结：独立预检指出 actor/source 的初稿表述过宽后，在目标 root 仍不存在时把规则精确拆为“literature search actor==source”和“paper-status actor 为 verifier、source==arxiv”；随后又把“每次 attempt 都有 outcome”精确改为“每次都有 reservation，未中断才有 completed/failed outcome，崩溃则 unknown”。两次均只纠正证据措辞，未改实现。最终 preflight evidence canonical hash=`12e4042a15da1db1feb1eae6eee2cbe9bc8311028d021b667fc094371addf381`、文件 SHA256=`9ba5f5a31922a28fd4caa1af4c1b7b299a19dbd6b510e824a3488e9b051a8244`；precommit canonical hash=`4d4fb5ba14f77fa5ab4d1f21f82d8a213ebbf21f2ec963ecbcfe3318ab8fb84c`、文件 SHA256=`e948a9b586f7f7e850e522c50015cf0247afad04a66aac86a0944b764d486813`。目标 root 在两者封存与 hash 重验时不存在。
+- 透明边界：v10 为 full fresh，明确会重采样中间科学内容；禁止跨 v6--v10 选择、禁止以 v9 R2 通过或任何候选质量授权重跑，v10 首个终态无条件绑定。仅允许单进程串行、无 `--resume`。冻结既有垂直预实验适配器与问题域 Skill 如实标为执行/知识资产，未宣称整个仓库题目无关；本轮没有新增或调优任何 Q1 控制流、阈值、提示词或指标。
+- 验证：主 Agent 独立复跑 source/accounting 核心 `93 passed`、loop+batch `62 passed`、相邻 literature `59 passed`；27 个相关模块宽矩阵 `526 passed, 1 skipped in 32.17s`。8 个 P020 目标 Ruff check、format-check、4 个生产文件 Mypy `--no-incremental` 与 py_compile 全绿。独立终局 Agent 另得 `13 passed` 并以 state+delivery+outer hashes 同步重算的 `1→999` 反例证明本地物理账本仍会拒绝；legacy、并发 owner、未知结果、隐私、未注册 root、同源 query 换绑均通过。
+- 问题记录：沿用并已解决 `P-20260815-019`、`P-20260815-020`，不新增重复问题。残余声明边界为：legacy 无 marker 不反推 physical；新账本防自洽篡改但不是外部数字签名；生产必须单进程，且 physical 定义位于内置 client 调用 HTTP transport 的边界。
+- 后续：等待独立 `/root/v10_final_preflight` 复核当前冻结字节与前代完整性。只有其明确 GO 且 precommit/evidence/实现/config/env hash/Skill/lock/target-absence 全部未变化，才允许按冻结 CLI 首次创建 v10；任何变化都使本承诺失效并必须重新封存。
+
+---
+
+## 2026-08-15 05:44:50 +08:00 - Codex 主 Agent `/root` - v10 首终态取证与来源恢复阻断边界
+
+- 用户请求/活动任务：继续方向 A-1 冲奖闭环并截止研究计划；必须对齐真实运行状态，提高文献检索数量与质量，保留真实预实验与反馈迭代要求，同时硬性禁止围绕当前科学问题优化系统架构。v10 必须按 precommit 接受首个终态，不允许 same-root resume、隐藏重试、跨运行择优或降低质量门。
+- 变更文件：新增 `runs/manual-live/science125-q001-a1-prize-sprint-v10-terminal-evidence.json`；新增 `Problem.md` 的开放问题 `P-20260815-021`；追加本记录。未修改 v10 root、生产代码、科研 prompt、查询、coverage/authority 门、候选文献、预实验或任何旧运行制品。
+- v10 终态：首终态为 `failed`，错误是 targeted 阶段 `all configured literature searches returned no papers (8 attempts, 8 source failures)`。broad 文献、focus 选择和 targeted 查询模型响应均完成；targeted literature、R1 coverage、planning lock、Skill、hypothesis、pilot、研究计划、独立评审和 PDF 均未生成。模型物理尝试精确 4/4 完成，无 parse/transport/unknown；来源逻辑 16 次为 4 成功/12 失败，物理 HTTP 精确 29 次为 4 完成/25 失败/0 unknown。arXiv 24 次全部失败（5×429、19×隐私保护的通用失败码）；OpenAlex 4 次 broad 成功，targeted 首次 429，余下 3 个逻辑请求被同进程内存断路器在 HTTP 前短路。
+- 完整性：独立只读取证与主 Agent 复算一致。v10 root=`146 files / 1,831,590 bytes / 92dfd784c13262bf75820878e71588e47c228f4ed0f72098302fa16642224386`；research-loop raw inventory=`140 files / 1,509,778 bytes / 9ab75917b7b851302e134df2a8a72494edc84b6e4198f8ec0827f9351ec59bbc`，batch 绑定的结构化 inventory hash=`28bbd4cec37ee9371a42dab460c545ffcfdae6dc40db236f39540d34c680fd8e`。batch report 文件=`b21e74431155252b7c118b44d0941601f624ce5a82a5a83d6b1a6398828799de`、canonical report=`ef5bba3348c7392d612a32463c52fbbdc1efa92bb2464de8bae011d5958c2efd`；state/failed receipt 文件均=`18c9efcea7495664ecc40535203419123a883bea8bb18137efa101e21e35f7cf`，canonical receipt=`753cf3f5a9d6a6a4f1228082c5fae046946f5fb1d5851569319089ee91c1811a`。
+- 终态证据：新证据 canonical hash=`2be02eee977f7092af455de9704e1c6cc21c450a2d7d1561a4364979a8240199`，文件 SHA-256=`940c7e364b62cd365de661d7759985391383cfaec0c67f2b0c96b0b565fa29f4`，7,688 bytes。使用项目 `canonical_sha256` 排除 hash 字段后复算与内嵌值完全相等；JSON 可严格解析。证据记录 preflight/precommit、阶段文件、模型/来源物理账本、当前认证环境的存在性布尔值与 root inventory，不存任何 secret。
+- 外部认证边界：v10 冻结 `.env` 哈希与当前文件相等，但 `OPENALEX_API_KEY` 不存在。OpenAlex 当前官方认证文档要求免费 API key，且其 deprecation 文档说明旧 `mailto` polite-pool 已废弃。固定等待本地 60 秒 circuit 不能证明匿名额度恢复；Semantic Scholar 不属于 v10 已失败的 8 个逻辑身份，不能在本次恢复中临时加入并冒充原 source recovery。
+- 问题与后续：`P-20260815-021` 保持 Open。最小合法后继只能是题目无关、versioned bounded source recovery：精确继承 v10 broad/focus/targeted-query，仅恢复 4 个 arXiv + 4 个 OpenAlex targeted 身份，不调用模型、不补 broad、不改查询或门槛、不增加来源、最多一轮。当前 live 为 NO-GO；先由用户在 `E:\AIResearch\.env` 配置免费的 `OPENALEX_API_KEY`，不要通过聊天发送。之后才可 test-first 实现 recovery/preflight、做不回显凭证的认证 smoke、写透明 precommit 并创建不存在的新 root。本任务未联网调用学术源或模型、未执行实验、未 stage/commit。
