@@ -2,13 +2,13 @@
 
 > 生成日期：2026-08-16
 > 适用榜题：方向 A-1「科学实验任务规划与反馈迭代」——《Science》125 问第 1 题（素数为何如此特别？）
-> 主线定义版本：v1（本次修正）
+> 主线定义版本：v2（本次修正：预实验为必做硬步骤，链 2 CLI 已舍弃并由新主线编排取代）
 
 ---
 
-## 1. 主线定义（本次修正后）
+## 1. 主线定义（v2，本次修正后）
 
-**主链 = 链 1：输入题目 → 中文《科学假设与研究计划》PDF。**
+**主链 = 一条命令：输入题目 → 中文研究计划 → 真实预实验（必做）→ 反馈修订 → 最终 PDF。**
 
 ```text
 题目 PDF（sjtu-booklet.pdf，Science 125 第 1 题）
@@ -17,30 +17,29 @@
   → Qwen 元数据路由（只返回 Skill ID，不读正文）
   → 3 个不记名临时子 Agent 并行（可证伪假设 / 方法桥接+最小预实验 / 反方挑战）
   → 独立评审 Agent 从候选中选定/综合研究目标
-  → 主 Qwen 一次生成中文研究计划（通用 system + 题目 + 选中 Skill 正文 + 归档建议 + 锁定文献目录 + 输出契约）
-  → 确定性渲染 JSON / Markdown / TeX / PDF（≤20 页检查 + pdftotext 文本核验）
+  → 主 Qwen 一次生成中文研究计划
+  → 真实素数间隙预实验（固定区间、四零模型对照、199 次重采样；不可跳过）
+  → 主 Qwen 读取已核验预实验结果修订计划一次（数字守卫：正文不得出现证据外数字）
+  → 确定性渲染最终 JSON / Markdown / TeX / PDF（≤20 页检查 + pdftotext 文本核验）
 ```
 
-**已舍弃：链 2（`contest_prime_feedback_cli`，预实验反馈修订链）。**
-预实验能力本身保留为独立工具 `contest_prime_preexperiment.py`，不再作为主链步骤；本次验证中已清理其半成品输出目录。
+**主链入口（v2 新增）**：`src/autoresearch/competition/contest_mainline_cli.py`
+`run_contest_mainline_delivery` 一条命令跑完整主线；`--plan-source-dir` /
+`--preexperiment-source-dir` 支持复用已完成阶段（仍全量验证哈希）重跑修订与渲染，
+用于修订被数字守卫拒绝后的自迭代，无需重跑全链。
+
+**已舍弃**：链 2 CLI（`contest_prime_feedback_cli`）不再作为主线；其底层组件
+（预实验 runner、修订器、证据嵌入、渲染器）由新主线编排直接复用。
 
 **保留但标注「开发中」：自主搜索灵感线（`contest_direction_research_loop_cli`，12 阶段方向循环）。**
-该线仍在迭代（fresh-v2…v10 连续失败关闭，最新阻塞见 `Problem.md` `P-20260815-021`），不作为当前交付依赖。在技术方案中需如实说明该线处于开发状态。
+该线仍在迭代（fresh-v2…v10 连续失败关闭，最新阻塞见 `Problem.md` `P-20260815-021`），
+不作为当前交付依赖。在技术方案中需如实说明该线处于开发状态。
 
 ---
 
-## 2. 主链当前代码已验证跑通（2026-08-16 新目录隔离复现）
+## 2. 主线当前代码已验证（2026-08-16 新目录隔离复现）
 
-命令（新目录隔离，不触碰任何历史产物）：
-
-```powershell
-poetry run python -m autoresearch.competition.contest_direct_plan_cli `
-  --question-pdf "C:\Users\Z\Downloads\sjtu-booklet.pdf" `
-  --output-dir "runs/contest-delivery/<新目录名>" `
-  --timeout-seconds 900
-```
-
-验证结果（输出目录 `runs/contest-delivery/mainline-verify-20260816-plan/`）：
+**链 1（题目→计划，已跑通）**：输出目录 `runs/contest-delivery/mainline-verify-20260816-plan/`：
 
 | 检查项 | 结果 |
 |---|---|
@@ -51,17 +50,22 @@ poetry run python -m autoresearch.competition.contest_direct_plan_cli `
 | 渲染产物 | `plan/research-plan.{json,md,tex,pdf}` + manifest，5 页，`pdf_text_verified=true` |
 | 合规标记 | `formal_experiment_executed=false`、`paper_claimed=false` |
 
-**当前代码（HEAD `298e426`）即可产出完整计划；历史 `preexperiment-feedback-final` 里的"科学编辑修正层"（`scientific-editorial-corrections.json` / `final_scientific_audit`）在当前代码中已不存在**，属于旧代码遗留产物，不要以它为准判断当前主线。
+**完整主线（题目→计划→预实验→修订→PDF）**：`runs/contest-delivery/mainline-live-20260816-r2/`
+（首次 r1 在修订阶段被数字守卫正确拒绝——模型引入验证输入中不存在的 2310；
+新增数字边界修订要求后 r2 复用 r1 的 01-plan/02-preexperiment 重跑修订与渲染）。
+
+**当前代码（HEAD `298e426` + 主线修正提交）即可产出完整计划；历史 `preexperiment-feedback-final` 里的"科学编辑修正层"（`scientific-editorial-corrections.json` / `final_scientific_audit`）在当前代码中已不存在**，属于旧代码遗留产物，不要以它为准判断当前主线。
 
 ---
 
 ## 3. 各环节代码位置
 
-### 3.1 主链（链 1）各环节
+### 3.1 主链各环节
 
 | 环节 | 文件 | 关键函数 |
 |---|---|---|
-| CLI 入口 / 编排 | `src/autoresearch/competition/contest_direct_plan_cli.py` | `run_contest_question_one_delivery` |
+| **主线编排 CLI（v2 新增）** | `src/autoresearch/competition/contest_mainline_cli.py` | `run_contest_mainline_delivery`（一条命令：题目→计划→预实验→修订→PDF；`--plan-source-dir`/`--preexperiment-source-dir` 断点续跑） |
+| CLI 入口 / 链 1 编排 | `src/autoresearch/competition/contest_direct_plan_cli.py` | `run_contest_question_one_delivery` |
 | 题目确定性提取 | `src/autoresearch/competition/contest_question_input.py` | `extract_first_science_125_question`（绑定 PDF 源路径、页码、原文 SHA-256，中文翻译只允许仓库已核验的第 1 题） |
 | Skill 目录发现 | `contest_direct_plan_cli.py` | `discover_contest_method_skills`（扫描 `skills/*/SKILL.md`，只解析 frontmatter 的 name/description + 内容 SHA-256） |
 | Skill 元数据路由 | `src/autoresearch/competition/contest_direct_skill_router.py` | `route_contest_direct_plan_skills`（题目→元数据目录→只返回 ID；**该模块故意没有读 Skill 正文的 API**） |
@@ -70,8 +74,10 @@ poetry run python -m autoresearch.competition.contest_direct_plan_cli `
 | 计划生成（核心提示词） | `src/autoresearch/competition/contest_direct_plan.py` | `generate_contest_direct_plan` + `build_contest_direct_plan_messages` |
 | 渲染（LaTeX 模板所在地） | `src/autoresearch/competition/contest_direct_plan_render.py` | `materialize_contest_direct_plan`、`render_contest_plan_tex`、`validate_contest_plan_payload` |
 | 锁定文献目录 | `contest_direct_plan_cli.py` | `default_question_one_reference_catalog`（18 条真实文献，带 URL）；`contest_reference_policy.py`（引用投影/相关性排序，只允许选目录内编号，禁止虚构） |
-| 计划修订器（自迭代基础件） | `src/autoresearch/competition/contest_direct_plan_revision.py` | `revise_contest_direct_plan` |
-| 真实预实验（保留的独立工具，已不在主链） | `src/autoresearch/competition/contest_prime_preexperiment.py` | `run_contest_prime_preexperiment`（素数间隙排列熵 + 4 零模型，历史 run_id `prime-pilot-c9dfaac70c007592`） |
+| 计划修订器（自迭代基础件） | `src/autoresearch/competition/contest_direct_plan_revision.py` | `revise_contest_direct_plan`（内置 `_guard_observed_numbers` 数字守卫：修订正文只能出现已验证输入中的数字） |
+| 真实预实验（主线硬步骤） | `src/autoresearch/competition/contest_prime_preexperiment.py` | `run_contest_prime_preexperiment`（素数间隙排列熵 + 4 零模型；历史 run_id `prime-pilot-c9dfaac70c007592`） |
+| 预实验证据嵌入 | `src/autoresearch/competition/contest_plan_embedded_evidence.py` | `build_contest_plan_embedded_evidence`（从 metrics 派生证据表图并绑定 manifest 哈希） |
+| **技术方案 PDF（v2 新增）** | `src/autoresearch/competition/contest_technical_proposal.py` | `materialize_technical_proposal`（从主线交付确定性生成 ≤20 页技术方案，超页数失败关闭） |
 
 ### 3.2 Dream / 记忆 / 进化 / 自迭代环节
 
@@ -140,7 +146,7 @@ poetry run python -m autoresearch.competition.contest_direct_plan_cli `
 
 ## 6. 遗留事项（下一步）
 
-1. **预实验是否回接**：链 1 输出契约在无预实验时强制"尚未执行预实验"；若评审要求 Results 有真实执行佐证，可用独立工具 `contest_prime_preexperiment.py` 跑一次并用 `revise_contest_direct_plan` 把真实数字修订进计划（即旧链 2 的"手动两步"，不再作为自动主链）。
-2. **科学修正 CLI 适配**：把 `contest_direction_scientific_amendment_cli` 的 source 校验扩展到主链 delivery 格式（或新增薄 CLI），使 RT-01…07 修正可用在主链计划上。
-3. **技术方案 PDF（榜题必交，尚未生成）**：需含问题与方法、多智能体/Skills 架构、真实案例、源码说明，≤20 页；本报告 §3–§4 即为其素材。另需人工提供脱敏的阿里云百炼调用截图（`P-20260809-108`）。
+1. ✅ **预实验回接（已完成）**：v2 主线把真实预实验设为必做硬步骤；修订数字守卫（`_guard_observed_numbers`）拒绝正文出现证据外数字；首次 r1 因此被拒（模型引入 2310），新增数字边界修订要求后用 `--plan-source-dir`/`--preexperiment-source-dir` 断点重跑修订。
+2. ⏭ **科学修正 CLI 适配（后续计划）**：把 `contest_direction_scientific_amendment_cli` 的 source 校验扩展到主链 delivery 格式（或新增薄 CLI），使 RT-01…07 修正可用在主链计划上。
+3. ✅ **技术方案 PDF（已完成生成器）**：`contest_technical_proposal.py` 从主线交付确定性生成 ≤20 页技术方案（问题与方法、多智能体/Skills 架构、真实案例、源码说明），超页数失败关闭；主线交付完成后即可运行。**另需人工提供脱敏的阿里云百炼调用截图**（`P-20260809-108`）。
 4. **自主搜索灵感线**：`contest_direction_research_loop_cli` 标注"开发中"；其最新阻塞是 OpenAlex 认证恢复（`.env` 已配置 key，bounded source-recovery 未实现，见 `P-20260815-021`）。

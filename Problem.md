@@ -7194,3 +7194,18 @@ update a factual problem entry below.
 - 必需修复：新增独立、版本化的 bounded source-recovery preflight/runner/continuation。无 key 时必须在联网和模型调用前返回 `blocked_missing_required_source_credential`、0 外部调用且不占唯一恢复轮；有 key 时只记录 `authenticated=true` 与被排除的凭证字段名，不保存、散列或回显 secret。父 broad/focus/targeted-query 字节与 hash 必须精确继承，恢复 API 不接受 direction、query、模型 callable 或候选列表；只物化唯一 targeted artifact 后继续原 coverage/authority/实验/评审门。不得加入 Semantic Scholar 或第三来源、修改查询、降低门槛、增加 R3、隐藏重试或跨运行择优。
 - 证据：v10 终态独立封存在 `runs/manual-live/science125-q001-a1-prize-sprint-v10-terminal-evidence.json`，canonical hash=`2be02eee977f7092af455de9704e1c6cc21c450a2d7d1561a4364979a8240199`，文件 SHA-256=`940c7e364b62cd365de661d7759985391383cfaec0c67f2b0c96b0b565fa29f4`。v10 root 为 `146 files / 1,831,590 bytes / 92dfd784c13262bf75820878e71588e47c228f4ed0f72098302fa16642224386`，原 root 未改写。
 - 下一步：用户只需把 key 写入 `E:\AIResearch\.env` 的 `OPENALEX_API_KEY=...`，不要在聊天、日志或仓库中发送 secret。收到“已配置”确认后，先实现并以 fake clock/mock source 做完整 test-first 验证，再做一次不回显凭证的 presence/认证 live smoke；只有新 recovery preflight 与透明 precommit 均通过，才允许创建后继 root。该修复必须完全题目无关，不得包含当前科学问题词、规则或阈值。
+
+### P-20260816-022 - 主线修订引入验证输入之外的数字 2310，被数字守卫正确拒绝
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-16
+- Source: 榜题主线（`contest_mainline_cli`）首次完整运行 `mainline-live-20260816` 的修订阶段。
+- Symptom: 修订模型在计划正文引入数值 `2310`（wheel-210 周期积），该数值不在任何已验证预实验输入中，`revise_contest_direct_plan` 的 `_guard_observed_numbers` 正确拒绝修订，主线在修订阶段失败关闭（`ContestDirectPlanRevisionError: revised evidence claims introduced numbers absent from verified inputs: 2310`）。
+- Impact: 首次主线运行未产出最终计划（失败证据保留为 r1）；证明数字守卫确实阻断证据外数字，但也暴露修订要求缺少"不得引入新数字"的显式约束，且主线没有断点续跑手段，修订失败必须重跑全链（6 次计划模型调用 + 预实验 CPU 计算）。
+- Root cause: 模型习惯把 wheel-210 的周期长度写成数值；预实验指标只以名称（wheel_210）出现该零模型，不含 2310 这个数字。
+- Workaround: 无（不能放宽数字守卫，否则直接回到"修订引入证据外数字"缺陷类）。
+- Next action: 修订要求增加数字边界约束；主线 CLI 增加阶段复用参数。
+- Resolution: `_MAINLINE_REVISION_REQUIREMENTS` 新增"除所给指标与日志中已经出现的数值外，正文不得引入任何新数字；如需引用轮筛周期长度等常数，只写其名称（如 wheel-210），不得写出其数值"。`run_contest_mainline_delivery` 新增 `--plan-source-dir` / `--preexperiment-source-dir`，复用已完成阶段（仍全量验证哈希）只重跑修订与渲染。r2 复用 r1 的 01-plan/02-preexperiment 重跑成功。
+- Verification: 新主线测试 9 个全过（含阶段复用与 plan 绑定校验）；r2 最终 PDF 7 页、`pdf_text_verified=true`，正文全部数字来自指标（observed_mean_entropy=0.9294、delta=-0.0251/-0.0012、Holm p=0.02），无"尚未执行预实验"、无 2310；wheel-210 仅以名称形式出现。
+- Linked tasks: 榜题主线修正（交接文档 `docs/contest/contest-mainline-handover.md` §1/§2/§5/§6）。

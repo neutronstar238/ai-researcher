@@ -17103,3 +17103,23 @@ This file defines the project development standard for coding agents and records
   - git：工作树非 tmp 改动为空；`runs/` 整体被 gitignore，验证产物按仓库惯例不入库。
 - Problems: 无新增。`P-20260815-021`、`P-20260809-108` 仍 Open（均已在交接文档引用）。
 - Follow-up: (1) 决定预实验是否以独立工具方式回接（`contest_prime_preexperiment.py` + `revise_contest_direct_plan` 手动两步）；(2) 把 `contest_direction_scientific_amendment_cli` 的 source 契约适配到主链 delivery 格式，使 RT-01..07 修正可用于主链计划；(3) 生成 ≤20 页技术方案 PDF（素材即交接文档 §3–§4），并请用户提供脱敏百炼截图；(4) 自主搜索线继续标注开发中。
+
+### 2026-08-16 - DeepSeek Harness - 主线 v2：预实验设为必做硬步骤 + 技术方案生成器
+
+- Request: 用户不接受"尚未执行预实验"，要求主链必须做预实验；同时要求现在做技术方案 PDF，科学修正 CLI 适配放入后续计划。
+- Files changed:
+  - `src/autoresearch/competition/contest_mainline_cli.py`（新）
+  - `src/autoresearch/competition/contest_technical_proposal.py`（新）
+  - `tests/unit/competition/test_contest_mainline_cli.py`（新）
+  - `tests/unit/competition/test_contest_technical_proposal.py`（新）
+  - `docs/contest/contest-mainline-handover.md`（更新为 v2）
+  - `Problem.md`（新增 `P-20260816-022`）
+  - `Agent.md`（本条目）
+- Summary: 把榜题主线修正为一条命令 `contest_mainline_cli.py::run_contest_mainline_delivery`：题目→中文研究计划（链 1）→真实素数间隙预实验（必做硬步骤，未执行直接失败）→一次反馈修订（数字守卫）→最终 PDF。被舍弃的链 2 CLI 不再使用，但其底层组件（预实验 runner、修订器、证据嵌入、渲染器）由新主线直接编排复用。新增 `--plan-source-dir`/`--preexperiment-source-dir` 断点续跑：修订被数字守卫拒绝后可复用已完成阶段只重跑修订与渲染（仍全量验证哈希与 plan 绑定）。首次完整运行 r1 在修订阶段被数字守卫正确拒绝（模型引入证据外数字 2310，见 `P-20260816-022`）；新增"正文不得引入证据外数字、常数只写名称"修订要求后，r2 复用 r1 的 01-plan/02-preexperiment 重跑成功，产出 7 页最终计划 PDF（含真实预实验表 1 + 图 1，全部数字来自指标，无"尚未执行"）。同时新增确定性技术方案生成器 `contest_technical_proposal.py`：从一次已完成的主线交付生成 ≤20 页中文技术方案 PDF（待研究问题与方法、多智能体/Skills 架构、真实案例、源码说明），超页数失败关闭；已对 r2 交付生成 3 页技术方案 PDF。
+- Verification:
+  - `poetry run pytest tests/unit/competition/test_contest_mainline_cli.py tests/unit/competition/test_contest_technical_proposal.py -q --no-cov`：16 个测试全过（主线编排/阶段复用/plan 绑定/哈希校验/技术方案 payload 与渲染/超页数失败关闭）。
+  - `poetry run ruff check` 与 `poetry run mypy` 对新模块与测试全部通过。
+  - Live：`mainline-live-20260816-r2` 交付 `status=completed`；最终 PDF 7 页、155,656 bytes、`pdf_text_verified=true`；修订 `qwen3.7-max`/`qwen-dashscope` 恰好 1 次调用；预实验 run_id `prime-pilot-e6ed8c06196a9113` status completed；18 条锁定引用目录。pdftotext 核验正文含主假设、预实验数字（0.9294/−0.0251/−0.0012/Holm 0.02）与表图，无"尚未执行"、无 2310。
+  - Live：`technical-proposal-20260816` 交付 `status=completed`、3 页（≤20 页限制通过）、含"多智能体 / Skills 架构 / 真实案例 / 源码说明"及"自主搜索灵感线（开发中）"标注。
+- Problems: 新增并解决 `P-20260816-022`（修订引入证据外数字 2310 被守卫拒绝；修订要求与断点续跑修复）。`P-20260815-021`、`P-20260809-108` 仍 Open。
+- Follow-up: (1) 用户提供脱敏阿里云百炼调用截图后纳入提交材料；(2) 科学修正 CLI（`contest_direction_scientific_amendment_cli`）source 契约适配到主链 delivery 格式（后续计划）；(3) 自主搜索灵感线继续标注开发中。
