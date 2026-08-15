@@ -17089,3 +17089,17 @@ This file defines the project development standard for coding agents and records
 - 终态证据：新证据 canonical hash=`2be02eee977f7092af455de9704e1c6cc21c450a2d7d1561a4364979a8240199`，文件 SHA-256=`940c7e364b62cd365de661d7759985391383cfaec0c67f2b0c96b0b565fa29f4`，7,688 bytes。使用项目 `canonical_sha256` 排除 hash 字段后复算与内嵌值完全相等；JSON 可严格解析。证据记录 preflight/precommit、阶段文件、模型/来源物理账本、当前认证环境的存在性布尔值与 root inventory，不存任何 secret。
 - 外部认证边界：v10 冻结 `.env` 哈希与当前文件相等，但 `OPENALEX_API_KEY` 不存在。OpenAlex 当前官方认证文档要求免费 API key，且其 deprecation 文档说明旧 `mailto` polite-pool 已废弃。固定等待本地 60 秒 circuit 不能证明匿名额度恢复；Semantic Scholar 不属于 v10 已失败的 8 个逻辑身份，不能在本次恢复中临时加入并冒充原 source recovery。
 - 问题与后续：`P-20260815-021` 保持 Open。最小合法后继只能是题目无关、versioned bounded source recovery：精确继承 v10 broad/focus/targeted-query，仅恢复 4 个 arXiv + 4 个 OpenAlex targeted 身份，不调用模型、不补 broad、不改查询或门槛、不增加来源、最多一轮。当前 live 为 NO-GO；先由用户在 `E:\AIResearch\.env` 配置免费的 `OPENALEX_API_KEY`，不要通过聊天发送。之后才可 test-first 实现 recovery/preflight、做不回显凭证的认证 smoke、写透明 precommit 并创建不存在的新 root。本任务未联网调用学术源或模型、未执行实验、未 stage/commit。
+
+### 2026-08-16 - DeepSeek Harness - 榜题主线修正：链 1 复现验证 + 交接文档
+
+- Request: 用户要求舍弃链 2（预实验反馈修订链），把榜题主线修正为"输入题目 → 中间环节（Skill 路由、不记名临时子 Agent、目标评审等）→ 中文研究计划 PDF"，先用新目录隔离复跑当前代码确认主线可产出，再产出覆盖各环节代码位置、核心构思与自迭代机制的 md 交接文档；自主搜索灵感线保留但标注开发中。
+- Files changed:
+  - `docs/contest/contest-mainline-handover.md`（新）
+  - `Agent.md`（本条目）
+- Summary: 复核了主链代码（`contest_direct_plan_cli.py` → `contest_direct_skill_router.py` / `temporary_qwen_pool.py` / `contest_research_objective_stage.py` / `contest_direct_plan.py` / `contest_direct_plan_render.py`），确认工作树相对 HEAD 干净、无未提交代码改动；历史 `preexperiment-feedback-final` 中的"科学编辑修正层"（`scientific-editorial-corrections.json`、`final_scientific_audit`）在当前代码中已不存在，属旧代码遗留。在新目录 `runs/contest-delivery/mainline-verify-20260816-plan/` 隔离重跑链 1 成功；链 2 按用户决定舍弃，其半成品目录已清理。交接文档记录了：主链流程、已验证跑通结果、各环节代码位置（含 Dream/RawMemoryStore/记忆桥/Skill 进化/科学修正/自纠正）、核心构思（通用 system prompt + 题目后 Skill 元数据路由 + 不记名临时子 Agent + 证据优先 + 主权记忆双层）、效果不好时的自迭代机制（修订器 / RT-01..07 科学修正 v2-v3 / 定向修复 / 通用自纠正），以及遗留事项（科学修正 CLI 与主链产物格式不匹配、技术方案 PDF 缺失、百炼截图需人工）。
+- Verification:
+  - `poetry run python -m autoresearch.competition.contest_direct_plan_cli --question-pdf "C:\Users\Z\Downloads\sjtu-booklet.pdf" --output-dir "runs/contest-delivery/mainline-verify-20260816-plan" --timeout-seconds 900`：`status=completed`，6 次模型调用（路由 1 + 临时 Agent 3 + 目标评审 1 + 计划生成 1），选中 `prime-structure-computational-number-theory`，路由哈希与历史交付一致，目标阶段 `degraded`（2/3 成功、身份全归档），渲染 5 页 PDF 且 `pdf_text_verified=true`，`formal_experiment_executed=false`、`paper_claimed=false`。
+  - 环境检查：`sjtu-booklet.pdf` 存在（8,420,081 bytes）、xelatex/pdfinfo/pdftotext 可用、`config.yaml` 指向 qwen-dashscope/qwen3.7-max、`.env` 含 LLM key 与 `OPENALEX_API_KEY`。
+  - git：工作树非 tmp 改动为空；`runs/` 整体被 gitignore，验证产物按仓库惯例不入库。
+- Problems: 无新增。`P-20260815-021`、`P-20260809-108` 仍 Open（均已在交接文档引用）。
+- Follow-up: (1) 决定预实验是否以独立工具方式回接（`contest_prime_preexperiment.py` + `revise_contest_direct_plan` 手动两步）；(2) 把 `contest_direction_scientific_amendment_cli` 的 source 契约适配到主链 delivery 格式，使 RT-01..07 修正可用于主链计划；(3) 生成 ≤20 页技术方案 PDF（素材即交接文档 §3–§4），并请用户提供脱敏百炼截图；(4) 自主搜索线继续标注开发中。
