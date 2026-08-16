@@ -316,6 +316,26 @@ class LiteratureService:
         if project is None or project.current_cycle_id is None:
             raise ValidationAppError("项目无当前周期", code="NO_CURRENT_CYCLE")
 
+        # 幂等：同一论文在当前周期已抽取过证据则直接返回，避免重复节点与唯一约束冲突（§13.x）
+        existing_nodes = (
+            await self.session.execute(
+                select(EvidenceNode).where(
+                    EvidenceNode.cycle_id == project.current_cycle_id,
+                    EvidenceNode.code.like(f"X-{paper_id.hex[:6]}-%"),
+                    EvidenceNode.archived_at.is_(None),
+                )
+            )
+        ).scalars().all()
+        if existing_nodes:
+            return {
+                "paper_id": str(paper_id),
+                "extracted": len(existing_nodes),
+                "nodes": [
+                    {"id": str(n.id), "node_type": n.node_type, "title": n.title}
+                    for n in existing_nodes
+                ],
+            }
+
         chunks = (
             await self.session.execute(
                 select(PaperChunk)

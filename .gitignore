@@ -28,3 +28,4 @@ frontend/blob-report/
 # 本地产物
 *.log
 .DS_Store
+demo_out.txt

@@ -373,19 +373,31 @@ class WritingService:
         storage.put_bytes(object_key, content, self._EXPORT_MIME[format])
 
         sha = hashlib.sha256(content).hexdigest()
-        asset = Asset(
-            team_id=project.team_id,
-            project_id=project_id,
-            kind="export",
-            bucket=storage.bucket,
-            object_key=object_key,
-            original_name=f"{document.title[:80]}.{ext}",
-            mime_type=self._EXPORT_MIME[format],
-            size_bytes=len(content),
-            sha256=sha,
-            created_by=created_by,
+        # 重复导出同一版本时对象键相同：复用已有资产行而非再次插入，避免唯一约束冲突（§17.4）
+        existing = await self.session.execute(
+            select(Asset).where(Asset.bucket == storage.bucket, Asset.object_key == object_key)
         )
-        self.session.add(asset)
+        asset = existing.scalar_one_or_none()
+        if asset is None:
+            asset = Asset(
+                team_id=project.team_id,
+                project_id=project_id,
+                kind="export",
+                bucket=storage.bucket,
+                object_key=object_key,
+                original_name=f"{document.title[:80]}.{ext}",
+                mime_type=self._EXPORT_MIME[format],
+                size_bytes=len(content),
+                sha256=sha,
+                created_by=created_by,
+            )
+            self.session.add(asset)
+        else:
+            asset.original_name = f"{document.title[:80]}.{ext}"
+            asset.mime_type = self._EXPORT_MIME[format]
+            asset.size_bytes = len(content)
+            asset.sha256 = sha
+            asset.created_by = created_by
         await self.session.commit()
         return {
             "asset_id": str(asset.id),
