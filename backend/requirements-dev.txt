@@ -1,0 +1,6 @@
+# 开发/CI 依赖（运行测试、lint、typecheck；见 README「测试/质量」）
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+ruff==0.8.4
+mypy==1.13.0

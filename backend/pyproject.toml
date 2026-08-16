@@ -1,0 +1,19 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+# B008: FastAPI 的 Depends(...) 默认参数是标准注入模式，非真实「可变默认参数」误用。
+# E501: 行长交由格式化器处理，避免与中文注释/长类型注解冲突。
+ignore = ["B008", "E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]

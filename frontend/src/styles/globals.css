@@ -1,0 +1,52 @@
+@import "./tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    font-family: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    color: var(--color-text);
+    background: var(--color-page);
+    font-size: 14px;
+    line-height: 22px;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 数字等宽，防止状态刷新抖动（spec §4.3） */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  /* 统一键盘焦点可见性（§23.1 Focus 状态）：所有可交互元素一致的焦点环 */
+  :where(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  /* 统一禁用态：不可点击 + 视觉降级 + 光标提示（§23.1 Disabled 状态） */
+  :where(button, a):disabled,
+  :where(button, a)[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  /* 统一交互态过渡（§23.1 Hover 状态） */
+  button,
+  a {
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 20px;
+  }
+}

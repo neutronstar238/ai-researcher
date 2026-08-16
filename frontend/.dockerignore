@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vite/
+tests/
+playwright.config.ts
+test-results/
+playwright-report/
+*.md
+.env*

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Playwright（视觉回归基线在 tests/e2e/smoke.spec.ts-snapshots/ 提交，产物忽略）
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
+
+# 本地产物
+*.log
+.DS_Store

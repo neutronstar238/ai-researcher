@@ -1,0 +1,29 @@
+/* AI-Researcher 设计令牌（spec §4.2） */
+:root {
+  --color-page: #f6f8fb;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-primary: #165dff;
+  --color-primary-hover: #0f4ddb;
+  --color-primary-soft: #eaf1ff;
+  --color-brand-dark: #173b78;
+  --color-nav-active: #164c9c;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-border: #e5e7eb;
+  --color-border-strong: #cbd5e1;
+  --color-track: #e2e8f0;
+  --color-success: #16a34a;
+  --color-success-soft: #eaf8ef;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fff7e6;
+  --color-danger: #dc2626;
+  --color-danger-soft: #feecec;
+  --color-disabled: #94a3b8;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-popover: 0 12px 32px rgba(15, 23, 42, 0.14);
+}
