@@ -412,18 +412,15 @@ class WritingService:
 
     @staticmethod
     def _convert(markdown: str, fmt: str) -> bytes:
-        """用 pandoc（PDF 用 xelatex + xeCJK 支持中英文）把 Markdown 转成目标格式（§17.1）。"""
+        """用 pandoc（PDF 用 lualatex + ctex 支持中英文与数学）把 Markdown 转成目标格式（§17.1）。"""
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "document.md"
             src.write_text(markdown, encoding="utf-8")
             out = Path(tmp) / f"document.{fmt}"
             cmd = ["pandoc", str(src), "-o", str(out), "--from", "markdown"]
             if fmt == "pdf":
-                header = Path(tmp) / "header.tex"
-                header.write_text(
-                    "\\usepackage{xeCJK}\n\\setCJKmainfont{Microsoft YaHei}\n", encoding="utf-8"
-                )
-                cmd += ["--pdf-engine=xelatex", "-H", str(header)]
+                header = Path(__file__).parent / "header.tex"
+                cmd += ["--pdf-engine=lualatex", "-H", str(header)]
             try:
                 subprocess.run(cmd, check=True, capture_output=True, timeout=180)
             except subprocess.CalledProcessError as exc:
@@ -433,6 +430,6 @@ class WritingService:
                 ) from exc
             except FileNotFoundError as exc:
                 raise ValidationAppError(
-                    f"导出 {fmt} 需要 pandoc（PDF 另需 pdflatex）", code="EXPORT_TOOL_MISSING"
+                    f"导出 {fmt} 需要 pandoc（PDF 另需 lualatex）", code="EXPORT_TOOL_MISSING"
                 ) from exc
             return out.read_bytes()

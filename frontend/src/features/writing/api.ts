@@ -55,8 +55,11 @@ export function useCreateVersion(projectId: string | undefined, documentId: stri
         method: "POST",
         body: JSON.stringify(input),
       }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["document-versions", projectId, documentId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document-versions", projectId, documentId] });
+      // 刷新文档列表，让 current_version_id 同步（否则「生成建议」按钮会因 stale 的 current_version_id 一直禁用）
+      queryClient.invalidateQueries({ queryKey: ["documents", projectId] });
+    },
   });
 }
 

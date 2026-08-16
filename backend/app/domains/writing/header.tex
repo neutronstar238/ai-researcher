@@ -1,0 +1,29 @@
+% AI-Researcher PDF 排版头（spec §17.1）：ctex 中文 + 数学 + 学术排版质量
+% 由 pandoc `-H` 引入，配合 --pdf-engine=lualatex（ctex 需 xelatex/lualatex）
+
+% ---- 中文（ctex 正确处理正文与数学中的中文，避免缺字）----
+\usepackage{ctex}
+\setCJKmainfont{Microsoft YaHei}
+\setCJKsansfont{Microsoft YaHei}
+
+% ---- 数学 ----
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+% ---- 页面与行距 ----
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\setstretch{1.15}
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0pt}
+
+% ---- 排版质量 ----
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{graphicx}
+
+% ---- 链接 ----
+\usepackage[hidelinks]{hyperref}

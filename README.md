@@ -15,15 +15,24 @@
 - Node.js 20+、npm 10+
 - Python 3.12
 
-## 快速开始
+## 快速开始（本地开发）
 
 ```bash
 cp .env.example .env          # 填入真实密钥
 docker compose up -d postgres redis minio neo4j etcd milvus
 cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-alembic upgrade head          # 迁移（Phase 0 已含 users 表）
+alembic upgrade head && python -m app.seed --profile demo
 cd ../frontend && npm install && npm run dev
 ```
+
+## 一键部署（Docker）
+
+```bash
+cp .env.example .env
+docker compose up -d --build   # 全栈（含 API + 前端 nginx）
+```
+
+登录 `owner@airesearcher.local / demo-password`。详见 [docs/deployment.md](docs/deployment.md)。
 
 API 文档：<http://127.0.0.1:8000/api/docs>；健康检查：`/health/live`、`/health/ready`。
 
@@ -36,11 +45,11 @@ API 文档：<http://127.0.0.1:8000/api/docs>；健康检查：`/health/live`、
 | 0 | 工程基线：Monorepo / Compose / 健康检查 / 迁移 | 完成 |
 | 1 | 身份、团队、项目与 UI Shell | 完成 |
 | 2 | Dashboard 与生命周期状态机 | 完成 |
-| 3 | 文献、资产与 Evidence Graph | 完成（证据图/React Flow/Neo4j 投影/文献检索/资产 MinIO/向量 Milvus） |
-| 4 | 实验系统 | 主线完成（实验定义/运行状态机/子进程执行/Celery 就绪/数据集版本/指标/复现清单完成；隔离容器 Runner、实时日志流待做） |
-| 5 | Agent 系统 | 主线完成（Agent 定义/版本、任务生命周期、工具风险分级+审批门禁、预算纯函数、Memory 检索完成；真实 LLM 编排/Orchestrator DAG 待做） |
-| 6 | 写作、复盘与导出 | 主线完成（文档/版本（不可变+SHA256）/主张↔证据/引用/完整性检查/复盘/建议采纳/`document_suggestions`(Agent Diff)/Markdown 导出完成；LaTeX/PDF 导出待做） |
-| 7 | 加固与发布 | 进行中（安全头/限流/懒加载/审计日志/CI 配置完成；E2E/visual、OTel、隔离 Runner 待做） |
+| 3 | 文献、资产与 Evidence Graph | 完成（文献异步 202+Job / PDF 解析/OCR/嵌入 / 证据图 / React Flow / Neo4j / 资产 MinIO / Milvus） |
+| 4 | 实验系统 | 完成（状态机 / 隔离容器 Runner / 实时日志流 WebSocket / 指标 / 产物 / 复现 + 代码/镜像 Hash） |
+| 5 | Agent 系统 | 完成（任务生命周期 / 工具风险分级+审批门禁 / 预算 / Memory / 真实 LLM 编排 + Orchestrator DAG） |
+| 6 | 写作、复盘与导出 | 完成（文档版本不可变 / 主张↔证据 / 引用 / 完整性检查 / 复盘 / 建议 Agent Diff / Markdown+LaTeX+DOCX+PDF 导出） |
+| 7 | 加固与发布 | 完成（安全头 / 限流 / 懒加载 / 审计日志 / HttpOnly Cookie+CSRF / 恶意扫描 / 指标+Trace / WebSocket / E2E+视觉回归 / 性能基线 / 备份 runbook / CI 配置） |
 
 ## 目录结构
 

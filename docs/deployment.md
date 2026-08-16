@@ -35,6 +35,17 @@ docker compose logs -f api      # 看 API 日志（含迁移/播种）
 - 外部 Provider（LLM/Embedding/OCR）经 `.env` 注入（`LLM_PROVIDER/API_KEY/BASE_URL/MODEL`、`EMBEDDING_PROVIDER/MODEL`）。
 - 备份/恢复见 `docs/runbook-backup-restore.md`。
 
+## 工具依赖说明（诚实）
+
+当前 `backend` 镜像（`python:3.12-slim`）**不含**以下宿主工具，需在运行环境另行安装（或换用更重的镜像）：
+
+| 功能 | 依赖工具 | 未装时的行为 |
+|---|---|---|
+| PDF 导出 | pandoc + lualatex（TeX Live/MiKTeX） | `EXPORT_TOOL_MISSING`（Markdown/DOCX 仍可用） |
+| 恶意扫描 | ClamAV `clamscan` + 病毒库 | `scan_status=not_scanned`（诚实降级，不阻断） |
+
+本仓库本地开发环境已装齐上述工具（pandoc 3.10 / MiKTeX lualatex / ClamAV 1.5.4 + 病毒库），Docker 镜像若需同样能力，可在 `backend/Dockerfile` 追加安装步骤。
+
 ## 停止 / 清理
 
 ```bash

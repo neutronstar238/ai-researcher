@@ -49,7 +49,7 @@
 - ✅ `citations`（引用键唯一）+ Markdown 导出（解析引用 → 存 MinIO Asset → 签名下载 URL + manifest）。
 - ✅ Reflection（§17.5）：确定性指标（完成率/阶段/失败运行/证据/矛盾）+ 建议 + 存 Document(type='reflection') + 建议采纳 → research_action。
 - ✅ `document_suggestions`（§17.4 Agent Diff）：`document_suggestions` 表 + 迁移 0015 + 确定性 diff（additions/deletions/ops + preview）+ 接受时事务内创建新版本不覆盖基准 + 拒绝 + superseded + 单元/集成测试。
-- ✅ LaTeX/DOCX/PDF 导出（§17.1）：`export_document(format=markdown|latex|docx|pdf)`，pandoc 3.10 + **xelatex + xeCJK（Microsoft YaHei）支持中文 PDF**；直播冒烟 4 种格式全部生成真实 SHA-256 + 下载 URL。
+- ✅ LaTeX/DOCX/PDF 导出（§17.1）：`export_document(format=markdown|latex|docx|pdf)`，pandoc 3.10 + **lualatex + ctex（Microsoft YaHei）**，中英文 + **数学公式**（amsmath/amssymb）+ 表格（booktabs）+ 1in 边距/1.15 行距；`app/domains/writing/header.tex` 学术排版模板；直播冒烟 4 格式 + 数学 PDF 均生成真实 SHA-256 + 下载 URL。
 
 ### Phase 7 — 加固与发布（进行中）
 - ✅ 选题采纳联动（§6.2/§13.6）：采纳 → 审计 `topic.candidate.accepted` + 生成下一步文献调研行动（`research_action`，priority=1）+ **topic 阶段自动完成（ready→running→completed）**；Dashboard 六卡片统计改为真实 COUNT（实验运行/数据集/图表，不再写死 0）。
