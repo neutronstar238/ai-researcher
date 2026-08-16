@@ -130,6 +130,7 @@ class AdaptiveRetrievedPaper(AdaptiveRetrievedPaperContent):
     def from_academic_paper(cls, paper: AcademicPaper) -> AdaptiveRetrievedPaper:
         source = _stable_source_id(paper.source)
         source_ref = _paper_source_ref(paper)
+        citation_count = paper.citation_count or 0
         payload = {
             "source": source,
             "title": paper.title,
@@ -141,7 +142,7 @@ class AdaptiveRetrievedPaper(AdaptiveRetrievedPaperContent):
             "venue": paper.venue,
             "doi": paper.doi,
             "url": paper.url,
-            "citation_count": paper.citation_count,
+            "citation_count": citation_count,
             "source_ref": source_ref,
         }
         digest = canonical_sha256(payload)
@@ -155,7 +156,7 @@ class AdaptiveRetrievedPaper(AdaptiveRetrievedPaperContent):
             venue=paper.venue,
             doi=paper.doi,
             url=paper.url,
-            citation_count=paper.citation_count,
+            citation_count=citation_count,
             source_ref=source_ref,
             paper_hash=digest,
         )
