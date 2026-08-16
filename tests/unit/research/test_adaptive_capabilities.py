@@ -312,6 +312,8 @@ description: 用于寻找候选机制的反例、混杂和替代解释，不提�
     assert outcome.all_runtime_identities_removed
     assert outcome.main_agent_retains_stage_control
     assert len(calls) == 2
-    assert sorted(len(messages) for messages in calls) == [2, 3]
+    # Base layout is system + 题目与显式输入 + 派工编号; each selected Skill adds one
+    # independent read-only context message.
+    assert sorted(len(messages) for messages in calls) == [3, 4]
     archives = list((tmp_path / "run" / "temporary").rglob("archives/*.json"))
     assert len(archives) == 2

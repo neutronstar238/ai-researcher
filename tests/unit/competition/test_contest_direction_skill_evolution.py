@@ -117,8 +117,11 @@ def completed_direction(
         llm_call=lambda **_: _completion(
             {
                 "queries": [
-                    "prime gaps residue entropy null models",
-                    "prime sequence permutation entropy mechanism",
+                    '("prime gaps" OR "prime gap") AND ("residue constraints" OR "modular bias")',
+                    '("permutation entropy" OR "ordinal patterns") AND '
+                    '("statistical estimation" OR "bias correction")',
+                    '("prime gaps" OR "prime gap") AND ("mechanism" OR "null model")',
+                    '("prime gaps" OR "prime gap") AND ("limitations" OR "failure modes")',
                 ]
             }
         ),
@@ -281,15 +284,18 @@ def test_evolution_is_evidence_bound_heldout_validated_and_replayable(
     quick_validate = Path(
         "C:/Users/Z/.codex/skills/.system/skill-creator/scripts/quick_validate.py"
     )
-    validation = subprocess.run(
-        [sys.executable, str(quick_validate), str(result.candidate_skill_dir)],
-        check=False,
-        capture_output=True,
-        env={**os.environ, "PYTHONUTF8": "1"},
-        text=True,
-    )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert "Skill is valid" in validation.stdout
+    if quick_validate.is_file():
+        # Machine-local developer tool; the Linux CI runner does not have it,
+        # so this external lint is exercised only where it exists.
+        validation = subprocess.run(
+            [sys.executable, str(quick_validate), str(result.candidate_skill_dir)],
+            check=False,
+            capture_output=True,
+            env={**os.environ, "PYTHONUTF8": "1"},
+            text=True,
+        )
+        assert validation.returncode == 0, validation.stdout + validation.stderr
+        assert "Skill is valid" in validation.stdout
 
     replay = run_evidence_to_skill_evolution(
         delivery_dir=delivery,

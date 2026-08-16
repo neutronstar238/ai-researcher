@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -142,7 +143,15 @@ def _formal_plan_artifact(tmp_path: Path) -> Any:
         "baselines": list(plan.baselines),
         "metrics": list(plan.metrics),
         "expected_results": plan.expected_results,
-        "code_agent_brief": plan.code_agent_brief,
+        # The model is instructed not to author the ``required_intervention_identity``
+        # declaration itself; the orchestrator prepends exactly one canonical copy.
+        # Strip the fixture's inline identity so the response replays like a
+        # well-behaved model and the authorship receipt binds the scientific brief.
+        "code_agent_brief": re.sub(
+            r"required_intervention_identity\s*=\s*\{[^{}\r\n]+\}",
+            "",
+            plan.code_agent_brief,
+        ).strip(),
         "risks_and_alternatives": list(plan.risks_and_alternatives),
         "references": list(plan.references),
         "scientific_lineage_attestation": attestation.model_dump(mode="json"),

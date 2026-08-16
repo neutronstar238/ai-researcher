@@ -7209,3 +7209,21 @@ update a factual problem entry below.
 - Resolution: `_MAINLINE_REVISION_REQUIREMENTS` 新增"除所给指标与日志中已经出现的数值外，正文不得引入任何新数字；如需引用轮筛周期长度等常数，只写其名称（如 wheel-210），不得写出其数值"。`run_contest_mainline_delivery` 新增 `--plan-source-dir` / `--preexperiment-source-dir`，复用已完成阶段（仍全量验证哈希）只重跑修订与渲染。r2 复用 r1 的 01-plan/02-preexperiment 重跑成功。
 - Verification: 新主线测试 9 个全过（含阶段复用与 plan 绑定校验）；r2 最终 PDF 7 页、`pdf_text_verified=true`，正文全部数字来自指标（observed_mean_entropy=0.9294、delta=-0.0251/-0.0012、Holm p=0.02），无"尚未执行预实验"、无 2310；wheel-210 仅以名称形式出现。
 - Linked tasks: 榜题主线修正（交接文档 `docs/contest/contest-mainline-handover.md` §1/§2/§5/§6）。
+
+### P-20260816-023 - CI 在 mypy 与 pytest 阶段连续失败：本地"无问题"代码因类型推断与测试漂移在 CI 挂掉
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-16
+- Source: GitHub Actions 最近 4 次运行全部 failure（8-03 mypy、8-07/8-08 ruff、8-15 mypy），最新运行在 `Run mypy` 步骤失败，`Run smoke and unit tests` 被跳过。
+- Symptom: 最新 CI 失败为 `src/autoresearch/research/adaptive_capabilities.py:158: error: Argument "citation_count" to "AdaptiveRetrievedPaper" has incompatible type "int | None"; expected "int"  [arg-type]`。本地日常环境（Python 3.13）不报错，但 CI 与本地 3.10 poetry 环境（mypy 1.20.2，与 poetry.lock 一致）都稳定复现；同时该处把 `None` 传入 `int` 字段，运行时 pydantic 会抛 ValidationError（无引用数的论文走该路径即崩溃），是真实的潜在运行缺陷。
+- Impact: 主分支 CI 自 2026-07-17 后从未全绿；mypy 失败还掩盖了 pytest 阶段的一批测试漂移（消息布局演进、source-query-compiler-v4 恰好 4 条查询、正式计划审批门顺序、v3 候选对齐审计、作者身份回放、技能目录新增），以及一处硬编码本机路径 `C:/Users/Z/.codex/skills/.../quick_validate.py` 在 Linux CI 会 FileNotFoundError。
+- Root cause: `AcademicPaper.citation_count` 为 `int | None`，直接传入只接受 `int` 的字段，缺省 0 语义从未归一化；随后多个提交在 mypy 已红的情况下合入，下游测试漂移从未在 CI 上被执行验证。
+- Next action: 修复后推送到 main，观察 CI 全绿。
+- Resolution:
+  - `from_academic_paper` 统一把 `paper.citation_count or 0` 归一化后同时用于内容寻址 payload 与构造参数（缺失引用数与显式 0 语义一致，不改变既有 int 值的哈希）。
+  - `contest_direction_skill_evolution.py` 停用词表补 `or`/`not`；其 fixture 提供 4 条合法 v4 布尔查询；本机 quick_validate 外部 lint 改为仅在本机存在时执行。
+  - `official_development_search.py` 审批门移到合同编译之前；`model_authorship.py` 回放时剥离系统预置的 `required_intervention_identity` 声明；相关 fixture 同步。
+  - 更新 5 处过期测试断言（消息数 [2,3]→[3,4]、v3 候选源生成器、回执哈希排除组、技能目录 6 个 ID）。
+- Verification: 本地 3.10 环境（与 CI 同版工具链）`ruff check src tests` 与 `mypy src` 全绿；`pytest tests/smoke tests/unit` 3101 passed；剩余 10 个本地失败全部为 Windows DSH 沙箱对 0o700 临时目录/ACL 的限制（Linux CI 无此路径，其中 2 个在 CI 上按 skipif 跳过）。等待推送到 main 后的 CI 运行确认。
+- Linked tasks: 用户请求"修复 CI"（本地通过、CI WA）。

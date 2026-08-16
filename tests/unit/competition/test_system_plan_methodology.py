@@ -115,6 +115,7 @@ def test_production_catalog_offers_multiple_independently_routable_skills() -> N
         "agent-memory-evaluation",
         "causal-mechanism-identifiability",
         "numerical-scientific-computing",
+        "prime-structure-computational-number-theory",
         "research-novelty-triangulation",
         "sparse-dynamics-identification",
     }

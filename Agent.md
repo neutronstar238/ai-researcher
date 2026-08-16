@@ -17123,3 +17123,29 @@ This file defines the project development standard for coding agents and records
   - Live：`technical-proposal-20260816` 交付 `status=completed`、3 页（≤20 页限制通过）、含"多智能体 / Skills 架构 / 真实案例 / 源码说明"及"自主搜索灵感线（开发中）"标注。
 - Problems: 新增并解决 `P-20260816-022`（修订引入证据外数字 2310 被守卫拒绝；修订要求与断点续跑修复）。`P-20260815-021`、`P-20260809-108` 仍 Open。
 - Follow-up: (1) 用户提供脱敏阿里云百炼调用截图后纳入提交材料；(2) 科学修正 CLI（`contest_direction_scientific_amendment_cli`）source 契约适配到主链 delivery 格式（后续计划）；(3) 自主搜索灵感线继续标注开发中。
+
+### 2026-08-16 12:52:56 +08:00 - DeepSeek Harness - 修复 CI：mypy 类型错误与被掩盖的 pytest 测试漂移
+
+- Request: 用户报告"本地没问题的代码交上去 CI 就 WA（失败）"，要求查明原因并修复 CI。
+- Files changed:
+  - src/autoresearch/research/adaptive_capabilities.py
+  - src/autoresearch/competition/contest_direction_skill_evolution.py
+  - src/autoresearch/competition/official_development_search.py
+  - src/autoresearch/competition/model_authorship.py
+  - 	ests/unit/research/test_adaptive_capabilities.py
+  - 	ests/unit/competition/test_contest_direction_skill_evolution.py
+  - 	ests/unit/competition/test_final_research_report.py
+  - 	ests/unit/competition/test_plan_execution_contract.py
+  - 	ests/unit/competition/test_system_plan_component_atoms.py
+  - 	ests/unit/competition/test_system_plan_methodology.py
+  - Problem.md（新增 P-20260816-023）
+  - Agent.md（本条目）
+- Summary: 排查 GitHub Actions 最近 4 次运行：最新失败在 Run mypy（daptive_capabilities.py:158 把 int | None 传给 int 字段），pytest 步骤从未被执行。用本地 3.10 poetry 环境（mypy 1.20.2，与 lock 一致）复现后修复：rom_academic_paper 将 citation_count or 0 归一化并同时用于内容哈希 payload 与构造参数。mypy 修好后用 6 个并行子代理对完整 	ests/smoke tests/unit 扫描，发现并修复被掩盖的第二批真实失败：(1) skill-evolution 停用词缺 or/
+ot，fixture 只给 2 条查询而 v4 编译器要求恰好 4 条；(2) 正式计划审批门在合同编译之后才触发，编译错误会掩盖缺审批；(3) v2 作者身份回放没有剥离编排器预置的 equired_intervention_identity 声明；(4) 测试硬编码本机 C:/Users/Z/.codex/.../quick_validate.py 路径，Linux CI 会 FileNotFoundError（改为本机存在时才执行）；(5) 5 处过期测试断言（消息数 [2,3]→[3,4]、v3 候选对齐源生成器、回执哈希排除组、技能目录 6 个 ID）。未削弱任何安全/审批/哈希守卫。
+- Verification:
+  - poetry run ruff check src tests：All checks passed。
+  - poetry run mypy src：Success: no issues found in 296 source files（本地 mypy 版本 1.20.2 与 poetry.lock 一致，Python 3.10.20 与 CI 一致）。
+  - poetry run pytest tests/smoke tests/unit（本地全量）：3101 passed, 48 skipped；剩余 10 个失败全部为 DSH Windows 沙箱对 0o700 临时目录/ACL 的限制（PermissionError 类），在 Linux CI 上无此路径（其中 2 个测试按 skipif 在干净检出上跳过）。
+  - 通过 gh api 核对历史 4 次失败运行的失败步骤（3×ruff/mypy、1×mypy），确认本次修复覆盖当前失败面。
+- Problems: 新增并解决 P-20260816-023。P-20260815-021（OpenAlex key）、P-20260809-108 仍 Open。
+- Follow-up: 推送后观察 CI 实际运行结果；若沙箱未覆盖的 Linux-only 测试仍有失败，按 CI 日志继续收敛。

@@ -10,6 +10,7 @@ the configured model response, while credentials remain outside the artifact.
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +21,15 @@ from pydantic import Field, model_validator
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
 from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.llm.client import LLMJsonCompletionResult
+
+# Mirrors ``system_authored_plan._INTERVENTION_IDENTITY_PATTERN``.  The orchestrator
+# prepends exactly one canonical identity declaration to a formal plan's brief, and
+# ``plan_authored_fields`` must reverse that projection to replay the provider's
+# authored scientific remainder.  A local copy avoids an import cycle: that module
+# imports this one to record the authoring receipt.
+_INTERVENTION_IDENTITY_DECLARATION = re.compile(
+    r"required_intervention_identity\s*=\s*(\{[^{}\r\n]+\})"
+)
 
 AuthorshipArtifactKind = Literal[
     "research_plan",
@@ -383,6 +393,14 @@ def plan_authored_fields(plan: Mapping[str, Any]) -> dict[str, Any]:
     datasets = plan.get("datasets")
     if not isinstance(datasets, Mapping):
         datasets = {}
+    code_agent_brief = plan.get("code_agent_brief")
+    if isinstance(code_agent_brief, str):
+        # The orchestrator prepends exactly one canonical
+        # ``required_intervention_identity`` declaration to the formal plan's brief;
+        # the provider authored only the scientific remainder, so replay that.
+        code_agent_brief = _INTERVENTION_IDENTITY_DECLARATION.sub(
+            "", code_agent_brief
+        ).strip()
     fields = {
         "title": plan.get("title"),
         "abstract": plan.get("abstract"),
@@ -396,7 +414,7 @@ def plan_authored_fields(plan: Mapping[str, Any]) -> dict[str, Any]:
         "baselines": plan.get("baselines"),
         "metrics": plan.get("metrics"),
         "expected_results": plan.get("expected_results"),
-        "code_agent_brief": plan.get("code_agent_brief"),
+        "code_agent_brief": code_agent_brief,
         "risks_and_alternatives": plan.get("risks_and_alternatives"),
         "references": plan.get("references"),
     }
