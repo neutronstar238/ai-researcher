@@ -36,6 +36,23 @@ docker compose up -d --build   # 全栈（含 API + 前端 nginx）
 
 API 文档：<http://127.0.0.1:8000/api/docs>；健康检查：`/health/live`、`/health/ready`。
 
+## 文献源（6 个）
+
+文献检索支持 6 个真实来源，检索页下拉可单选，也可选「全部（自动）」并发聚合：
+
+| 源 | 需 Key | `.env` 配置 |
+|---|---|---|
+| arXiv | 否 | — |
+| OpenAlex | 否（mailto polite pool） | `LITERATURE_OPENALEX_API_KEY`（可选） |
+| Crossref | 否（mailto polite pool） | `LITERATURE_CROSSREF_API_KEY`（可选） |
+| PubMed | 是（NCBI E-utilities） | `LITERATURE_PUBMED_API_KEY` |
+| Semantic Scholar | 是（Academic Graph API） | `LITERATURE_SEMANTIC_SCHOLAR_API_KEY` |
+| Any-research（AnySearch 学术域） | 是 | `LITERATURE_ANYRESEARCH_API_KEY` |
+
+- PubMed 仅在**医药相关问题**时生效（领域门控，非医药问题自动跳过并提示）。
+- Semantic Scholar 遵守官方 1 req/s 限流 + 429 指数退避重试。
+- OpenAlex/Crossref 的 polite pool 邮箱用 `LITERATURE_MAILTO`。
+
 ## 开发阶段（spec §24）
 
 > 完整实现状态见 [docs/status.md](docs/status.md)；架构见 [docs/architecture.md](docs/architecture.md)；API 见 [docs/api.md](docs/api.md)；安全见 [docs/security.md](docs/security.md)；备份恢复见 [docs/runbook-backup-restore.md](docs/runbook-backup-restore.md)；性能基线见 [docs/performance-baseline.md](docs/performance-baseline.md)；§23 验收清单见 [docs/acceptance.md](docs/acceptance.md)。
@@ -45,7 +62,7 @@ API 文档：<http://127.0.0.1:8000/api/docs>；健康检查：`/health/live`、
 | 0 | 工程基线：Monorepo / Compose / 健康检查 / 迁移 | 完成 |
 | 1 | 身份、团队、项目与 UI Shell | 完成 |
 | 2 | Dashboard 与生命周期状态机 | 完成 |
-| 3 | 文献、资产与 Evidence Graph | 完成（文献异步 202+Job / PDF 解析/OCR/嵌入 / 证据图 / React Flow / Neo4j / 资产 MinIO / Milvus） |
+| 3 | 文献、资产与 Evidence Graph | 完成（6 文献源异步 202+Job / PDF 解析/OCR/嵌入 / 证据图 / React Flow / Neo4j / 资产 MinIO / Milvus） |
 | 4 | 实验系统 | 完成（状态机 / 隔离容器 Runner / 实时日志流 WebSocket / 指标 / 产物 / 复现 + 代码/镜像 Hash） |
 | 5 | Agent 系统 | 完成（任务生命周期 / 工具风险分级+审批门禁 / 预算 / Memory / 真实 LLM 编排 + Orchestrator DAG） |
 | 6 | 写作、复盘与导出 | 完成（文档版本不可变 / 主张↔证据 / 引用 / 完整性检查 / 复盘 / 建议 Agent Diff / Markdown+LaTeX+DOCX+PDF 导出） |
