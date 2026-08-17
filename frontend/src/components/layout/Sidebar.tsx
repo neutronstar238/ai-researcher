@@ -1,5 +1,5 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useParams } from "react-router-dom";
 
 import { useProjectStore } from "../../stores/projectStore";
 import { useUIStore } from "../../stores/uiStore";
@@ -8,7 +8,10 @@ import { NAV_ITEMS, resolveNavPath } from "./nav";
 export function Sidebar() {
   const collapsed = useUIStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
-  const currentProjectId = useProjectStore((state) => state.currentProjectId);
+  // 优先取 URL 里的真实项目 ID（store 只在 Dashboard 页设置、离开即清空，不可靠）
+  const { projectId: urlProjectId } = useParams();
+  const storeProjectId = useProjectStore((state) => state.currentProjectId);
+  const currentProjectId = urlProjectId ?? storeProjectId;
 
   return (
     <aside

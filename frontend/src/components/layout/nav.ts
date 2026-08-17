@@ -36,5 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export function resolveNavPath(path: string, projectId: string | null): string {
-  return path.replace(":projectId", projectId ?? "demo");
+  if (!path.includes(":projectId")) return path;
+  // 未选中项目时不跳转到一个伪造的 "demo" id（会 422），回退到项目列表让用户先选择。
+  return projectId ? path.replace(":projectId", projectId) : "/projects";
 }
