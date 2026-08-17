@@ -28,9 +28,20 @@ export interface SearchRun {
   query: string;
   provider: string;
   status: string;
-  result: { count: number; results: PaperResult[] } | null;
+  result: { count: number; results: PaperResult[]; note?: string } | null;
   error: Record<string, unknown> | null;
 }
+
+/** 可选的文献源（与后端 registry 对齐）。 */
+export const LITERATURE_PROVIDERS = [
+  { value: "arxiv", label: "arXiv" },
+  { value: "openalex", label: "OpenAlex" },
+  { value: "semantic_scholar", label: "Semantic Scholar" },
+  { value: "crossref", label: "Crossref" },
+  { value: "pubmed", label: "PubMed（仅医药）" },
+  { value: "anyresearch", label: "Any-research" },
+  { value: "all", label: "全部（自动）" },
+] as const;
 
 export function usePapers(projectId: string | undefined) {
   return useQuery<Paper[]>({

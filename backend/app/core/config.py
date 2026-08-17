@@ -60,6 +60,14 @@ class Settings(BaseSettings):
     experiment_runner_endpoint: str | None = None
     otel_exporter_otlp_endpoint: str | None = None
 
+    # 文献源 API Key（可选）。未配置时：PubMed/AnySearch 走匿名低配额，OpenAlex/Crossref 走 polite pool。
+    literature_openalex_api_key: str | None = None
+    literature_pubmed_api_key: str | None = None
+    literature_semantic_scholar_api_key: str | None = None
+    literature_crossref_api_key: str | None = None
+    literature_anyresearch_api_key: str | None = None
+    literature_mailto: str | None = None
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"

@@ -6,11 +6,13 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
-from app.integrations.literature.base import LiteratureProvider, PaperResult
+from app.integrations.literature.base import PaperResult
+from app.integrations.literature.registry import register
 
 _ARXIV_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
 
 
+@register
 class ArxivProvider:
     name = "arxiv"
 
@@ -49,14 +51,5 @@ class ArxivProvider:
         return results
 
 
-# Provider registry（spec §10.6：领域 Service 不依赖某个 Provider 的私有响应结构）
-PROVIDERS = {"arxiv": ArxivProvider}
-
-
-def get_provider(name: str) -> LiteratureProvider:
-    from app.api.errors import ProviderNotConfiguredError
-
-    provider_cls = PROVIDERS.get(name)
-    if provider_cls is None:
-        raise ProviderNotConfiguredError(f"文献源未配置: {name}")
-    return provider_cls()
+# 向后兼容：历史上 `get_provider`/`PROVIDERS` 从 arxiv 模块导出（§10.6 注册表现已集中到 registry）。
+from app.integrations.literature.registry import PROVIDERS, get_provider  # noqa: E402, F401

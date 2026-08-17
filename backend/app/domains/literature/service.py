@@ -27,8 +27,9 @@ from app.db.models import (
     ProjectPaper,
 )
 from app.integrations.embeddings.hash import get_provider as get_embedding_provider
-from app.integrations.literature.arxiv import get_provider
+from app.integrations.literature._util import is_medical_query
 from app.integrations.literature.base import PaperResult
+from app.integrations.literature.registry import available_providers, get_provider
 from app.integrations.llm.base import get_provider as get_llm_provider
 from app.integrations.object_storage.minio import MinioStorage
 from app.integrations.vector_store.milvus import MilvusVectorStore
@@ -39,6 +40,8 @@ class LiteratureService:
         self.session = session
 
     async def search(self, query: str, provider_name: str, max_results: int) -> list[PaperResult]:
+        if provider_name == "all":
+            return await self._search_all(query, max_results)
         provider = get_provider(provider_name)
         try:
             return await provider.search(query, max_results)
@@ -48,6 +51,24 @@ class LiteratureService:
                 code="LITERATURE_SOURCE_ERROR",
                 status_code=502,
             ) from exc
+
+    async def _search_all(self, query: str, max_results: int) -> list[PaperResult]:
+        """并发检索所有文献源（PubMed 仅在医药问题时启用）。单个源失败不影响其余。"""
+        sources = [name for name in available_providers() if name != "pubmed"]
+        if is_medical_query(query):
+            sources.append("pubmed")
+
+        async def _one(name: str) -> list[PaperResult]:
+            try:
+                return await get_provider(name).search(query, max_results)
+            except Exception:  # noqa: BLE001 - 单源失败降级为 0 条，不阻断整批
+                return []
+
+        batches = await asyncio.gather(*(_one(name) for name in sources))
+        merged: list[PaperResult] = []
+        for batch in batches:
+            merged.extend(batch)
+        return merged
 
     # -- 异步检索 Job（§13.6/§3.3 202+Job） -----------------------------
 
@@ -81,7 +102,7 @@ class LiteratureService:
         )
         try:
             results = await self.search(run.query, run.provider, run.max_results)
-            run.result = {
+            result_payload: dict = {
                 "query": run.query,
                 "provider": run.provider,
                 "count": len(results),
@@ -91,12 +112,17 @@ class LiteratureService:
                         "source": r.source,
                         "doi": r.doi,
                         "publication_year": r.publication_year,
+                        "venue": r.venue,
                         "abstract": (r.abstract or "")[:500],
                         "external_id": r.external_id,
                     }
                     for r in results
                 ],
             }
+            # PubMed 领域门控说明（非医药问题自动跳过）
+            if run.provider in {"pubmed", "all"} and not is_medical_query(run.query):
+                result_payload["note"] = "查询非医药相关问题，已跳过 PubMed 源（PubMed 仅对医药问题生效）"
+            run.result = result_payload
             run.status = "succeeded"
         except Exception as exc:  # noqa: BLE001 - 结构化记录失败
             run.status = "failed"

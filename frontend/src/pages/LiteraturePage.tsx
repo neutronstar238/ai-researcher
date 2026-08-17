@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
+  LITERATURE_PROVIDERS,
   useCreateSearchRun,
   usePapers,
   useSavePaper,
@@ -18,8 +19,10 @@ export function LiteraturePage() {
   const save = useSavePaper(projectId);
 
   const [query, setQuery] = useState("multimodal protein ligand interaction");
+  const [provider, setProvider] = useState<string>("arxiv");
   const [runId, setRunId] = useState<string | null>(null);
   const [results, setResults] = useState<PaperResult[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const run = useSearchRun(projectId, runId ?? undefined);
@@ -35,6 +38,7 @@ export function LiteraturePage() {
   useEffect(() => {
     if (run.data?.status === "succeeded") {
       setResults(run.data.result?.results ?? []);
+      setNote(run.data.result?.note ?? null);
     } else if (run.data?.status === "failed") {
       setError(run.data.error ? JSON.stringify(run.data.error) : "检索失败");
     }
@@ -43,9 +47,10 @@ export function LiteraturePage() {
   async function handleSearch(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setNote(null);
     setResults([]);
     try {
-      const { run_id } = await createRun.mutateAsync({ query });
+      const { run_id } = await createRun.mutateAsync({ query, provider });
       setRunId(run_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "检索失败");
@@ -63,13 +68,24 @@ export function LiteraturePage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 rounded-md border border-border-strong px-3 py-2 text-sm"
-            placeholder="检索 arXiv 文献…"
+            placeholder="输入科研问题检索文献…"
           />
+          <select
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            className="rounded-md border border-border-strong bg-surface px-2 py-2 text-sm"
+            aria-label="文献源"
+          >
+            {LITERATURE_PROVIDERS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
           <button type="submit" disabled={searching || createRun.isPending} className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary-hover disabled:opacity-50">
             {searching || createRun.isPending ? "检索中…" : "检索"}
           </button>
         </form>
         {error && <div className="mt-2 text-sm text-danger">{error}</div>}
+        {note && <div className="mt-2 text-sm text-text-muted">{note}</div>}
         {searching && (
           <div className="mt-2 text-sm text-text-muted">异步检索 Job 运行中（{run.data?.status}）…</div>
         )}
