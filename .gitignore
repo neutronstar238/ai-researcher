@@ -15,6 +15,11 @@ node_modules/
 frontend/dist/
 frontend/.vite/
 
+# tsc -b 编译产物（会遮蔽 vite.config.ts，勿纳入版本库）
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/*.tsbuildinfo
+
 # Playwright（视觉回归基线在 tests/e2e/smoke.spec.ts-snapshots/ 提交，产物忽略）
 frontend/test-results/
 frontend/playwright-report/

@@ -12,6 +12,8 @@ export default defineConfig({
   },
   preview: {
     port: 4173,
+    // 允许隧道/公网域名访问（cpolar 等会改写 Host 头）；.cpolar.cn 覆盖所有随机子域
+    allowedHosts: [".cpolar.cn"],
     proxy: {
       "/api": { target: "http://127.0.0.1:8000", changeOrigin: true, ws: true },
       "/health": { target: "http://127.0.0.1:8000", changeOrigin: true },

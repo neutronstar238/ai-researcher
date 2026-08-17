@@ -5,6 +5,16 @@ import { useNavigate } from "react-router-dom";
 
 import { createProject, useProjects, useTeams } from "../features/projects/api";
 
+/** 生成合法的项目 slug（小写字母数字+连字符，字母数字开头，≥2 位）。 */
+function slugify(input: string): string {
+  const s = input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return s.length >= 2 ? s : `project-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -35,7 +45,7 @@ export function ProjectsPage() {
     createMutation.mutate({
       team_id: activeTeamId,
       name,
-      slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      slug: slugify(slug || name),
       research_domain: domain || undefined,
     });
   }
