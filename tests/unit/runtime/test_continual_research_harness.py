@@ -8,6 +8,7 @@ from autoresearch.competition.model_authorship import record_model_authorship_re
 from autoresearch.knowledge.raw_memory import RawMemorySourceKind
 from autoresearch.llm.client import LLMJsonCompletionResult
 from autoresearch.llm.task_context import CompletedTaskConversation
+from autoresearch.observability.audit import AuditLog
 from autoresearch.runtime.continual_research_harness import (
     ArtifactCompletionEnvelope,
     ContinualHarnessIntegrityError,
@@ -247,7 +248,7 @@ def test_existing_scheduler_runs_one_claimed_step_and_existing_heartbeat_records
         task_text_cn="由现有调度器触发一次自主科研步骤。",
         enqueued_at=NOW,
     )
-    scheduler = LocalScheduler()
+    scheduler = LocalScheduler(audit_log=AuditLog(tmp_path / "audit" / "audit.jsonl"))
     seen_claims = []
 
     def execute(claim):
