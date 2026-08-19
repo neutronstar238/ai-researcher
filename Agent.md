@@ -17169,3 +17169,18 @@ ot，fixture 只给 2 条查询而 v4 编译器要求恰好 4 条；(2) 正式�
   - 清理全部测试残留后重启服务，`/api/runs` 与 `/api/batches` 均为空。
 - Problems: 新增并解决 P-20260819-024（yqzl 批量按钮无响应：Windows 路径 + 缺 pdftohtml 裸 500）。
 - Follow-up: (1) 用正式（非 dry-run）题目在线上跑一次端到端，确认服务器渲染的研究计划 PDF 可下载；(2) git commit 本次改动（web/ 三件套 + app.py 兜底捕获）。
+
+### 2026-08-19 +08:00 - DeepSeek Harness - 仓库整理与推送：遗留修复收口 + scratch 忽略
+
+- Request: 用户要求"整理一下然后把代码都 push 到仓库"。
+- Files changed:
+  - `tests/unit/runtime/test_continual_research_harness.py`（修正 `AuditLog` 导入排序，ruff I001）
+  - `.gitignore`（新增 `_pytest_mode_patch.py`、`tmp-ci-logs*.txt`、`tmp/dsh-fix-round2/`、`tmp/dsh-probe-campaign/`）
+  - `Agent.md`（本条目）
+- Summary: 收口 2026-08-16 会话遗留的 6 个未提交改动（sprint/benchmark 测试 deadline 由硬编码 2026-08-15 改为相对 now+30 天；`LocalScheduler` 测试补 `audit_log`；`official_lineage.py` 在 require_decision 分支补 `require_approved_plan` 物理前置），修复其中 1 处 ruff 导入排序，验证通过后分两个聚焦提交；根目录 scratch 文件与 pytest 探针产物加入 .gitignore（`tmp/` 内已有 157 个受跟踪文件，未做整体 ignore）。连同此前 web 主界面提交共 3 个 commit 推送到 origin/main。
+- Verification:
+  - `poetry run pytest tests/unit/campaign/test_autonomous_sprint.py tests/unit/campaign/test_systems_benchmark.py tests/unit/runtime/test_continual_research_harness.py tests/unit/competition/test_official_lineage.py -q --no-cov`：70 passed, 1 skipped。
+  - `poetry run ruff check` 对全部改动文件：All checks passed。
+  - `git push origin main`：`5999547..b357aff`，3 commits（058cb7a / 5a8829d / b357aff）。
+- Problems: 无新增。
+- Follow-up: 无（CI 观察后续由仓库所有者确认）。
