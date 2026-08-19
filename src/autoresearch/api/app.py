@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -22,10 +23,18 @@ from autoresearch.api.research_service import (
     RunCreateRequest,
 )
 
+_logger = logging.getLogger(__name__)
+
 SERVICE_KEY: web.AppKey[ResearchApiService] = web.AppKey(
     "autoresearch_service", ResearchApiService
 )
-_STATIC_ROOT = Path(__file__).with_name("static")
+# The functional console lives at the repository-root ``web/`` folder so the
+# UI can be edited and served from one canonical location.  The packaged
+# ``static`` copy remains the fallback for non-repository deployments.
+_REPO_WEB_ROOT = Path(__file__).resolve().parents[3] / "web"
+_STATIC_ROOT = (
+    _REPO_WEB_ROOT if (_REPO_WEB_ROOT / "index.html").is_file() else Path(__file__).with_name("static")
+)
 
 
 def create_app(*, service: ResearchApiService | None = None) -> web.Application:
@@ -104,6 +113,9 @@ async def _create_run(request: web.Request) -> web.Response:
         )
     except (ValueError, ResearchApiError) as exc:
         return _service_error(exc)
+    except Exception as exc:  # unexpected: surface a real message, never a bare 500
+        _logger.exception("unexpected error while creating a run")
+        return _service_error(exc)
     return web.json_response(result, status=201)
 
 
@@ -119,6 +131,9 @@ async def _create_batch(request: web.Request) -> web.Response:
         )
     except (ValueError, ResearchApiError) as exc:
         return _service_error(exc, unavailable="unavailable" in str(exc).casefold())
+    except Exception as exc:  # unexpected: surface a real message, never a bare 500
+        _logger.exception("unexpected error while creating a batch")
+        return _service_error(exc)
     return web.json_response(result, status=201)
 
 

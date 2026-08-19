@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI-Researcher 自动科研系统 - Research Overview Dashboard</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <!-- ================= Sidebar ================= -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 3.4l1.7 3.9 3.9 1.7-3.9 1.7L12 14.6l-1.7-3.9-3.9-1.7 3.9-1.7L12 3.4z" fill="#fff"/>
+          <circle cx="18.6" cy="5.4" r="1.5" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <div class="logo-title">研启智链</div>
+        <div class="logo-sub">AI-Researcher</div>
+        <div class="logo-sub">研究辅助中心</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
+        研究总览
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 7.2A1.7 1.7 0 0 1 5.2 5.5h3.9l2 2.3h7.7a1.7 1.7 0 0 1 1.7 1.7v7.8a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7z"/></svg>
+        项目空间
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5a2 2 0 0 1 2-2h12v18H7a2 2 0 0 1-2-2z"/><path d="M9 7h6M9 10.5h6"/></svg>
+        文献库
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9.5 3.5h5M10.5 3.5v4.8l-5 9a1.4 1.4 0 0 0 1.2 2.2h10.6a1.4 1.4 0 0 0 1.2-2.2l-5-9V3.5"/><path d="M7.7 14h8.6"/></svg>
+        实验管理
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5.6" rx="7.5" ry="2.7"/><path d="M4.5 5.6v12.8c0 1.5 3.4 2.7 7.5 2.7s7.5-1.2 7.5-2.7V5.6"/><path d="M4.5 12c0 1.5 3.4 2.7 7.5 2.7s7.5-1.2 7.5-2.7"/></svg>
+        数据资产
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="7" r="2.1"/><circle cx="18" cy="6" r="2.1"/><circle cx="12" cy="17.5" r="2.1"/><path d="M7.8 8.2l2.9 7M16.2 7.6l-2.9 7.2M7.9 6.2l8.3-.5"/></svg>
+        知识图谱
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.8 4.6l3.6 3.6L8.3 18.2l-4.3 1 1-4.3z"/><path d="M13.2 6.2l3.6 3.6"/></svg>
+        写作中心
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17.5l5-6 4 3.2 7-8.7"/><circle cx="4" cy="17.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="11.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="13" cy="14.7" r="1.3" fill="currentColor" stroke="none"/><circle cx="20" cy="6" r="1.3" fill="currentColor" stroke="none"/></svg>
+        复盘洞察
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="8.5" width="14" height="9.5" rx="2.4"/><circle cx="9.4" cy="13.2" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.6" cy="13.2" r="1.15" fill="currentColor" stroke="none"/><path d="M12 8.5V4.6M8.8 4.6h6.4"/><circle cx="12" cy="3.2" r="0.9" fill="currentColor" stroke="none"/></svg>
+        智能体中心
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3.2l7 2.7v5.5c0 4.4-3 7.7-7 9.1-4-1.4-7-4.7-7-9.1V5.9z"/><path d="M9 11.8l2.1 2.1 3.9-4"/></svg>
+        审批中心
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.1"/><path d="M12 3.2v2.1M12 18.7v2.1M3.2 12h2.1M18.7 12h2.1M5.8 5.8l1.5 1.5M16.7 16.7l1.5 1.5M18.2 5.8l-1.5 1.5M7.3 16.7l-1.5 1.5"/></svg>
+        系统设置
+      </a>
+    </nav>
+
+    <div class="sidebar-status">
+      <span class="status-dot"></span>
+      <div>
+        <div class="ss-title">系统状态</div>
+        <div class="ss-sub">在线 · 本地模式 v1.0</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= Main ================= -->
+  <div class="main">
+    <header class="header">
+      <h1 class="page-title">研究总览</h1>
+      <div class="header-tools">
+        <button class="tool-btn" title="通知" aria-label="通知">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6.2 9.6a5.8 5.8 0 0 1 11.6 0c0 4.6 2 5.6 2 5.6H4.2s2-1 2-5.6z"/><path d="M10 18.8a2 2 0 0 0 4 0"/></svg>
+          <span class="bell-dot"></span>
+        </button>
+        <button class="tool-btn" title="帮助" aria-label="帮助">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.4"/><path d="M9.5 9.2a2.7 2.7 0 1 1 3.9 2.5c-.7.5-1.2 1-1.2 2"/><circle cx="12" cy="16.4" r="0.9" fill="currentColor" stroke="none"/></svg>
+        </button>
+        <div class="avatar" title="操作者">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="8.6" r="3.4"/><path d="M5.2 19.4c1.5-3.4 3.9-5 6.8-5s5.3 1.6 6.8 5"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- 1. 科研生命周期 Timeline -->
+      <section class="card timeline-card">
+        <div class="tl-line"></div>
+        <div class="tl-node done">
+          <div class="tl-circle"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M6.5 12.5l3.8 3.8 7.2-8"/></svg></div>
+          <div class="tl-name">选题</div>
+          <div class="tl-status">已完成</div>
+          <div class="tl-aux">07-10</div>
+        </div>
+        <div class="tl-node done">
+          <div class="tl-circle"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M6.5 12.5l3.8 3.8 7.2-8"/></svg></div>
+          <div class="tl-name">文献</div>
+          <div class="tl-status">已完成</div>
+          <div class="tl-aux">07-11</div>
+        </div>
+        <div class="tl-node done">
+          <div class="tl-circle"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M6.5 12.5l3.8 3.8 7.2-8"/></svg></div>
+          <div class="tl-name">假设</div>
+          <div class="tl-status">已完成</div>
+          <div class="tl-aux">07-12</div>
+        </div>
+        <div class="tl-node done">
+          <div class="tl-circle"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M6.5 12.5l3.8 3.8 7.2-8"/></svg></div>
+          <div class="tl-name">实验</div>
+          <div class="tl-status">已完成</div>
+          <div class="tl-aux">07-15</div>
+        </div>
+        <div class="tl-node active">
+          <div class="tl-circle"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.4" fill="#fff"/></svg></div>
+          <div class="tl-name">验证</div>
+          <div class="tl-status">进行中</div>
+          <div class="tl-aux">62%</div>
+        </div>
+        <div class="tl-node wait">
+          <div class="tl-circle"></div>
+          <div class="tl-name">写作</div>
+          <div class="tl-status">待开始</div>
+          <div class="tl-aux">预计 07-21</div>
+        </div>
+        <div class="tl-node wait">
+          <div class="tl-circle"></div>
+          <div class="tl-name">复盘</div>
+          <div class="tl-status">待开始</div>
+          <div class="tl-aux">预计 07-23</div>
+        </div>
+        <div class="tl-node wait">
+          <div class="tl-circle"></div>
+          <div class="tl-name">进化</div>
+          <div class="tl-status">待开始</div>
+          <div class="tl-aux">预计 07-25</div>
+        </div>
+      </section>
+
+      <!-- 2. 当前项目 + 今日发现 -->
+      <div class="row row-1">
+        <section class="card project-card">
+          <div class="card-head">
+            <h2>当前项目</h2>
+            <span class="tag tag-green">进行中</span>
+          </div>
+          <div class="project-name" title="基于多模态表征学习的蛋白质-小分子相互作用预测">基于多模态表征学习的蛋白质-小分子相互作用预测</div>
+          <div class="stage-blocks">
+            <div class="stage-block">
+              <div class="stage-label">当前阶段</div>
+              <div class="stage-value">实验验证阶段</div>
+            </div>
+            <div class="stage-block stage-block-wide">
+              <div class="stage-label">下一步行动</div>
+              <div class="stage-value">完成实验组S3 Docking评估并汇总结果</div>
+            </div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-track"><div class="progress-fill"></div></div>
+            <span class="progress-pct">62%</span>
+          </div>
+          <div class="stats-row">
+            <div class="stat"><div class="stat-num">532</div><div class="stat-label">文献证据</div></div>
+            <div class="stat"><div class="stat-num">28</div><div class="stat-label">实验记录</div></div>
+            <div class="stat"><div class="stat-num">3</div><div class="stat-label">数据集</div></div>
+            <div class="stat"><div class="stat-num">14</div><div class="stat-label">图表证据</div></div>
+          </div>
+        </section>
+
+        <section class="card discover-card">
+          <div class="card-head">
+            <h2>今日发现 / 本周选题</h2>
+            <button class="link-btn" type="button">查看全部</button>
+          </div>
+          <table class="table discover-table">
+            <colgroup><col style="width:56px"><col><col style="width:80px"><col style="width:96px"><col style="width:112px"></colgroup>
+            <thead>
+              <tr><th>编号</th><th>选题候选</th><th>来源数</th><th>证据强度</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="td-center">01</td>
+                <td class="td-strong">多模态大模型辅助蛋白质结构预测</td>
+                <td class="td-center">48</td>
+                <td class="td-center">92%</td>
+                <td class="td-center"><span class="tag tag-red tag-sm">高优先级</span></td>
+              </tr>
+              <tr>
+                <td class="td-center">02</td>
+                <td class="td-strong">自动实验规划Agent</td>
+                <td class="td-center">36</td>
+                <td class="td-center">78%</td>
+                <td class="td-center"><span class="tag tag-blue tag-sm">探索中</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <!-- 3. 趋势 + 待审批 -->
+      <div class="row row-2">
+        <section class="card trend-card">
+          <div class="card-head">
+            <h2>研究证据覆盖趋势</h2>
+            <select class="period-select" id="period-select" aria-label="时间范围">
+              <option value="6" selected>最近6周期</option>
+              <option value="3">最近3周期</option>
+            </select>
+          </div>
+          <div id="coverage-chart" class="chart"></div>
+        </section>
+
+        <section class="card approval-card">
+          <div class="card-head">
+            <h2>待审批</h2>
+          </div>
+          <table class="table approval-table">
+            <colgroup><col><col style="width:64px"><col style="width:64px"><col style="width:52px"><col style="width:52px"></colgroup>
+            <thead>
+              <tr><th>事项</th><th>类型</th><th>提交人</th><th>时间</th><th>优先级</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="td-strong">S3 实验组 Docking 评估执行</td>
+                <td>实验执行</td>
+                <td>实验智能体</td>
+                <td>10:24</td>
+                <td><span class="tag tag-red tag-xs">高</span></td>
+              </tr>
+              <tr>
+                <td class="td-strong">ArXiv 文献批量导入（48 篇）</td>
+                <td>数据接入</td>
+                <td>文献智能体</td>
+                <td>09:47</td>
+                <td><span class="tag tag-orange tag-xs">中</span></td>
+              </tr>
+              <tr>
+                <td class="td-strong">论文初稿章节发布（方法）</td>
+                <td>内容发布</td>
+                <td>写作智能体</td>
+                <td>昨天</td>
+                <td><span class="tag tag-blue tag-xs">低</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <!-- 4. 系统运行状态栏 -->
+      <section class="card status-bar">
+        <div class="status-module">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="7" rx="1.8"/><rect x="4" y="13" width="16" height="7" rx="1.8"/><circle cx="7.2" cy="7.5" r="1" fill="currentColor" stroke="none"/><circle cx="7.2" cy="16.5" r="1" fill="currentColor" stroke="none"/></svg>
+          <div class="status-text"><div class="st-title">智能体服务</div><div class="st-sub"><span class="ok-dot"></span>6/6 正常</div></div>
+        </div>
+        <div class="status-module">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5.6" rx="7.5" ry="2.7"/><path d="M4.5 5.6v12.8c0 1.5 3.4 2.7 7.5 2.7s7.5-1.2 7.5-2.7V5.6"/><path d="M4.5 12c0 1.5 3.4 2.7 7.5 2.7s7.5-1.2 7.5-2.7"/></svg>
+          <div class="status-text"><div class="st-title">数据服务</div><div class="st-sub"><span class="ok-dot"></span>运行正常</div></div>
+        </div>
+        <div class="status-module">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="14" rx="2.2"/><path d="M3.5 10.5h17M3.5 15h17"/><circle cx="7" cy="7.8" r="0.8" fill="currentColor" stroke="none"/></svg>
+          <div class="status-text"><div class="st-title">存储空间</div><div class="st-sub"><span class="ok-dot"></span>2.1TB</div></div>
+        </div>
+        <div class="status-module">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="2.4"/><rect x="8.6" y="8.6" width="6.8" height="6.8" rx="1.2"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"/></svg>
+          <div class="status-text"><div class="st-title">GPU资源</div><div class="st-sub"><span class="ok-dot"></span>2/4 空闲</div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="assets/echarts.min.js"></script>
+  <script src="assets/dashboard.js"></script>
+</body>
+</html>

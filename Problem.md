@@ -7227,3 +7227,21 @@ update a factual problem entry below.
   - 更新 5 处过期测试断言（消息数 [2,3]→[3,4]、v3 候选源生成器、回执哈希排除组、技能目录 6 个 ID）。
 - Verification: 本地 3.10 环境（与 CI 同版工具链）`ruff check src tests` 与 `mypy src` 全绿；`pytest tests/smoke tests/unit` 3101 passed；剩余 10 个本地失败全部为 Windows DSH 沙箱对 0o700 临时目录/ACL 的限制（Linux CI 无此路径，其中 2 个在 CI 上按 skipif 跳过）。等待推送到 main 后的 CI 运行确认。
 - Linked tasks: 用户请求"修复 CI"（本地通过、CI WA）。
+
+### P-20260819-024 - yqzl 线上批量任务按钮"点了没反应"；服务器缺 texlive/pdftohtml
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-19
+- Source: yqzl.nstarzx.cn 线上部署验收；用户反馈"打开就弹出 125 批量弹窗，点它没反应"。
+- Symptom: 批量弹窗默认填写 Windows 路径 `C:\Users\Z\Downloads\sjtu-booklet.pdf`，在 Ubuntu 服务器上不存在，POST `/api/batches` 返回 409 `question_pdf must be an existing local PDF file`（前端仅以右下角 toast 提示，用户未察觉，观感即"没反应"）；改为服务器路径后继续失败，API 抛 `ContestQuestionExtractionError: 未找到Poppler的pdftohtml`，该异常未被 `_create_batch` 捕获，aiohttp 直接返回裸 500，前端也无内联错误展示。
+- Impact: 线上批量功能不可用；整站体验被"只让跑 125"的批量弹窗主导，与"针对用户输入题目"的预期不符；服务器无 texlive，研究计划 PDF 渲染失败时只能优雅降级。
+- Root cause: (1) 前端默认路径是开发机 Windows 路径，部署未改；(2) 服务器未安装 poppler-utils（pdftohtml，125 题解析依赖）；(3) `app.py` 创建端点只捕获 `ValidationError/JSONDecodeError/ValueError/ResearchApiError`，未捕获第三方提取器异常。
+- Next action: 见 Resolution。
+- Resolution:
+  - `web/` 重构为题目输入优先：主界面即"输入题目"英雄区（示例 chips、Dry-run），单题创建后自动进入十二阶段详情；批量任务降级为顶部次级按钮，默认路径改为服务器内置 `/www/wwwroot/yqzl.nstarzx.cn/data/sjtu-booklet.pdf`，提交错误在弹窗内联展示并带 busy 态。
+  - 上传官方 `sjtu-booklet.pdf` 至服务器 `/www/wwwroot/yqzl.nstarzx.cn/data/`。
+  - 服务器 `apt-get install` texlive 全家桶（texlive-xetex、latex-recommended、latex-extra、fonts-recommended、fonts-extra、lang-chinese、latexmk、fonts-noto-cjk）与 poppler-utils。
+  - `src/autoresearch/api/app.py` 的 `_create_run`/`_create_batch` 增加兜底 `except Exception`：记录 traceback 并把消息作为 `service_error` 返回给前端，不再裸 500。
+- Verification: 本地 API 单测 21 passed；公网页面/静态资源 200 且为新版本；批量 dry-run 解析出 125 题（manifest 哈希与本地一致）；单题 dry-run 创建成功；xelatex 中文冒烟编译通过；清理测试残留后 runs/batches 为空。
+- Linked tasks: 用户请求"web 端针对用户输入题目 + 服务器装 texlive"。

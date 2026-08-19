@@ -17149,3 +17149,23 @@ ot，fixture 只给 2 条查询而 v4 编译器要求恰好 4 条；(2) 正式�
   - 通过 gh api 核对历史 4 次失败运行的失败步骤（3×ruff/mypy、1×mypy），确认本次修复覆盖当前失败面。
 - Problems: 新增并解决 P-20260816-023。P-20260815-021（OpenAlex key）、P-20260809-108 仍 Open。
 - Follow-up: 推送后观察 CI 实际运行结果；若沙箱未覆盖的 Linux-only 测试仍有失败，按 CI 日志继续收敛。
+
+### 2026-08-19 +08:00 - DeepSeek Harness - yqzl 线上站点改为「用户输入题目」主界面；服务器装 texlive/poppler
+
+- Request: 用户指出 yqzl.nstarzx.cn 不应"只让跑 125"，要求按 `E:\ai-researcher-loop` 里针对用户输入题目的 web 端改版，并在服务器安装 texlive。
+- Files changed:
+  - `web/index.html`（重写：题目输入英雄区为主界面，批量弹窗降级为次级入口）
+  - `web/app.js`（重写：英雄区逻辑、示例 chips、单题/批量内联错误与 busy 态）
+  - `web/styles.css`（新增 hero/chip/spin 样式）
+  - `web/static/app.js`、`web/static/styles.css`（nginx `/static/` 实际服务的副本）
+  - `src/autoresearch/api/app.py`（`_create_run`/`_create_batch` 增加兜底 Exception 捕获，异常返回 `service_error` 而非裸 500；新增 logging）
+- Summary: 核实 `E:\ai-researcher-loop` 中唯一"用户输入题目"的 web 端即 autoresearch api/static 控制台（单题 textarea），将其升级为站点主界面：打开即见大输入框（示例 chips、Dry-run 选项），提交后创建运行并自动进入十二阶段详情视图，产物（含研究计划 PDF）可点击下载；「批量任务」降级为顶部次级按钮，默认 PDF 路径改为服务器内置的 `/www/wwwroot/yqzl.nstarzx.cn/data/sjtu-booklet.pdf`（已上传官方 sjtu-booklet.pdf，8,420,081 bytes），提交失败从易被忽略的 toast 改为弹窗内联错误提示。服务器（Ubuntu 24.04）安装 texlive（texlive-xetex、latex-recommended、latex-extra、fonts-recommended、fonts-extra、lang-chinese、latexmk、fonts-noto-cjk）与 poppler-utils（pdftohtml）。批量按钮此前"点了没反应"的两个根因：表单默认 Windows 路径在服务器不存在（仅报 toast，用户未察觉），且批量解析缺 pdftohtml 时抛未捕获异常返回裸 500。
+- Verification:
+  - 本地 `py -3 -m pytest tests/unit/api/test_research_api.py -q`：21 passed。
+  - 公网 `https://yqzl.nstarzx.cn/` 200 且含"输入题目，开始研究"；`/static/app.js` 200 application/javascript 25170B、`/static/styles.css` 200 text/css 23153B（均为新版本）。
+  - 服务器批量 dry-run（start=1, limit=125，服务器 PDF 路径）：201，`question_count=125`，`question_set_manifest_hash=c26e01e4a5f77cef2c392483c76692d1cd438ae7f977d855992e6f6faf0c98e3`（与本地一致）。
+  - 服务器单题 dry-run（scGPT 示例题目）：201 创建，出现在 `/api/runs`。
+  - xelatex 冒烟：ctex + amsmath/amssymb + `\gtrsim` 中文文档编译出 smoke.pdf（14,423 bytes）。
+  - 清理全部测试残留后重启服务，`/api/runs` 与 `/api/batches` 均为空。
+- Problems: 新增并解决 P-20260819-024（yqzl 批量按钮无响应：Windows 路径 + 缺 pdftohtml 裸 500）。
+- Follow-up: (1) 用正式（非 dry-run）题目在线上跑一次端到端，确认服务器渲染的研究计划 PDF 可下载；(2) git commit 本次改动（web/ 三件套 + app.py 兜底捕获）。

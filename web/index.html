@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>科研计划台 · AutoResearch</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="13.5" stroke="currentColor" stroke-width="2"/>
+          <path d="M10 21.5c3.5-4 6-4 8.5-1.5M21.5 10.5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="21.5" cy="10.5" r="1.8" fill="currentColor"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>科研计划台</h1>
+        <p>AutoResearch · Evidence-first research console</p>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <span id="health" class="health-pill" data-state="connecting"><i class="dot"></i><span>连接中…</span></span>
+      <button id="btn-new-run" class="btn btn-primary">
+        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        新题目
+      </button>
+      <button id="btn-new-batch" class="btn btn-ghost">
+        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M4 4h12v12H4zM8 8h8M8 12h8M4 8h1M4 12h1M4 16h1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        批量任务
+      </button>
+      <button id="btn-theme" class="btn btn-ghost icon-only" title="切换深浅色" aria-label="切换深浅色">
+        <svg class="icon-sun" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="3.4" stroke="currentColor" stroke-width="1.7"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M16.5 12.5A7 7 0 0 1 7.5 3.5a7 7 0 1 0 9 9Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="app">
+    <aside class="sidebar">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="runs" role="tab" aria-selected="true">
+          运行 <span id="run-count" class="count">0</span>
+        </button>
+        <button class="tab" data-tab="batches" role="tab" aria-selected="false">
+          批量 <span id="batch-count" class="count">0</span>
+        </button>
+        <button class="tab" data-tab="skills" role="tab" aria-selected="false">
+          Skill 候选 <span id="skill-count" class="count">0</span>
+        </button>
+      </nav>
+
+      <section class="tab-panel" id="panel-runs" data-panel="runs">
+        <div class="list" id="runs"><p class="empty">尚无运行</p></div>
+      </section>
+
+      <section class="tab-panel" id="panel-batches" data-panel="batches" hidden>
+        <div class="list" id="batches"><p class="empty">尚无批量任务</p></div>
+      </section>
+
+      <section class="tab-panel" id="panel-skills" data-panel="skills" hidden>
+        <div class="list" id="skills"><p class="empty">尚无 Skill 候选</p></div>
+      </section>
+    </aside>
+
+    <main class="content">
+      <!-- Question-input hero: the primary entry point -->
+      <section id="hero" class="hero">
+        <div class="hero-inner">
+          <div class="hero-head">
+            <span class="hero-badge">证据优先 · 十二阶段研究证据链</span>
+            <h2>输入题目，开始研究</h2>
+            <p>输入《Science》问题或指定研究方向。系统将依次完成 文献检索 → 证据构建 → 方案设计 → 复核交付，产出可下载的研究计划（PDF / Markdown）与完整证据链。</p>
+          </div>
+
+          <form id="single-form" class="hero-form">
+            <label for="direction">科学问题或指定方向</label>
+            <textarea id="direction" rows="6" required
+              placeholder="输入题目或指定研究方向，例如：&#10;针对 X 数据集，验证 Y 假设是否成立"></textarea>
+
+            <div class="example-row">
+              <span class="example-label">示例</span>
+              <button type="button" class="chip chip-example" data-example="针对 scGPT 的零样本迁移能力，验证其在未见细胞类型上的注释精度是否不低于领域专家手动注释">scGPT 零样本注释</button>
+              <button type="button" class="chip chip-example" data-example="针对集成电路栅极氧化层可靠性，验证缺陷密度与阈值电压漂移之间的定量关系">芯片栅氧可靠性</button>
+              <button type="button" class="chip chip-example" data-example="针对大语言模型的数学推理，验证思维链长度与最终答案正确率之间是否存在倒 U 型关系">LLM 推理倒 U 型</button>
+            </div>
+
+            <label class="check">
+              <input id="single-dry" type="checkbox">
+              <span>仅预览（Dry-run：只解析题目，不调用模型或检索 API）</span>
+            </label>
+
+            <div id="single-error" class="alert alert-error" hidden></div>
+
+            <div class="form-foot">
+              <span class="note">模型、Base URL 与密钥仅从服务端 config/.env 读取；研究计划 PDF 在运行完成后于「产物」中下载</span>
+              <button type="submit" id="single-submit" class="btn btn-primary btn-lg">
+                <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><path d="M3 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                开始研究
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <div id="detail" hidden>
+        <div class="detail-hero">
+          <div class="detail-title">
+            <div class="detail-meta-row">
+              <span id="run-status" class="badge"></span>
+              <span id="run-kind" class="chip"></span>
+            </div>
+            <h2 id="run-direction"></h2>
+            <div class="detail-meta">
+              <code id="run-id" class="mono"></code>
+              <span id="run-times" class="meta-text"></span>
+              <span id="run-resume" class="meta-text"></span>
+            </div>
+          </div>
+          <div class="detail-actions">
+            <button id="resume" class="btn">
+              <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M5 4l9 6-9 6V4z" fill="currentColor"/></svg>
+              从断点续跑
+            </button>
+            <button id="cancel" class="btn btn-danger">请求取消</button>
+            <button id="evolve" class="btn btn-outline">
+              <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M10 2.5l2.2 4.6 5 .7-3.6 3.5.9 5L10 13.9l-4.5 2.4.9-5-3.6-3.5 5-.7L10 2.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              生成 Skill 候选
+            </button>
+          </div>
+        </div>
+
+        <div id="run-error" class="alert alert-error" hidden></div>
+        <div id="run-validation" class="alert" hidden></div>
+
+        <section class="card progress-card">
+          <div class="progress-head">
+            <span>阶段进度</span>
+            <span id="progress-label" class="meta-text"></span>
+          </div>
+          <div class="progress-bar"><div id="progress-fill"></div></div>
+        </section>
+
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head"><h3>研究阶段</h3><span class="card-hint">十二阶段证据链</span></div>
+            <div id="stages" class="timeline"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h3>产物</h3><span class="card-hint">哈希可校验 · 点击下载</span></div>
+            <div id="artifacts"></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head"><h3>Skill / 自进化状态</h3><span class="card-hint">只读查询，绝不自动晋升</span></div>
+          <div id="evolution"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Batch modal -->
+  <div class="modal-backdrop" id="modal-batch" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-batch-title">
+      <div class="modal-head">
+        <h2 id="modal-batch-title">批量任务 · 官方 125 问</h2>
+        <button class="btn btn-ghost icon-only modal-close" data-close="modal-batch" aria-label="关闭">
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <form id="batch-form">
+        <label for="question-pdf">官方 125 问 PDF（服务器上的绝对路径）</label>
+        <input id="question-pdf" required value="/www/wwwroot/yqzl.nstarzx.cn/data/sjtu-booklet.pdf">
+        <p class="note">本部署已将官方 125 问 PDF 内置到服务器上述路径；如需其它 PDF，请改为服务器上可访问的绝对路径。</p>
+        <div class="range-row">
+          <label>起始题号<input id="batch-start" type="number" min="1" max="125" value="1"></label>
+          <label>数量<input id="batch-limit" type="number" min="1" max="125" value="125"></label>
+        </div>
+        <label for="batch-ids">指定题号（逗号分隔，可空）</label>
+        <input id="batch-ids" placeholder="1, 7, 18">
+        <label class="check">
+          <input id="batch-dry" type="checkbox" checked>
+          <span>Dry-run（仅解析题目，不调用模型）</span>
+        </label>
+
+        <div id="batch-error" class="alert alert-error" hidden></div>
+        <div id="batch-ok" class="alert alert-ok" hidden></div>
+
+        <div class="form-foot">
+          <span class="note">题目只从本地官方 PDF 确定性解析；正式批量运行将逐题走完整研究流程</span>
+          <button type="submit" id="batch-submit" class="btn btn-primary">解析并创建</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
