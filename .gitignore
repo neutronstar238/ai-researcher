@@ -54,3 +54,9 @@ _*.txt
 chain-log.txt
 check.txt
 v[0-9]*.txt
+
+# Harness scratch: one-off pytest patches, CI log dumps and probe outputs.
+_pytest_mode_patch.py
+tmp-ci-logs*.txt
+tmp/dsh-fix-round2/
+tmp/dsh-probe-campaign/
