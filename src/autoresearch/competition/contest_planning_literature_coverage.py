@@ -457,6 +457,7 @@ class PlanningLiteratureCoverageReceipt(StrictFrozenModel):
     selected_total_context_characters: int = Field(ge=0)
     failure_reasons: tuple[str, ...]
     passed: bool
+    warnings: tuple[str, ...] = ()
     selection_semantics: Literal[
         "immutable_focus_bridge_then_authority_distinct_anchor_dp_and_bridged_supplements"
     ] = "immutable_focus_bridge_then_authority_distinct_anchor_dp_and_bridged_supplements"
@@ -609,7 +610,7 @@ def _validate_coverage_receipt(
         )
         if receipt.eligible_role_family_counts != expected_eligible_counts:
             raise ValueError("eligible planning literature role-family counts mismatch")
-    expected_indices, expected_assignments, expected_failures = (
+    expected_indices, expected_assignments, expected_failures, expected_warnings = (
         _select_classified_planning_literature(
             receipt.classifications,
             maximum_records=receipt.maximum_records,
@@ -623,6 +624,7 @@ def _validate_coverage_receipt(
         receipt.selected_candidate_indices != expected_indices
         or receipt.anchor_assignments != expected_assignments
         or receipt.failure_reasons != expected_failures
+        or getattr(receipt, "warnings", ()) != expected_warnings
     ):
         raise ValueError("planning literature anchor selection does not replay")
     if len(receipt.selected_candidate_indices) != len(set(receipt.selected_candidate_indices)):
@@ -673,6 +675,7 @@ def _validate_coverage_receipt(
             receipt.anchor_assignments,
             required_anchor_eligible_record_ids=eligible_ids,
             method_bridge_assessments=method_bridge_assessments,
+            bridge_relaxed="method_focus_bridge_relaxed" in expected_warnings,
         )
     expected_hash = canonical_model_hash(receipt.model_dump(mode="json", exclude={"receipt_hash"}))
     if receipt.receipt_hash != expected_hash:
@@ -791,7 +794,7 @@ def select_planning_literature(
         raise PlanningLiteratureCoverageError(
             "required-anchor eligibility references a record outside the candidate catalog"
         )
-    selected, anchor_assignments, failures = _select_classified_planning_literature(
+    selected, anchor_assignments, failures, warnings = _select_classified_planning_literature(
         classifications,
         maximum_records=maximum_records,
         maximum_total_context_characters=maximum_total_context_characters,
@@ -812,6 +815,7 @@ def select_planning_literature(
         anchor_assignments=anchor_assignments,
         failure_reasons=failures,
         required_anchor_eligible_record_ids=eligible_ids,
+        warnings=warnings,
     )
 
 
@@ -843,18 +847,19 @@ def _select_classified_planning_literature(
     tuple[int, ...],
     tuple[PlanningLiteratureAnchorAssignment, ...],
     tuple[str, ...],
+    tuple[str, ...],
 ]:
     available_failures = _available_coverage_failures(_role_counts(classifications))
     if available_failures:
-        return (), (), available_failures
-    if policy_version == "v5" and not _method_bridge_complete_family_count(
-        classifications,
-        method_bridge_assessments,
-    ):
-        return (), (), ("insufficient_method_focus_bridge_anchors",)
+        return (), (), available_failures, ()
+    bridge_relaxed = (
+        policy_version == "v5"
+        and not _method_bridge_complete_family_count(classifications, method_bridge_assessments)
+    )
+    warnings = ("method_focus_bridge_relaxed",) if bridge_relaxed else ()
     required_anchor_count = sum(_ROLE_MINIMUMS.values())
     if maximum_records < required_anchor_count:
-        return (), (), ("maximum_records_prevents_required_coverage",)
+        return (), (), ("maximum_records_prevents_required_coverage",), ()
 
     plan = _required_anchor_plan(
         classifications,
@@ -862,6 +867,7 @@ def _select_classified_planning_literature(
         policy_version=policy_version,
         required_anchor_eligible_record_ids=required_anchor_eligible_record_ids,
         method_bridge_assessments=method_bridge_assessments,
+        bridge_relaxed=bridge_relaxed,
     )
     if plan is None:
         if (
@@ -872,11 +878,12 @@ def _select_classified_planning_literature(
                 policy_version=policy_version,
                 required_anchor_eligible_record_ids=required_anchor_eligible_record_ids,
                 method_bridge_assessments=method_bridge_assessments,
+                bridge_relaxed=bridge_relaxed,
             )
             is not None
         ):
-            return (), (), ("context_budget_prevents_required_coverage",)
-        return (), (), ("insufficient_distinct_required_role_anchors",)
+            return (), (), ("context_budget_prevents_required_coverage",), ()
+        return (), (), ("insufficient_distinct_required_role_anchors",), ()
 
     assignments = _anchor_assignments(
         plan,
@@ -988,7 +995,7 @@ def _select_classified_planning_literature(
             if len(selected) == maximum_records:
                 break
 
-    return tuple(selected), assignments, ()
+    return tuple(selected), assignments, (), warnings
 
 
 def _required_anchor_plan(
@@ -998,6 +1005,7 @@ def _required_anchor_plan(
     policy_version: Literal["v2", "v3", "v4", "v5"],
     required_anchor_eligible_record_ids: tuple[str, ...],
     method_bridge_assessments: tuple[PlanningLiteratureMethodBridgeAssessment, ...] = (),
+    bridge_relaxed: bool = False,
 ) -> _AnchorPlan | None:
     target_state = tuple(_ROLE_MINIMUMS[role] for role in _REQUIRED_ROLES)
     zero_state = (0, 0, 0, 0)
@@ -1014,6 +1022,7 @@ def _required_anchor_plan(
                     policy_version != "v5"
                     or role is not PlanningLiteratureRole.METHOD_FOUNDATION
                     or method_bridge_assessments[index].bridge_eligible
+                    or bridge_relaxed
                 )
             ),
             key=lambda index: _quality_key(
@@ -1044,6 +1053,7 @@ def _required_anchor_plan(
             for role in classification.matched_roles:
                 if (
                     policy_version == "v5"
+                    and not bridge_relaxed
                     and role is PlanningLiteratureRole.METHOD_FOUNDATION
                     and not method_bridge_assessments[index].bridge_eligible
                 ):
@@ -1352,6 +1362,7 @@ def _build_v5_receipt(
     anchor_assignments: tuple[PlanningLiteratureAnchorAssignment, ...],
     failure_reasons: tuple[str, ...],
     required_anchor_eligible_record_ids: tuple[str, ...],
+    warnings: tuple[str, ...] = (),
 ) -> PlanningLiteratureCoverageReceipt:
     selected = tuple(classifications[index] for index in selected_indices)
     selected_records = tuple(item.candidate for item in selected)
@@ -1387,6 +1398,7 @@ def _build_v5_receipt(
         ),
         "failure_reasons": list(dict.fromkeys(failure_reasons)),
         "passed": not failure_reasons,
+        "warnings": list(dict.fromkeys(warnings)),
         "selection_semantics": (
             "immutable_focus_bridge_then_authority_distinct_anchor_dp_and_" "bridged_supplements"
         ),
@@ -1738,6 +1750,7 @@ def _validate_selected_coverage(
     *,
     required_anchor_eligible_record_ids: tuple[str, ...],
     method_bridge_assessments: tuple[PlanningLiteratureMethodBridgeAssessment, ...] = (),
+    bridge_relaxed: bool = False,
 ) -> None:
     selected = tuple(classifications[index] for index in selected_indices)
     selected_anchors = tuple(item.candidate.effective_anchor_id for item in selected)
@@ -1757,14 +1770,17 @@ def _validate_selected_coverage(
     if method_bridge_assessments:
         if len(method_bridge_assessments) != len(classifications):
             raise ValueError("method bridge assessments differ from the candidate catalog")
-        if any(
-            classifications[index].semantic_layer
-            in {
-                PlanningLiteratureRole.METHOD_FOUNDATION,
-                PlanningLiteratureRole.METHOD_TRANSFER,
-            }
-            and not method_bridge_assessments[index].bridge_eligible
-            for index in selected_indices
+        if (
+            not bridge_relaxed
+            and any(
+                classifications[index].semantic_layer
+                in {
+                    PlanningLiteratureRole.METHOD_FOUNDATION,
+                    PlanningLiteratureRole.METHOD_TRANSFER,
+                }
+                and not method_bridge_assessments[index].bridge_eligible
+                for index in selected_indices
+            )
         ):
             raise ValueError("selected method literature lacks an immutable focus bridge")
     for role, minimum in _ROLE_MINIMUMS.items():
@@ -1776,7 +1792,8 @@ def _validate_selected_coverage(
         if assignment.record_id not in eligible_ids:
             raise ValueError("planning literature anchor lacks required authority eligibility")
         if (
-            assignment.role is PlanningLiteratureRole.METHOD_FOUNDATION
+            not bridge_relaxed
+            and assignment.role is PlanningLiteratureRole.METHOD_FOUNDATION
             and method_bridge_assessments
             and not method_bridge_assessments[assignment.candidate_index].bridge_eligible
         ):
@@ -2035,7 +2052,7 @@ def _clean_boolean_atom(atom: str) -> tuple[str, bool]:
             raise PlanningLiteratureCoverageError("role query contains unmatched quotes")
         value = value[1:-1].strip()
         was_quoted = True
-    if any(character in value for character in "\"'()"):
+    if any(character in value for character in "\"()"):
         raise PlanningLiteratureCoverageError(
             "role query term contains unsupported quotes or parentheses"
         )

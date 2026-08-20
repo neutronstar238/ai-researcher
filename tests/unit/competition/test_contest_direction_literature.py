@@ -433,6 +433,47 @@ def test_v4_counterevidence_validator_rejects_weak_concept_group_before_search()
     assert search_calls == []
 
 
+def test_v4_counterevidence_accepts_strong_concept_inside_evidence_phrases() -> None:
+    object_group = '("lumen arrays" OR "lumen devices")'
+    plan = (
+        f'{object_group} AND ("phase drift" OR "state drift")',
+        '("rank analysis" OR "ordinal analysis") AND (definition OR estimation)',
+        f'{object_group} AND ("null model" OR mechanism)',
+        f'{object_group} AND ("a finite-size artifact" OR "residue-class biases to")',
+    )
+
+    literature_module._validate_v4_query_plan(plan)  # must not raise
+
+
+def test_v4_counterevidence_rejects_missing_and_weak_only_concepts() -> None:
+    object_group = '("lumen arrays" OR "lumen devices")'
+    missing = (
+        f'{object_group} AND ("phase drift" OR "state drift")',
+        '("rank analysis" OR "ordinal analysis") AND (definition OR estimation)',
+        f'{object_group} AND ("null model" OR mechanism)',
+        f'{object_group} AND ("phase drift" OR "state drift")',
+    )
+    with pytest.raises(ContestDirectionLiteratureError, match="missing a falsifying concept"):
+        literature_module._validate_v4_query_plan(missing)
+    weak = (
+        f'{object_group} AND ("phase drift" OR "state drift")',
+        '("rank analysis" OR "ordinal analysis") AND (definition OR estimation)',
+        f'{object_group} AND ("null model" OR mechanism)',
+        f'{object_group} AND (anomalies OR "observational deviations")',
+    )
+    with pytest.raises(ContestDirectionLiteratureError, match="weak-only group"):
+        literature_module._validate_v4_query_plan(weak)
+
+
+def test_counterevidence_term_strength_classification() -> None:
+    strength = literature_module._counterevidence_term_strength
+    assert strength("artifact") == "strong"
+    assert strength("a finite-size artifact") == "strong"
+    assert strength("residue-class biases to") == "strong"
+    assert strength("observational anomalies") == "weak"
+    assert strength("phase drift") == "none"
+
+
 def test_v4_query_plan_accepts_exact_four_alternatives_per_group_without_loss() -> None:
     search_calls: list[tuple[str, str]] = []
     object_group = '("lumen arrays" OR "lumen devices" OR "lumen films" OR "lumen layers")'
@@ -464,6 +505,37 @@ def test_v4_query_plan_accepts_exact_four_alternatives_per_group_without_loss() 
     assert all(query.count(" OR ") == 6 for _source, query in search_calls)
     for term in ("lumen arrays", "lumen devices", "lumen films", "lumen layers"):
         assert all(term in query for _source, query in search_calls if "rank analysis" not in query)
+
+
+def test_v4_query_projection_strips_leaked_json_array_delimiter() -> None:
+    # A model occasionally leaks the JSON array closing bracket into the last
+    # string.  The Boolean grammar never uses []{} or commas, so those must be
+    # dropped before v4 validation instead of failing the whole plan.
+    plan = (
+        '("lumen arrays" OR "lumen devices") AND ("phase drift" OR "state drift")',
+        '("rank analysis" OR "ordinal analysis") AND (definition OR validation)',
+        '("lumen arrays" OR "lumen devices") AND ("null model" OR mechanism)',
+        '("lumen arrays" OR "lumen devices") AND (limitations OR "failure modes" OR artifacts OR bias)]',
+    )
+    projected = literature_module._project_queries(
+        {"queries": list(plan)},
+        compiler_version="source-query-compiler-v4",
+    )
+    assert projected == (
+        '("lumen arrays" OR "lumen devices") AND ("phase drift" OR "state drift")',
+        '("rank analysis" OR "ordinal analysis") AND (definition OR validation)',
+        '("lumen arrays" OR "lumen devices") AND ("null model" OR mechanism)',
+        '("lumen arrays" OR "lumen devices") AND (limitations OR "failure modes" OR artifacts OR bias)',
+    )
+
+
+def test_strip_stray_json_delimiters_removes_only_outer_artifacts() -> None:
+    strip = literature_module._strip_stray_json_delimiters
+    assert strip('(a OR b) AND (c OR d)]') == "(a OR b) AND (c OR d)"
+    assert strip('[(a OR b) AND (c OR d)') == "(a OR b) AND (c OR d)"
+    assert strip('{(a OR b) AND (c OR d)},') == "(a OR b) AND (c OR d)"
+    assert strip('(a OR b) AND (c OR d)') == "(a OR b) AND (c OR d)"
+    assert strip('  (a OR b) AND ("c (x)" OR d)  ') == '(a OR b) AND ("c (x)" OR d)'
 
 
 def test_v4_query_plan_rejects_fifth_alternative_before_search_without_retry() -> None:

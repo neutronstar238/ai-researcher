@@ -83,7 +83,11 @@ class _PlanningLiteratureGapRepairModelOutput(StrictFrozenModel):
 
 
 class PlanningLiteratureGapRepairResponseReceipt(StrictFrozenModel):
-    """Exact provider response and its deterministic query-plan projection."""
+    """Exact provider response and its deterministic query-plan projection.
+
+    A receipt whose ``revision_failure_reason`` is set was produced by the one
+    bounded revision attempt and carries the deterministic revision message.
+    """
 
     schema_version: Literal["contest-planning-literature-gap-response-v1"] = (
         "contest-planning-literature-gap-response-v1"
@@ -92,7 +96,7 @@ class PlanningLiteratureGapRepairResponseReceipt(StrictFrozenModel):
         "planning-literature-gap-repair-query"
     )
     stage_input_hash: str = Field(pattern=_SHA256)
-    messages: tuple[dict[str, str], ...] = Field(min_length=3, max_length=3)
+    messages: tuple[dict[str, str], ...] = Field(min_length=3, max_length=4)
     messages_hash: str = Field(pattern=_SHA256)
     completion: dict[str, Any]
     completion_hash: str = Field(pattern=_SHA256)
@@ -102,6 +106,7 @@ class PlanningLiteratureGapRepairResponseReceipt(StrictFrozenModel):
     projection: PlanningLiteratureGapRepairProjection
     projection_hash: str = Field(pattern=_SHA256)
     model_calls: Literal[1] = 1
+    revision_failure_reason: str | None = Field(default=None, max_length=2_000)
     response_scope: Literal["evidence_terms_only_not_scientific_answer"] = (
         "evidence_terms_only_not_scientific_answer"
     )
@@ -109,9 +114,14 @@ class PlanningLiteratureGapRepairResponseReceipt(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _replay_receipt(self) -> PlanningLiteratureGapRepairResponseReceipt:
-        expected_messages = build_planning_literature_gap_repair_messages(
+        base_messages = build_planning_literature_gap_repair_messages(
             self.projection.diagnosis,
             self.projection.evidence_inputs,
+        )
+        expected_messages = (
+            (*base_messages, build_gap_repair_revision_message(self.revision_failure_reason))
+            if self.revision_failure_reason is not None
+            else base_messages
         )
         if self.messages != expected_messages:
             raise ValueError("gap-repair response messages do not replay")
@@ -120,6 +130,7 @@ class PlanningLiteratureGapRepairResponseReceipt(StrictFrozenModel):
         expected_stage_input_hash = planning_literature_gap_repair_stage_input_hash(
             self.projection.diagnosis,
             self.projection.evidence_inputs,
+            revision_failure_reason=self.revision_failure_reason,
         )
         if self.stage_input_hash != expected_stage_input_hash:
             raise ValueError("gap-repair response stage-input hash mismatch")
@@ -174,9 +185,11 @@ def build_planning_literature_gap_repair_messages(
             "content": (
                 "你是学术检索缺口修复智能体。不得回答研究问题、提出科学结论、生成文献"
                 "或改写非缺口查询。你只能为每个已诊断缺口角色选择2至4个短检索术语；"
-                "每个术语必须逐字来自给定证据的title或abstract，并准确返回evidence_hash"
-                "与matched_field。不得创造同义词、扩写、截断、重试或改变对象组。只输出"
-                "JSON对象，唯一顶层字段为repairs。"
+                "每个术语必须从给定证据的 candidate_terms 列表中逐字选择，且 term、"
+                "matched_field、evidence_hash 三者必须与该候选条目的三个字段完全一致、"
+                "一字不改；禁止把 title 条目标成 abstract 或把 abstract 条目标成 title，"
+                "禁止使用列表之外的任何词、同义词、缩写或你自己的领域知识，即使你认为"
+                "那些词检索效果更好。只输出JSON对象，唯一顶层字段为repairs。"
             ),
         },
         {
@@ -203,7 +216,13 @@ def build_planning_literature_gap_repair_messages(
             "content": _canonical_json_text(
                 {
                     "context_kind": "hash_bound_focus_or_broad_evidence",
-                    "evidence_inputs": [item.model_dump(mode="json") for item in evidence],
+                    "evidence_inputs": [
+                        {
+                            **item.model_dump(mode="json"),
+                            "candidate_terms": _candidate_terms(item.title, item.abstract),
+                        }
+                        for item in evidence
+                    ],
                     "output_contract": {
                         "repairs": [
                             {
@@ -226,6 +245,41 @@ def build_planning_literature_gap_repair_messages(
     )
 
 
+def build_gap_repair_revision_message(failure_reason: str) -> dict[str, str]:
+    """One deterministic revision instruction after a failed v4 projection."""
+
+    reason = str(failure_reason or "").strip() or "counterevidence gap"
+    return {
+        "role": "user",
+        "content": _canonical_json_text(
+            {
+                "context_kind": "program_rejected_gap_repair_projection",
+                "rejection_reason": reason,
+                "boundary": (
+                    "上一次修复投影被程序校验拒绝。请重选替换术语：counterevidence 角色"
+                    "的 replacement_terms 中必须包含至少一个表达证伪/反证概念的证据短语"
+                    "（例如证据中出现的 limitation、artifact、negative result、alternative "
+                    "explanation、bias、confounder、false positive、spurious effect 等强反证词）。"
+                    "术语仍必须逐字来自给定证据的 candidate_terms，其余规则不变。"
+                ),
+            }
+        ),
+    }
+
+
+def gap_repair_failure_is_revisable(exc: Exception) -> bool:
+    """True when one bounded revision attempt may fix the projection rejection."""
+
+    message = str(exc).casefold()
+    return "counterevidence" in message and (
+        "missing a falsifying concept" in message or "weak-only group" in message
+    )
+
+
+def _canonical_json_text(payload: Mapping[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
 def run_planning_literature_gap_repair_query(
     *,
     diagnosis: PlanningLiteratureGapDiagnosisReceipt,
@@ -236,8 +290,14 @@ def run_planning_literature_gap_repair_query(
     max_tokens: int = 768,
     completion: Callable[..., LLMJsonCompletionResult] = run_llm_json_completion,
     output_path: Path | str | None = None,
+    revision_failure_reason: str | None = None,
 ) -> PlanningLiteratureGapRepairResponseReceipt:
-    """Make at most one provider call, or replay an exact persisted response."""
+    """Make at most one provider call, or replay an exact persisted response.
+
+    ``revision_failure_reason`` marks the single bounded revision attempt: the
+    deterministic revision message is appended so the model must re-propose
+    replacement terms that satisfy the v4 counterevidence gate.
+    """
 
     evidence = _canonical_evidence(evidence_inputs)
     destination = Path(output_path) if output_path is not None else None
@@ -250,10 +310,19 @@ def run_planning_literature_gap_repair_query(
             raise PlanningLiteratureGapRepairResponseError(
                 "persisted gap-repair response belongs to different inputs"
             )
+        if persisted.revision_failure_reason != revision_failure_reason:
+            raise PlanningLiteratureGapRepairResponseError(
+                "persisted gap-repair response belongs to a different revision attempt"
+            )
         return persisted
     if max_tokens < 1:
         raise PlanningLiteratureGapRepairResponseError("gap-repair max_tokens must be positive")
-    messages = build_planning_literature_gap_repair_messages(diagnosis, evidence)
+    base_messages = build_planning_literature_gap_repair_messages(diagnosis, evidence)
+    messages = (
+        (*base_messages, build_gap_repair_revision_message(revision_failure_reason))
+        if revision_failure_reason is not None
+        else base_messages
+    )
     try:
         result = completion(
             messages=list(messages),
@@ -261,7 +330,7 @@ def run_planning_literature_gap_repair_query(
             env_path=env_path,
             timeout_seconds=timeout_seconds,
             max_tokens=max_tokens,
-            temperature=0.2,
+            temperature=0.2 if revision_failure_reason is None else 0.4,
             thinking_mode="disabled",
             thinking_budget=None,
             response_schema=_gap_repair_response_schema(),
@@ -283,6 +352,7 @@ def run_planning_literature_gap_repair_query(
         "stage_input_hash": planning_literature_gap_repair_stage_input_hash(
             diagnosis,
             evidence,
+            revision_failure_reason=revision_failure_reason,
         ),
         "messages": list(messages),
         "messages_hash": canonical_model_hash({"messages": list(messages)}),
@@ -296,6 +366,7 @@ def run_planning_literature_gap_repair_query(
         "projection": projection.model_dump(mode="json"),
         "projection_hash": projection.projection_hash,
         "model_calls": 1,
+        "revision_failure_reason": revision_failure_reason,
         "response_scope": "evidence_terms_only_not_scientific_answer",
     }
     payload["receipt_hash"] = canonical_model_hash(payload)
@@ -313,6 +384,41 @@ def load_planning_literature_gap_repair_response(
     return PlanningLiteratureGapRepairResponseReceipt.model_validate_json(
         Path(path).read_text(encoding="utf-8")
     )
+
+
+def _candidate_terms(
+    title: str,
+    abstract: str | None,
+    *,
+    cap_per_field: int = 24,
+) -> list[dict[str, str]]:
+    """Extract bounded 2-3 token n-grams the model may copy verbatim.
+
+    These candidates are exact substrings of the evidence, so a term the model
+    copies from this catalog always passes ``_term_occurs_in_evidence``.
+    """
+
+    candidates: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for field, text in (("title", title), ("abstract", abstract or "")):
+        tokens = text.split()
+        if not tokens:
+            continue
+        field_candidates: list[dict[str, str]] = []
+        for width in (3, 2):
+            for index in range(len(tokens) - width + 1):
+                term = " ".join(tokens[index : index + width])
+                key = term.casefold()
+                if key in seen or len(term) > 72:
+                    continue
+                if any(character in term for character in ('"', "\\", "(", ")", "*", "?")):
+                    continue
+                if term.casefold().split()[0] in {"no", "zero", "without", "not"}:
+                    continue
+                seen.add(key)
+                field_candidates.append({"term": term, "matched_field": field})
+        candidates.extend(field_candidates[:cap_per_field])
+    return candidates
 
 
 def _canonical_evidence(
@@ -358,25 +464,27 @@ def _parse_model_output(
 def planning_literature_gap_repair_stage_input_hash(
     diagnosis: PlanningLiteratureGapDiagnosisReceipt,
     evidence: Sequence[PlanningLiteratureGapRepairEvidenceInput],
+    *,
+    revision_failure_reason: str | None = None,
 ) -> str:
-    return canonical_model_hash(
-        {
-            "stage": "planning-literature-gap-repair-query",
-            "diagnosis_hash": diagnosis.diagnosis_hash,
-            "coverage_receipt_hash": diagnosis.coverage_receipt_hash,
-            "evidence_inputs": [item.model_dump(mode="json") for item in evidence],
-        }
-    )
-
-
-def _canonical_json_text(payload: Mapping[str, Any]) -> str:
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    payload: dict[str, Any] = {
+        "stage": "planning-literature-gap-repair-query",
+        "diagnosis_hash": diagnosis.diagnosis_hash,
+        "coverage_receipt_hash": diagnosis.coverage_receipt_hash,
+        "evidence_inputs": [item.model_dump(mode="json") for item in evidence],
+    }
+    if revision_failure_reason is not None:
+        # Legacy checkpoints (primary attempts) must keep their exact hash shape.
+        payload["revision_failure_reason"] = revision_failure_reason
+    return canonical_model_hash(payload)
 
 
 __all__ = [
     "PlanningLiteratureGapRepairResponseError",
     "PlanningLiteratureGapRepairResponseReceipt",
+    "build_gap_repair_revision_message",
     "build_planning_literature_gap_repair_messages",
+    "gap_repair_failure_is_revisable",
     "load_planning_literature_gap_repair_response",
     "planning_literature_gap_repair_stage_input_hash",
     "run_planning_literature_gap_repair_query",

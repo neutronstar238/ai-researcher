@@ -631,20 +631,11 @@ def test_qwen_receipt_identity_and_all_hashes_fail_closed(tmp_path: Path) -> Non
     receipt = payload["rounds"][0]["author_receipt"]
     receipt["provider"] = "generic-provider"
     receipt["model_name"] = "generic-model"
-    receipt_exclusions = {"receipt_hash", "output_path"}
-    if receipt.get("context_preparation_hash") is None:
-        receipt_exclusions.update(
-            {
-                "delivered_messages_sha256",
-                "context_preparation_hash",
-                "context_preparation_relative_path",
-            }
-        )
     receipt["receipt_hash"] = canonical_model_hash(
         {
             key: value
             for key, value in receipt.items()
-            if key not in receipt_exclusions
+            if key not in {"receipt_hash", "output_path"}
         }
     )
     round_payload = payload["rounds"][0]

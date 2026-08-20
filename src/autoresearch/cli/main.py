@@ -7087,7 +7087,7 @@ def _write_slash_command_templates(directory: Path, *, force: bool) -> tuple[int
 def _autopilot_literature_clients(cache_root: Path) -> dict[str, LiteratureSearchClient]:
     circuit_state_path = cache_root / "source-circuit-breakers.json"
     clients: dict[str, LiteratureSearchClient] = {
-        "arxiv": ArxivClient(),
+        "arxiv": ArxivClient(circuit_state_path=circuit_state_path),
         "openalex": OpenAlexClient(circuit_state_path=circuit_state_path),
     }
     if semantic_scholar_enabled():

@@ -3877,9 +3877,12 @@ def test_autopilot_literature_clients_share_persistent_circuit_state(
     monkeypatch.setenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR", "1")
     clients = cli_main._autopilot_literature_clients(tmp_path / "cache")
 
+    arxiv = clients["arxiv"]
     semantic = clients["semantic_scholar"]
     openalex = clients["openalex"]
 
+    assert arxiv.circuit_breaker.state_path == tmp_path / "cache" / "source-circuit-breakers.json"
+    assert arxiv.circuit_breaker.state_key == "arxiv"
     assert semantic.circuit_breaker.state_path == tmp_path / "cache" / "source-circuit-breakers.json"
     assert semantic.circuit_breaker.state_key == "semantic_scholar"
     assert openalex.circuit_breaker.state_path == tmp_path / "cache" / "source-circuit-breakers.json"

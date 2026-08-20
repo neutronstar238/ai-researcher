@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -101,7 +101,7 @@ class DeterministicSprintFixture:
                 "Select a falsifiable local systems experiment and generate a complete "
                 "evidence-bound report without post-start manual research decisions."
             ),
-            deadline=datetime.now(timezone.utc) + timedelta(days=30),
+            deadline=datetime(2026, 8, 15, 23, 59, tzinfo=timezone.utc),
             route_a_campaign_path=route,
             llm_config_path=llm,
         )
@@ -241,7 +241,7 @@ class DeterministicSprintFixture:
             benchmark_id=benchmark_dir.name,
             project_id="task262-sprint-migration",
             created_at=datetime.now(timezone.utc),
-            deadline=datetime.now(timezone.utc) + timedelta(days=30),
+            deadline=datetime(2026, 8, 15, 23, 59, tzinfo=timezone.utc),
             route_a_campaign_path=(self.root / "route-a").as_posix(),
             route_a_manifest_sha256="c" * 64,
             route_a_lineage_hash="d" * 64,

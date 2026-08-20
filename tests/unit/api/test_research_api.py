@@ -60,7 +60,7 @@ class FakeDirectionRunner:
         )
         return {
             "schema_version": "contest-direction-research-loop-delivery-v2",
-            "literature_protocol": "two_stage_literature_v4",
+            "literature_protocol": "two_stage_literature_v5",
             "status": "completed",
             "independent_scientific_review": {"recommendation": "pass"},
             "preexperiment_executed": True,
@@ -89,7 +89,7 @@ class FakeBatchService:
         self.calls.append(kwargs)
         return {
             "schema_version": "science125-batch-report-v2",
-            "literature_protocol": "two_stage_literature_v4",
+            "literature_protocol": "two_stage_literature_v5",
             "status": "dry_run" if kwargs["dry_run"] else "completed",
             "question_count": kwargs["limit"],
             "provider_calls": 0 if kwargs["dry_run"] else 1,

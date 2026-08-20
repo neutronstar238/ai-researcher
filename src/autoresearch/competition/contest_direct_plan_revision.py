@@ -48,22 +48,22 @@ from autoresearch.llm.client import LLMJsonCompletionResult, run_llm_json_comple
 _SHA256 = r"^[0-9a-f]{64}$"
 _SHA256_TEXT = re.compile(_SHA256)
 _NUMBER = re.compile(
-    r"(?<![A-Za-z0-9_.])"
+    r"(?<![A-Za-z0-9_.])(?<![A-Za-z]-)"
     r"(?P<number>[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?)"
     r"(?P<percent>\s*[%％])?"
 )
 _SCIENTIFIC_MULTIPLICATION = re.compile(
-    r"(?<![A-Za-z0-9_.])"
+    r"(?<![A-Za-z0-9_.])(?<![A-Za-z]-)"
     r"(?P<mantissa>[-+]?(?:\d+(?:\.\d+)?|\.\d+))"
     r"\s*(?:×|·|\*|\\(?:times|cdot)|\x09imes)\s*10\s*\^\s*"
     r"(?:\{\s*)?(?P<exponent>[-+]?\d+)(?:\s*\})?"
     r"(?P<percent>\s*[%％])?"
 )
 _POWER_OF_TEN = re.compile(
-    r"(?<![A-Za-z0-9_.])" r"10\s*\^\s*(?P<exponent>[-+]?\d+)" r"(?P<percent>\s*[%％])?"
+    r"(?<![A-Za-z0-9_.])(?<![A-Za-z]-)" r"10\s*\^\s*(?P<exponent>[-+]?\d+)" r"(?P<percent>\s*[%％])?"
 )
 _MILLION_SUFFIX = re.compile(
-    r"(?<![A-Za-z0-9_.])"
+    r"(?<![A-Za-z0-9_.])(?<![A-Za-z]-)"
     r"(?P<number>[-+]?(?:\d+(?:\.\d+)?|\.\d+))"
     r"\s*(?:[Mm](?![A-Za-z])|million\b|百万)"
     r"(?P<percent>\s*[%％])?",
@@ -173,6 +173,14 @@ _ALIASES = {
 
 class ContestDirectPlanRevisionError(RuntimeError):
     """Raised when verified evidence cannot yield one auditable revision."""
+
+
+class ContestDirectPlanNumberGuardError(ContestDirectPlanRevisionError):
+    """Raised by the observed-number guard when the model output needs a rewrite.
+
+    Subclassed so callers (for example the mainline delivery) can retry exactly
+    the model-quality rejections while keeping evidence-binding failures fatal.
+    """
 
 
 @dataclass(frozen=True)
@@ -436,6 +444,13 @@ def build_contest_direct_plan_revision_messages(
                     "不得合并为同一证据。没有进入输入的数值、文献或实验均不得新增为"
                     "已观察事实；未来正式实验的设计建议必须使用计划语气。中文报告不需"
                     "凑长度，技术名、公式和论文题名可保留原文。"
+                    "引用预实验数值时不要直接写数字：使用 [[pilot:字段路径]] 占位符，"
+                    "字段路径指向上文 program_verified_exploratory_preexperiment 消息中 "
+                    "artifact/metrics JSON 的实际路径（例如 "
+                    "[[pilot:aggregate_results.0.delta_observed_minus_null]]、"
+                    "[[pilot:interval_results.0.gap_count]]、[[pilot:parameters.interval_count]]）。"
+                    "程序会用已核验的真实值（含符号与精度）替换占位符；"
+                    "写错路径会导致修订被拒绝，因此只引用上文 JSON 中真实存在的路径。"
                 ),
             },
         )
@@ -558,7 +573,6 @@ def revise_contest_direct_plan(
         input_payload["verified_revision_context_sha256"] = revision_context_hash
     if memory_context_hash is not None:
         input_payload["derived_memory_context_sha256"] = memory_context_hash
-    input_hash = canonical_model_hash(input_payload)
     messages = build_contest_direct_plan_revision_messages(
         scientific_problem=scientific_problem,
         requirements=requirements,
@@ -572,6 +586,13 @@ def revise_contest_direct_plan(
         verified_revision_context=revision_context,
         derived_memory_context=memory_context,
     )
+    # Bind the exact delivered messages into the revision identity so any prompt
+    # template change produces a new revision_id instead of colliding with
+    # previously persisted authorship receipts.
+    input_payload["messages_sha256"] = canonical_model_hash(
+        {"messages": [dict(item) for item in messages]}
+    )
+    input_hash = canonical_model_hash(input_payload)
     completion = llm_call(
         messages=messages,
         config_path=config_path,
@@ -601,6 +622,13 @@ def revise_contest_direct_plan(
 
     normalized, reference_projection = _normalize_revision_payload(
         completion.parsed_json, references=references
+    )
+    # 程序注入已核验数值：模型正文中的 [[pilot:字段路径]] 占位符由程序用已核验的
+    # metrics/artifact 真实值替换（含符号与精度），模型不再转录任何数字。
+    normalized, placeholders = _resolve_pilot_placeholders(
+        normalized,
+        preexperiment_metrics=metrics_payload,
+        preexperiment_artifact=artifact_payload,
     )
     try:
         revised_plan = ContestDirectRevisedScientificPlan.model_validate(normalized)
@@ -1029,6 +1057,106 @@ def _text(value: Any) -> str:
     return "" if value is None else str(value).strip()
 
 
+_PILOT_PLACEHOLDER = re.compile(r"\[\[pilot:([A-Za-z0-9_.\-]+)\]\]")
+_PILOT_MISSING = object()
+
+
+def _resolve_pilot_placeholders(
+    normalized: dict[str, Any],
+    *,
+    preexperiment_metrics: Mapping[str, Any],
+    preexperiment_artifact: Mapping[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    """Substitute model-authored ``[[pilot:path]]`` placeholders with verified values.
+
+    The path walks the verified metrics JSON first, then the pilot artifact.  An
+    unknown path or a non-scalar resolution fails closed with a
+    ``ContestDirectPlanNumberGuardError`` so the bounded revision can retry.
+    """
+
+    def lookup(path: str) -> Any:
+        for source in (preexperiment_metrics, preexperiment_artifact):
+            cursor: Any = source
+            for part in path.split("."):
+                if isinstance(cursor, Mapping):
+                    cursor = cursor.get(part, _PILOT_MISSING)
+                elif isinstance(cursor, Sequence) and not isinstance(
+                    cursor, str | bytes | bytearray
+                ):
+                    try:
+                        cursor = cursor[int(part)]
+                    except (ValueError, IndexError):
+                        cursor = _PILOT_MISSING
+                else:
+                    cursor = _PILOT_MISSING
+                if cursor is _PILOT_MISSING:
+                    break
+            if cursor is not _PILOT_MISSING:
+                return cursor
+        return _PILOT_MISSING
+
+    resolved: list[dict[str, str]] = []
+
+    def format_scalar(value: Any) -> str:
+        if isinstance(value, bool):
+            raise ContestDirectPlanNumberGuardError(
+                "pilot placeholder resolves to a boolean"
+            )
+        if isinstance(value, int):
+            return str(value)
+        if isinstance(value, float):
+            return format(value, ".12g")
+        if isinstance(value, str):
+            return value
+        raise ContestDirectPlanNumberGuardError(
+            "pilot placeholder resolves to a non-scalar value"
+        )
+
+    def substitute(text: str) -> str:
+        def replace(match: re.Match[str]) -> str:
+            path = match.group(1)
+            value = lookup(path)
+            if value is _PILOT_MISSING:
+                raise ContestDirectPlanNumberGuardError(
+                    f"pilot placeholder path not found in verified metrics/artifact: "
+                    f"[[pilot:{path}]]"
+                )
+            if isinstance(value, list | tuple):
+                if value and all(
+                    isinstance(item, Mapping)
+                    and isinstance(item.get("start"), int | float | str)
+                    and isinstance(item.get("stop"), int | float | str)
+                    for item in value
+                ):
+                    formatted = "、".join(
+                        f"[{format_scalar(item['start'])}, {format_scalar(item['stop'])})"
+                        for item in value
+                    )
+                elif any(
+                    not isinstance(item, str | int | float) or isinstance(item, bool)
+                    for item in value
+                ):
+                    raise ContestDirectPlanNumberGuardError(
+                        f"pilot placeholder resolves to a non-scalar value: [[pilot:{path}]]"
+                    )
+                else:
+                    formatted = "、".join(format_scalar(item) for item in value)
+            else:
+                formatted = format_scalar(value)
+            resolved.append({"path": path, "value": formatted})
+            return formatted
+
+        return _PILOT_PLACEHOLDER.sub(replace, text)
+
+    return (
+        {
+            field: (substitute(text) if isinstance(text, str) else text)
+            for field, text in normalized.items()
+        },
+        resolved,
+    )
+
+
 def _normalize_revision_payload(
     payload: Mapping[str, Any], *, references: tuple[str, ...]
 ) -> tuple[dict[str, Any], LockedReferenceProjection]:
@@ -1078,19 +1206,19 @@ def _guard_observed_numbers(
     observed_results = _evidence_claim_text(plan.results)
     result_numbers = _claim_numbers(observed_results)
     if not result_numbers:
-        raise ContestDirectPlanRevisionError(
+        raise ContestDirectPlanNumberGuardError(
             "revised Results must quote at least one verified preexperiment number"
         )
     unsupported_result_numbers = sorted(
         {claim.raw for claim in result_numbers if not _matches_source(claim, evidence_numbers)}
     )
     if unsupported_result_numbers:
-        raise ContestDirectPlanRevisionError(
+        raise ContestDirectPlanNumberGuardError(
             "revised Results contain numbers absent from verified preexperiment evidence: "
             + ", ".join(unsupported_result_numbers)
         )
     if not any(marker in plan.results for marker in ("替代解释", "另一种解释", "可能解释")):
-        raise ContestDirectPlanRevisionError(
+        raise ContestDirectPlanNumberGuardError(
             "revised Results must state at least one alternative explanation"
         )
     allowed = evidence_numbers | _source_numbers(
@@ -1116,7 +1244,7 @@ def _guard_observed_numbers(
         }
     )
     if introduced:
-        raise ContestDirectPlanRevisionError(
+        raise ContestDirectPlanNumberGuardError(
             "revised evidence claims introduced numbers absent from verified inputs: "
             + ", ".join(introduced)
         )
@@ -1380,6 +1508,7 @@ def _write_immutable_bytes(path: Path, content: bytes) -> None:
 
 
 __all__ = [
+    "ContestDirectPlanNumberGuardError",
     "ContestDirectPlanRevisionArtifact",
     "ContestDirectPlanRevisionError",
     "ContestDirectRevisedScientificPlan",

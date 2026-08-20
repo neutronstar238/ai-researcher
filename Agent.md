@@ -245,6 +245,7 @@ This file defines the project development standard for coding agents and records
 - Not verified: 4 pre-existing tests in `tests/unit/competition/test_scientific_contract_harness.py` fail because the Poetry environment has no NumPy; the runner imports NumPy at line 25 and scientific dependencies live in the pinned container by design. These failures are unrelated to this change and reproduce on the unmodified files. A pre-existing mypy error at `scientific_contract_harness.py:2492` (`_inside` expects `str`, receives `Path`) also predates this work.
 - Follow-up: Tasks `267.5` (replace the falsified parent-conditioned evolution search with dictionary-plus-set-level selection), `267.6` (preregister the dual publishable-outcome definition and treat enabled reasoning as a measured variable, not an assumption), and `267.7` (run the repaired loop and let the system author its own outcome) remain open. The suspected reasoning-chain effect on scientific quality is explicitly NOT claimed: a 3-seed probe was directionally consistent but far too small, and Route P2 must measure it.
 
+
 ### 2026-08-01 07:29:05 +08:00 - Codex - Task 266.1.1 sentinel-identifiability erratum
 
 - Request: Continue the real competition-grade autonomous-research recovery after Task `266.1`; implement the scientific-contract Harness without manufacturing publishability, while preserving system-originated research and the sealed confirmation boundary. During the required pre-implementation audit, correct any experimental-design defect before it can bias candidate evaluation.
@@ -17124,31 +17125,379 @@ This file defines the project development standard for coding agents and records
 - Problems: 新增并解决 `P-20260816-022`（修订引入证据外数字 2310 被守卫拒绝；修订要求与断点续跑修复）。`P-20260815-021`、`P-20260809-108` 仍 Open。
 - Follow-up: (1) 用户提供脱敏阿里云百炼调用截图后纳入提交材料；(2) 科学修正 CLI（`contest_direction_scientific_amendment_cli`）source 契约适配到主链 delivery 格式（后续计划）；(3) 自主搜索灵感线继续标注开发中。
 
-### 2026-08-16 12:52:56 +08:00 - DeepSeek Harness - 修复 CI：mypy 类型错误与被掩盖的 pytest 测试漂移
+### 2026-08-16 - DeepSeek Harness - 方向A 链路缺陷修复（LaTeX 数学符号 + xelatex + DOI 校验）
 
-- Request: 用户报告"本地没问题的代码交上去 CI 就 WA（失败）"，要求查明原因并修复 CI。
+- Request: 用户反馈方向A（Science 125）链路存在三类问题：正文泄漏 LaTeX 数学符号（\$...\$、\in、\{...\}、α→�）、参考文献错误引用（正文 [n] 与最终文献表对不上）且文献偏少、参考文献区泄漏内部元数据。要求先修通链路再进批量多题目。
 - Files changed:
-  - src/autoresearch/research/adaptive_capabilities.py
-  - src/autoresearch/competition/contest_direction_skill_evolution.py
-  - src/autoresearch/competition/official_development_search.py
-  - src/autoresearch/competition/model_authorship.py
-  - 	ests/unit/research/test_adaptive_capabilities.py
-  - 	ests/unit/competition/test_contest_direction_skill_evolution.py
-  - 	ests/unit/competition/test_final_research_report.py
-  - 	ests/unit/competition/test_plan_execution_contract.py
-  - 	ests/unit/competition/test_system_plan_component_atoms.py
-  - 	ests/unit/competition/test_system_plan_methodology.py
-  - Problem.md（新增 P-20260816-023）
-  - Agent.md（本条目）
-- Summary: 排查 GitHub Actions 最近 4 次运行：最新失败在 Run mypy（daptive_capabilities.py:158 把 int | None 传给 int 字段），pytest 步骤从未被执行。用本地 3.10 poetry 环境（mypy 1.20.2，与 lock 一致）复现后修复：rom_academic_paper 将 citation_count or 0 归一化并同时用于内容哈希 payload 与构造参数。mypy 修好后用 6 个并行子代理对完整 	ests/smoke tests/unit 扫描，发现并修复被掩盖的第二批真实失败：(1) skill-evolution 停用词缺 or/
-ot，fixture 只给 2 条查询而 v4 编译器要求恰好 4 条；(2) 正式计划审批门在合同编译之后才触发，编译错误会掩盖缺审批；(3) v2 作者身份回放没有剥离编排器预置的 equired_intervention_identity 声明；(4) 测试硬编码本机 C:/Users/Z/.codex/.../quick_validate.py 路径，Linux CI 会 FileNotFoundError（改为本机存在时才执行）；(5) 5 处过期测试断言（消息数 [2,3]→[3,4]、v3 候选对齐源生成器、回执哈希排除组、技能目录 6 个 ID）。未削弱任何安全/审批/哈希守卫。
+  - src/autoresearch/competition/contest_direct_plan_render.py（新增 _normalize_latex_math_in_text + _LATEX_MATH_COMMANDS + _MATH_SYMBOLS，重写 _tex_escape）
+  - src/autoresearch/research/plans.py（_latex_command 改为优先 xelatex）
+  - src/autoresearch/literature/doi_verification.py（新增，Crossref DOI 解析与标题一致性校验）
+  - 	ests/unit/competition/test_contest_direct_plan_render.py（新增 3 个数学归一化测试）
+  - 	ests/unit/literature/test_doi_verification.py（新增，8 个测试）
+  - Agent.md（本条目）、Problem.md（新增 P-20260816-023）
+- Summary: (1) 正文 LaTeX 数学符号泄漏根因是 _tex_escape 只转义不归一化——模型输出的 \$...\$、\in、\{...\} 被转义成可见的 \$/\textbackslash{}/\{。新增 _normalize_latex_math_in_text 在转义前把数学定界符与命令投影为 Unicode（\in→∈、\{→{、10^{5}→10^5、\frac{a}{b}→a/b 等），并把全部希腊字母与数学符号加入 _MATH_SYMBOLS 走 \ensuremath{}，修复 α→�。(2) _latex_command 原先优先 latexmk，而 MiKTeX 的 latexmk 依赖 perl（本机缺失），导致编译假失败；改为优先 xelatex（无需 perl）。(3) 新增 Crossref DOI 解析校验，DOI 必须能解析且（给定期望标题时）标题一致，否则返回 unresolved/mismatch，作为防虚构引用的确定性能力。
 - Verification:
-  - poetry run ruff check src tests：All checks passed。
-  - poetry run mypy src：Success: no issues found in 296 source files（本地 mypy 版本 1.20.2 与 poetry.lock 一致，Python 3.10.20 与 CI 一致）。
-  - poetry run pytest tests/smoke tests/unit（本地全量）：3101 passed, 48 skipped；剩余 10 个失败全部为 DSH Windows 沙箱对 0o700 临时目录/ACL 的限制（PermissionError 类），在 Linux CI 上无此路径（其中 2 个测试按 skipif 在干净检出上跳过）。
-  - 通过 gh api 核对历史 4 次失败运行的失败步骤（3×ruff/mypy、1×mypy），确认本次修复覆盖当前失败面。
-- Problems: 新增并解决 P-20260816-023。P-20260815-021（OpenAlex key）、P-20260809-108 仍 Open。
-- Follow-up: 推送后观察 CI 实际运行结果；若沙箱未覆盖的 Linux-only 测试仍有失败，按 CI 日志继续收敛。
+  - pytest tests/unit/competition/test_contest_direct_plan_render.py：19 passed（含真实 xelatex 编译 PDF 冒烟测试）。
+  - pytest tests/unit/literature/test_doi_verification.py：8 passed。
+  - 相邻回归：	est_contest_reference_policy.py / 	est_contest_direct_plan.py / 	est_research_plan_latex.py / 	est_latex.py 共 71 passed。
+  - uff check 全绿；mypy 对本轮改动文件无报错（仅剩预存在的 yaml/toml 缺 stub）。
+  - Live Crossref 冒烟：erify_doi('10.1103/PhysRevLett.88.174102', expected_title='Permutation Entropy: ...') 返回 status=resolved, title_match=match, resolved_authors=['Christoph Bandt','Bernd Pompe']。
+- Problems: 新增 P-20260816-023（latexmk 依赖 perl 导致编译假失败；已通过优先 xelatex 解决）。沿用 P-20260815-021（arXiv 429 限流 + OpenAlex 需 API key 导致文献少，仍 Open）。
+- Follow-up: (1) 把 erify_doi 接入 finalist 状态校验（_select_planning_literature_with_coverage_and_status 的 per-finalist 验证），或作为可选 --verify-doi 门；(2) 检索召回加固：arXiv 429 退避/断路器 + 多源降级；(3) 端到端 live 验证需 qwen-dashscope base_url/model_name/key（key 不通过聊天发送）。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 检索召回加固：arXiv 429 断路器 + 持久化
+
+- Request: 继续目标「提升检索召回」，解决 P-20260815-021 的代码侧根因（arXiv 429 限流导致 targeted 检索返回 0 篇、文献数跌到 5 条下限）。
+- Files changed:
+  - src/autoresearch/literature/clients.py（ArxivClient 新增 circuit_breaker/circuit_state_path 参数；_get_with_retry 增加 429 断路器处理，与 OpenAlex/SemanticScholar 一致）
+  - src/autoresearch/cli/main.py（_autopilot_literature_clients 给 arxiv 也传入持久化 source-circuit-breakers.json）
+  - 	ests/unit/literature/test_clients.py（新增 2 个 arXiv 429 测试）
+  - 	ests/unit/cli/test_main.py（扩展电路状态持久化断言到 arxiv）
+  - Agent.md（本条目）
+- Summary: ArxivClient 原先只有速率限制、无断路器：429 时会在 3 次退避重试内反复触达限流源。现与 OpenAlex/SemanticScholar 对齐——遇 429 记录限流并立即抛 SourceRateLimitError（不再 hammer），断路器在冷却期内拦截后续请求，且通过 source-circuit-breakers.json 跨进程持久化。这直接缓解 P-20260815-021 的 arXiv 24 连 429。
+- Verification:
+  - pytest tests/unit/literature：80 passed（含新增 	est_arxiv_429_opens_circuit_breaker_without_hammering、	est_arxiv_429_honors_retry_after_cooldown）。
+  - pytest tests/unit/cli/test_main.py::test_autopilot_literature_clients_share_persistent_circuit_state 等 2 项 passed。
+  - uff check 全绿；mypy 对改动文件无新报错（仅剩预存在 yaml 缺 stub）。
+- Problems: 沿用 P-20260815-021（OpenAlex 仍需用户在 .env 配免费 OPENALEX_API_KEY；arXiv 断路器已就位但真实 429 恢复仍需现场验证）。
+- Follow-up: (1) 把 erify_doi（Crossref 真伪校验）接入 finalist 校验链（涉及 lineage 哈希链，需单独谨慎变更并 bump schema）；(2) 端到端 live 验证需 qwen-dashscope base_url/model_name/key。
+
+### 2026-08-16 - DeepSeek Harness - 方向A DOI 真伪校验批量接口（verify_reference_records）
+
+- Request: 继续目标「真伪校验（DOI/Crossref 解析）」，为已建好的 erify_doi 能力补批量接口，便于接入 finalist 校验链。
+- Files changed:
+  - src/autoresearch/literature/doi_verification.py（新增 ReferenceVerificationReceipt、erify_reference_records、_formal_doi；扩展 __all__）
+  - 	ests/unit/literature/test_doi_verification.py（新增 4 个批量接口测试，共 11 项）
+  - Agent.md（本条目）
+- Summary: erify_reference_records 对参考目录做确定性批量 DOI 校验：仅对带正式 DOI 的记录调 erify_doi（repository_doi/无 DOI 记录跳过，其 arXiv/OpenAlex URL 由检索谱系单独核验），返回含 resolved/mismatch/skipped 计数的 ReferenceVerificationReceipt。不改变输入记录，供 finalist 校验链或独立审计步骤消费。
+- Verification: pytest tests/unit/literature/test_doi_verification.py：11 passed；uff check 全绿；mypy 对改动文件无新报错。
+- Problems: 无新增。P-20260815-021（OpenAlex key）仍 Open。
+- Follow-up: 把 erify_reference_records 接入 finalist 校验链（新增独立 receipt 文件、不改既有 status receipt 哈希语义）；端到端 live 验证需 qwen-dashscope 配置。
+
+### 2026-08-16 - DeepSeek Harness - 方向A DOI 真伪校验接入 finalist 链（opt-in 非阻塞）
+
+- Request: 继续目标「真伪校验（DOI/Crossref 解析）」，把 erify_reference_records 接入方向闭环的 finalist 校验链。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_research_loop_cli.py（新增 import os、import verify_reference_records、_DOI_VERIFICATION_SCHEMA、_doi_verification_enabled、_record_finalist_doi_verification；在 planning catalog 定稿后、coverage receipt 前调用）
+  - 	ests/unit/competition/test_contest_direction_research_loop_cli.py（新增 2 个测试）
+  - Agent.md（本条目）
+- Summary: 在 _prepare_two_stage_literature 中，planning catalog 定稿后调用 _record_finalist_doi_verification，对 5–10 条 finalist 的正式 DOI 做 Crossref 解析 + 标题一致性校验，写入 literature/finalist-doi-verification.json。设计为**opt-in + 非阻塞**：默认关闭（AUTORESEARCH_ENABLE_DOI_VERIFICATION=1 开启），网络错误降级为 per-DOI error 状态、绝不中断闭环；resume 复用既有 receipt、不重复请求。该 receipt 是独立审计证据，不进入既有 status/coverage 哈希链，避免破坏 lineage 重放。
+- Verification: pytest tests/unit/competition/test_contest_direction_research_loop_cli.py：45 passed（含新增 	est_doi_verification_enabled_flag_is_opt_in、	est_record_finalist_doi_verification_writes_and_reuses_receipt）。uff check 对改动文件无新报错（仅剩该测试文件里既有的 C420）；mypy 对本文件无新报错（仅剩预存在缺 stub/arg-type）。
+- Problems: 无新增。P-20260815-021（OpenAlex key）仍 Open。
+- Follow-up: 端到端 live 验证（需 qwen-dashscope base_url/model_name/key）；用户提供 OpenAlex/Crossref key 后实测 DOI 校验在真实检索链中的表现。
+
+### 2026-08-16 - DeepSeek Harness - 方向A live 验证：修复合并阶段重复检索边校验失败
+
+- Request: 用户提供百炼/OpenAlex 凭据后，首次端到端 live 验证（q001 素数间隙方向闭环）。检索恢复正常后，在「合并文献」阶段暴露真实边界 bug。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_merged_literature.py（_merge_group 对 (stage, artifact_hash, fetch_id) 去重）
+  - Agent.md（本条目）
+- Summary: 同一 fetch（一次查询×来源）可返回同一篇论文两次、元数据略有差异；artifact 层按元数据差异未去重（两条 record），但 merge 层按标题+作者归为一组，导致两条记录指向同一 etch_id，触发 merged literature retrieval edges must be unique 校验。修复为在 merge 组装 etrievals 时按 (stage, artifact_hash, fetch_id) 去重（重复边不携带额外溯源信息）。live 产物验证：broad 156 + targeted 142 → merged 273（跨阶段去重 25），merge 通过。
+- Verification: pytest tests/unit/competition/test_contest_direction_merged_literature.py 11 passed；uff check 全绿；	mp/verify_merge_fix.py 对 live 产物重跑 merge 成功。
+- Problems: 无新增。P-20260815-021（OpenAlex key）已通过用户配置解决。
+- Follow-up: 继续 live 全程验证（merge 之后的 planning lock / Skill 路由 / 假设 / 预实验 / 反馈 / 评审 / 渲染 PDF）。
+
+### 2026-08-16 - DeepSeek Harness - 方向A live 验证：方向闭环补上修订「数字边界」约束
+
+- Request: 继续 live 全程验证。上一轮合并修复后，运行推进到「反馈修订」阶段，被数字守卫正确拦截：模型引入证据外数字 10^9、2310。此即 P-20260816-022 同一缺陷类，但当时只修了 mainline 路径，方向闭环漏修。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_research_loop_cli.py（新增 _REVISION_NUMBER_BOUNDARY，并注入 fresh/resume 两处 evision_requirements）
+  - Agent.md（本条目）
+- Summary: 方向闭环的 evision_requirements 原先只含 _LOOP_REQUIREMENTS + provisional 边界，缺「除所给指标与日志中已出现的数值外不得引入任何新数字」约束。补 _REVISION_NUMBER_BOUNDARY（与 mainline _MAINLINE_REVISION_REQUIREMENTS 一致）后，修订模型会被告知不得写出 10^9/2310 等证据外数值，从而通过 _guard_observed_numbers。
+- Verification: pytest tests/unit/competition/test_contest_direction_research_loop_cli.py 45 passed；uff check 全绿。
+- Problems: 无新增。沿用 P-20260816-022（本缺陷类的方向闭环补修）。
+- Follow-up: 继续 live 全程验证（修订之后的客观评审 → 最终计划 → 科学评审 → 渲染 PDF）。
+
+### 2026-08-16 - DeepSeek Harness - 方向A live 验证：修复科学评审引用校验格式不一致
+
+- Request: 继续 live 全程验证。修订阶段通过后，最终独立科学评审在 alidate_locked_bibliography 失败：inal bibliography contains entries outside the locked real catalog。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_research_loop_cli.py（fresh/resume 两处 scientific_review_runner(final_plan=...) 由 endered.json_path 改为 plan）
+  - Agent.md（本条目）
+- Summary: 科学评审原先传入「渲染后的公开 JSON」（参考文献已是展示格式，如「作者：…；题名：…；URL：…」），却拿它与「原始锁定目录」（参考文献是原始元数据格式，如「题名：…；作者：…；DOI：…」）做精确比对，格式不一致导致误判「目录外条目」。改为传入修订产物 plan（contest-direct-plan-revision-v1），其 plan.references 是经 project_locked_reference_selection 投影的原始目录字符串，与 inal_reference_catalog 同格式。
+- Verification: pytest tests/unit/competition/test_contest_direction_research_loop_cli.py tests/unit/competition/test_contest_direct_plan_scientific_review.py 61 passed；uff check 全绿。
+- Problems: 无新增。
+- Follow-up: 继续 live 全程验证（科学评审之后的交付 gate 与最终收尾）。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 内容硬伤修复：数据规模一致性 + 禁止无文献机制归因
+
+- Request: 用户指出 live 运行最终评审的 major_revision 两点是「直接拒稿级」硬伤，要求修复后准备批量 124 题。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_research_loop_cli.py（_REVISION_NUMBER_BOUNDARY 重命名扩展为 _REVISION_RESULT_REQUIREMENTS，新增数据规模一致性与禁止无文献机制归因两条）
+  - src/autoresearch/competition/contest_direct_plan.py（uild_contest_direct_plan_messages 的 user prompt 增补同样两条约束）
+  - Agent.md（本条目）
+- Summary: live 暴露的两点硬伤均源于修订阶段：(1) 修订把 technical_details/target 扩到 10^9 却漏改 datasets（仍 10^8）；(2) 修订把微弱残差归因到「高阶 Hardy-Littlewood k-tuple 相关性」（锁定文献不支持）。provisional 计划本身一致（全 10^8、无机制归因）。修复为在修订与暂定计划两处 prompt 增加硬约束：数据规模必须跨字段一致；不得把微弱效应归因到无文献支撑的特定机制（只能描述性表述 + 列为待检验假设）。
+- Verification: pytest tests/unit/competition/test_contest_direction_research_loop_cli.py tests/unit/competition/test_contest_direct_plan.py 71 passed；uff check 全绿。
+- Problems: 无新增。
+- Follow-up: 全新 v2 运行验证内容约束生效；随后准备批量 124 题（q002–125 无预实验适配器，走 plan-only，与方向A一致）。
+
+### 2026-08-16 - DeepSeek Harness - 方向A live 验证：专属 MaaS 端点换 key 导致 403，改公共端点解决
+
+- Request: 用户换了一套朋友的 API key 后，全部 LLM 调用返回 403。
+- Files changed:
+  - config.yaml（ase_url 由专属 MaaS 端点改回公共端点 https://dashscope.aliyuncs.com/compatible-mode/v1，并补充注释）
+  - Agent.md（本条目）
+- Summary: 403 根因不是 key 或额度，而是 base_url。原 ws-...maas.aliyuncs.com 是「账号专属 MaaS 实例」端点，只认原账号的 key；换成朋友的 key（另一账号）后，该专属端点一律 403。改为百炼「标准公共端点」后，任意账号的有效 key 均可用。实测 qwen3.7-max（thinking 关/开两种模式）均返回 {'ok': True}。
+- Verification: un_llm_json_completion 冒烟（公共端点 + 新 key + qwen3.7-max）thinking 关/开均通过。
+- Problems: 无新增。
+- Follow-up: 用公共端点 + 新 key 重跑干净 v2 验证。
+
+### 2026-08-16 - DeepSeek Harness - 方向A live 验证：数字守卫误判 wheel-2310 名称，修复正则
+
+- Request: 继续 live 验证。修订阶段数字守卫误拒 2310：模型在「替代解释」里写的是名称 wheel-2310（符合要求），但数字守卫把名称里连字符后的 2310 也当数字提取。
+- Files changed:
+  - src/autoresearch/competition/contest_direct_plan_revision.py（_NUMBER/_SCIENTIFIC_MULTIPLICATION/_POWER_OF_TEN/_MILLION_SUFFIX 的负向后瞻从 (?<![A-Za-z0-9_.]) 扩展为 (?<![A-Za-z0-9_.])(?<![A-Za-z]-)，排除「字母-连字符-数字」的标识符嵌入数字）
+  - Agent.md（本条目）
+- Summary: wheel-2310 这类「名称」中的数字此前被 _NUMBER 提取（负向后瞻不含 -，导致 wheel- 后的 2310 被当成独立数字），进而被数字守卫当作「证据外数字」拒绝。扩展负向后瞻后，wheel-2310 不再提取数字，而独立数字 2310 与 模2310（中文「模」非字母）仍按原语义处理。
+- Verification: pytest tests/unit/competition/test_contest_direct_plan_revision.py 19 passed；uff check 全绿；直接验证 _claim_numbers('wheel-2310')==[]、_claim_numbers('模2310')==[('2310','2310')]、_claim_numbers('10^9') 正常。
+- Problems: 无新增。
+- Follow-up: 续跑 live 验证（修订 → 评审 → 渲染 PDF）。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 强化「禁止命名猜想归因」约束
+
+- Request: 续跑后评审仍给 major_revision，主因是模型仍把残差归因到「Hardy-Littlewood猜想的二级项效应」（无文献支撑的命名猜想变体）。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_research_loop_cli.py（_REVISION_RESULT_REQUIREMENTS 第 4 条改为显式禁止 Hardy-Littlewood/黎曼/Cramér/k-tuple/二级项/猜想 等命名，并给可接受描述性表述）
+  - src/autoresearch/competition/contest_direct_plan.py（provisional prompt 同步强化）
+  - Agent.md（本条目）
+- Summary: 原约束举例「Hardy-Littlewood k-tuple 相关性」未覆盖模型实际写的「Hardy-Littlewood猜想的二级项效应」。改为黑名单式显式禁止所有命名猜想/机制（含「二级项」「猜想」等泛化词），并给出可接受的描述性替代解释模板。
+- Verification: pytest 相关 90 passed；uff check 全绿。
+- Problems: 无新增。
+- Follow-up: 续跑 live 验证。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 批量准备：gap 修复改为「候选术语目录」模式 + 修复批量 limit 截断
+
+- Request: q002–q006 小批量冒烟。q002 在 gap 修复阶段两次失败（模型提出 'Zero-Density Estimates'、'Distribution of Primes' 等证据中不存在的术语）。另发现 un_science125_batch 的 limit 默认 1 会把 include_question_ids 截断为 1 题。
+- Files changed:
+  - src/autoresearch/competition/contest_planning_literature_gap_repair_runner.py（新增 _candidate_terms，在证据 payload 中提供 2-3 词 n-gram 候选目录；system prompt 改为「只能从 candidate_terms 列表逐字选择，禁止用领域知识词」）
+  - 	mp/batch_small_q002_q006.py（补 limit=None）
+  - Agent.md（本条目）
+- Summary: 原 prompt 已要求「逐字来自证据」，但模型仍用领域知识词（如黎曼假设→'Zero-Density Estimates'）。改为给模型一个显式候选术语目录（证据 title/abstract 的 2-3 词 n-gram，含 matched_field），并要求只从目录选择；目录内术语必过 _term_occurs_in_evidence，使合规性从「模型自觉」变为「目录约束」。
+- Verification: pytest tests/unit/competition/test_contest_planning_literature_gap_repair*.py 19 passed；uff check 全绿。
+- Problems: 无新增。
+- Follow-up: 重跑 5 题小批量测失败率。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 批量准备：假设阶段非空字段 + gap 修复字段标注强化
+
+- Request: 5 题小批量（q002–q006）失败率 80%（1 成 4 败）。高频失败模式：(a) 假设阶段 q002/q003 模型返回空 scientific_object（3 validation errors）；(b) gap 修复 q005 把 title 术语标成 abstract。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_hypothesis_stage.py（_brainstorm_schema 全部 string 字段加 minLength: 1；payload 增加「字段要求」：no_adapter 时 scientific_object/observable/metric 也必须自行描述、禁止留空）
+  - src/autoresearch/competition/contest_planning_literature_gap_repair_runner.py（system prompt 强化：term/matched_field/evidence_hash 必须与候选条目三字段完全一致，禁止 title/abstract 标错）
+  - Agent.md（本条目）
+- Summary: 两个失败模式都是模型合规问题。(a) 输出 schema 只要求 string、未要求非空，模型留空后才被 pydantic 拦截；现在 schema 层面 minLength:1 + prompt 明示「禁止留空」。(b) gap 修复的候选目录已给 term+field，但模型抄术语时标错字段；prompt 明确要求三字段一字不改。
+- Verification: pytest 相关 31 passed / 2 skipped；uff check 全绿。
+- Problems: 无新增。
+- Follow-up: 重跑 5 题小批量测改善后的失败率。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 全批量启动：124 题带重试批量驱动
+
+- Request: 用户决定优先把剩余 124 题（q002–q125）的研究计划全部写出来；同意用重试策略代替继续逐个修 prompt。
+- Files changed:
+  - 	mp/batch_full_retry.py（新：全批量驱动，q002–q125、每题最多 3 轮、失败题重置后全新重试、resume 跳过已完成题）
+  - Agent.md（本条目）
+- Summary: 小批量两轮实测：单次成功率从 20% 升到 60%（修复假设阶段空字段 + gap 修复字段标注后）。全批量驱动每次运行最多 3 轮；每轮之间把失败题的状态与 attempts 目录删除，使重试获得全新模型输出（避免 resume 回放同一坏响应）；已完成题永不重跑，控制成本。
+- Verification: 小批量第 2 轮 q003/q005/q006 完成（各 7 条锁定文献 + PDF + human_delivery_validation accepted）；q002（修订缺替代解释）、q004（broad 查询缺反证概念）为剩余已知失败模式，靠重试吸收。
+- Problems: 无新增。
+- Follow-up: 监控全批量进度（后台 job）；预计首轮 20+ 小时、3 轮共 30-40 小时，约 1200–2000 次模型调用，需确认朋友 key 额度充足。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 修复两类批量高频失败：完整反证词表 + 焦点桥放宽为警告
+
+- Request: 全批量前 11 题 8 失败，两类根因：(1) 反证查询「missing a falsifying concept」（q002/q006/q011）——v4 prompt 把强反证词写成 limitaion(s)/failure mode(s) 等，模型生成不在 `_STRONG_COUNTEREVIDENCE_TERMS` 白名单内的词；(2) `insufficient_method_focus_bridge_anchors`（q004/q005/q007/q009/q010）——方法文献无法与直接现象建立「不可变焦点桥」，且 gap 修复只改第二组、结构上无法修复桥。用户选 C：把完整规则告诉模型 + 把客观不可能项放宽为警告。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_literature.py（v4 query-compiler system prompt：① 第4条反证第二组改为逐字枚举 `_STRONG_COUNTEREVIDENCE_TERMS` 全部 21 词，且明确弱概念组不合格；② 第2条新增焦点桥规则——方法族第一组必须复用第1条第二组（直接现象）的逐字焦点术语，否则复用第1条第一组（核心对象）术语）
+  - src/autoresearch/competition/contest_planning_literature_coverage.py（v5 receipt 新增 `warnings` 字段；`_select_classified_planning_literature` 在零桥接锚点存在时不再硬失败，改以 `bridge_relaxed` 放宽方法锚点桥要求并记录 `method_focus_bridge_relaxed` 警告，返回 4 元组；`_required_anchor_plan`/`_validate_selected_coverage`/`_validate_coverage_receipt`/`_build_v5_receipt`/`select_planning_literature` 同步穿桥放宽标志）
+  - tests/unit/competition/test_contest_planning_literature_coverage.py（4 处 `_select_classified_planning_literature` 解包改 4 元组；桥漂移测试改为断言默认 receipt 放宽后 passed=True + 警告 + unbridged-method）
+  - tests/unit/competition/test_contest_planning_literature_gap_repair.py（`test_v5_method_focus_bridge_failure_repairs_only_the_method_second_group` 改为 `test_v5_method_focus_bridge_shortfall_relaxes_to_warning`；`_freeze_as_v4` pop 增加 `warnings`）
+  - Agent.md（本条目）
+- Summary: 反证失败是闭集白名单 vs 开放模型输出的错配，改为逐字枚举完整白名单后测试断言（limitations/failure modes/artifacts/bias）亦恢复；桥失败是 v5 覆盖策略的刚性门槛，且 R2 修复只改第二组、结构上无法补桥（与现场 5/5 失败一致），故按用户 C 在覆盖选择层放宽为零桥接锚点→警告，保留 5 锚点结构、不弱化证据优先。
+- Verification: `pytest tests/unit/competition/test_contest_direction_literature.py tests/unit/competition/test_contest_planning_literature_coverage.py tests/unit/competition/test_contest_planning_literature_gap_repair.py --no-cov` = 88 passed；`pytest tests/unit/competition/ --no-cov -x` 达 345 passed 后撞到既有的无关 fixture 错误（test_contest_direction_skill_evolution.py 的 mock 只返回 2 条查询、而 v4 compiler 要求 4 条，属本次改动前已存在的测试夹具缺陷，非本次引入）。
+- Problems: 无新增（P-20260816-023 之前的 latexmk/perl 已 resolved）。
+- Follow-up: 已把全批量 11 个 failed + q016 无状态目录清空（保留 q003/q008/q012 三个 completed），后台重启 `tmp/batch_full_retry.py`。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 额度受限，改为「每方向 1 题」子集策略
+
+- Request: 用户告知 Qwen 额度不足 20 元，改为「每个方向找 1-2 题出 plan，后台已有的可用就保留」，不再追求 124 题全覆盖；随后确认扩到每方向 2 题。
+- Files changed:
+  - tmp/batch_direction_subset.py（新：按学科子集驱动，单遍无重试；因 `select_science125_questions` 恒按源顺序排序、单列表无法交错，改为两次顺序批处理——pass1 根 `science125-batch-subset` 每方向第 1 题、pass2 根 `science125-batch-subset-r2` 每方向第 2 题，保证额度中途耗尽时每方向仍 ≥1 份 plan）
+  - tmp/map_disciplines.py（新：从缓存 manifest 打印 12 学科→题号映射，辅助选样）
+  - Agent.md（本条目）
+- Summary: 从 `science125-question-set.json` 确认 12 个学科及题号区间（数学科学 q1-3、化学 q4-12、医学 q13-23、生物学 q24-45、天文学 q46-68、物理学 q69-86、工程与材料 q87-90、信息科学 q91-94、神经科学 q95-106、生态学 q107-114、能源科学 q115-117、人工智能 q118-125）。已覆盖：数学科学（q001 live-verify + q003）、化学（q007/q008/q009/q010/q011/q012）。剩余 10 学科各取 2 题共 20 题（先 10 题后 10 题）：q013/q024/q046/q069/q087/q091/q095/q107/q115/q118 + q014/q025/q047/q070/q088/q092/q096/q108/q116/q119。跳过 4 个失败题（q002/q004/q005/q006，学科已覆盖）。独立输出根避免与全批量 batch-request.json 的 write-once 校验冲突，也不动全批量根已完成的 7 份 plan。
+- Verification: `tmp/map_disciplines.py` 输出 125 题 12 学科分组与学科计数（3/9/11/22/23/18/4/4/12/8/3/8=125）一致；子集批量后台启动（job pwsh-41）。
+- Problems: 无新增（额度不足为资源约束，非代码缺陷）。
+- Follow-up: 监控子集批量进度；若额度耗尽则已覆盖每方向 ≥1 题。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 修复「查询词带引号/括号」失败 + 子集批量结果
+
+- Request: 子集批量（每方向 2 题）跑完：12 成 8 败，天文/物理/信息 3 方向仍空缺。最高频失败是 `role query term contains unsupported quotes or parentheses`（q046/q069/q070，及之前 q005/q006）。用户确认「可以修」。
+- Files changed:
+  - src/autoresearch/competition/contest_direction_literature.py（新增 `_strip_stray_json_delimiters`：在 `_project_queries` 里剥离模型泄漏进查询字符串的 JSON 首尾定界符 `[]{}` 与尾逗号/分号，再走 v4 校验）
+  - tests/unit/competition/test_contest_direction_literature.py（新增 `test_v4_query_projection_strips_leaked_json_array_delimiter` + `test_strip_stray_json_delimiters_removes_only_outer_artifacts`）
+  - tmp/dump_query.py、tmp/check_queries.py、tmp/dump_raw_response.py、tmp/tally_subset.py（临时诊断脚本，定位失败根因）
+  - Agent.md（本条目）
+- Root cause: 模型在 targeted 查询的最后一个字符串里把 JSON 数组闭合符 `]` 写进了字符串内部（如 `"...OR confounding)]"`）。该 `]` 使布尔解析器 `_strip_outer_parentheses` 无法剥离外层括号，残留的 `)` 落入 atom，触发「unsupported quotes or parentheses」。v4 查询语法只用 `()` 与双引号、从不使用 `[]{}` 或逗号，故首尾剥离这些定界符是安全的。
+- Verification: `pytest tests/unit/competition/test_contest_direction_literature.py --no-cov` = 31 passed（含新增 2 测试）；用 q046 的真实失败查询串回归 `_project_queries` 通过。
+- Problems: 无新增。
+- Follow-up: 重跑 quotes 失败的 q046/q069/q070 恢复天文/物理两方向；信息科学（q091/q092 `insufficient_direct_core/mechanism`）为另一类检索覆盖问题，待单独看。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 再修两处长尾：术语内撇号 + gap-repair 否定式候选
+
+- Request: fix1 补跑 q046/q069/q091 后：q069（物理）恢复，但 q046（天文）撞 `counterevidence terms must not be negated`（gap-repair 阶段），q091（信息）撞「quotes or parentheses」的另一变体——术语内的撇号。
+- Files changed:
+  - src/autoresearch/competition/contest_planning_literature_coverage.py（`_clean_boolean_atom` 的禁用字符集由 `"\"'()"` 收窄为 `"\"()"`，允许双引号术语内的撇号/所有格，如 `"Amdahl's law"`；未闭合单引号仍由「unmatched quotes」检查兜住）
+  - src/autoresearch/competition/contest_planning_literature_gap_repair_runner.py（`_candidate_terms` 过滤首词为 no/zero/without/not 的 n-gram，避免模型从证据目录里选出「no room for large」这类否定式候选而被 v4 反证校验拒绝）
+  - tests/unit/competition/test_contest_planning_literature_coverage.py（新增 `test_boolean_parser_accepts_apostrophe_inside_a_quoted_term`）
+  - tests/unit/competition/test_contest_planning_literature_gap_repair_runner.py（新增 `test_candidate_terms_exclude_negated_leading_n_grams`，并显式导入 `_candidate_terms`）
+  - tmp/dump_gaprepair.py、tmp/batch_direction_fix2.py（诊断/补跑脚本）
+  - Agent.md（本条目）
+- Root cause: (a) q091 的 `"Amdahl's law"` 中撇号被当成引号定界符而误判；学术术语所有格（Amdahl's/Fermat's/Hubble's）常见，应在双引号术语内放行。(b) q046 的 gap-repair 证据目录含「no room for large」这类以 no 开头的 n-gram，模型选中后被 `_NEGATED_COUNTER_TERM` 拒绝；在目录生成阶段过滤即可，无需再放宽反证校验。
+- Verification: `pytest tests/unit/competition/test_contest_planning_literature_gap_repair_runner.py tests/unit/competition/test_contest_planning_literature_coverage.py tests/unit/competition/test_contest_direction_literature.py --no-cov` = 85 passed。
+- Problems: 无新增。
+- Follow-up: fix2 补跑 q046/q091，若成则 12 方向全齐；仍可能撞「insufficient anchors」等长尾，重试吸收。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 启用 Semantic Scholar + 启动剩余 103 题全量批量
+
+- Request: 用户告知已充值约 100+ 元，并同意引入更多学术平台、确认官方要求 125 题都需「最基本 plan」。信息科学方向仍缺（q091/q092 三次踩三个不同长尾，最新是 gap-repair 反证候选目录与强反证词表不匹配）。
+- Files changed:
+  - .env（新增 `AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR=1`，启用系统已内置的第三个免费源 Semantic Scholar——擅长 CS/AI 文献，正好补信息科学；源 API 免费、不耗 LLM 额度；文件原为 ReadOnly，已先清属性再追加）
+  - tmp/batch_remaining.py（新：扫描全部 5 个 run root + q001 汇总已完成题号，算得剩余 103 题，3 轮重试、失败题重置、resume 跳过已完成，全量驱动 q002-q125 的剩余部分）
+  - tmp/final_tally.py（新：跨 root 汇总已完成 plan 的方向覆盖）
+  - Agent.md（本条目）
+- Summary: arXiv 一直在用（权威源不缺）；真正可加且已内置的是 Semantic Scholar（免费、不用 key、无需改代码，只差一个 env 开关）。启用后每个检索从 2 源变 3 源，候选论文翻倍，直接缓解「insufficient anchors」类覆盖失败。当前已完成 22 份 plan（12 方向里 11 个方向覆盖，唯缺信息科学）；剩余 103 题后台全量跑（job pwsh-54），约 ¥50-155，在 100+ 额度内。
+- Verification: `tmp/batch_remaining.py` 模块级 `_remaining_ids()` 返回 103 题（首 q002/q004/q005/q006/q014，尾 q121-q125）；后台启动显示 `remaining questions: 103 / completed already: 22`。
+- Problems: 无新增。
+- Follow-up: 监控 103 题批量进度，按约每 10 题阶段汇报；信息科学 q091/q092 若仍卡 gap-repair 反证候选目录，可考虑把强反证词纳入候选目录（中等改动）。
+
+### 2026-08-16 - DeepSeek Harness - 方向A 额度耗尽盘点 + 修复 plan-only 数学符号瑕疵
+
+- Request: 用户告知 Qwen 额度耗尽，先盘点有用产出；后确认「可以」本地修好 3 份数学瑕疵 plan（不耗 LLM 额度）。
+- Files changed:
+  - src/autoresearch/competition/contest_direct_plan_render.py（`_LATEX_MATH_COMMANDS` 增补 `\ln/\log/\exp/\sin/\cos/\tan/\cot/\sec/\csc/\min/\max/\det/\lim/\sup/\inf/\dim/\deg/\gg/\ll/\star/\ast/\Re/\Im/\hbar/\ell/\langle/\rangle/\prime/\dagger/\angle/\circ/\Vert/\vert`；brace-grouped 正则增补 `bar/hat/vec/tilde/overline/underline/widehat/widetilde/dot/ddot/mathring`；`_normalize_latex_math_in_text` 新增：① 修复模型 JSON 转义把裸 `\t`/`\tau` 折叠成 tab/tab+"au" 的损坏（tab+"au"→τ、tab→t）；② 剥离 Unicode 数学/希腊符号前的冗余反斜杠 `\κ`→κ）
+  - tmp/re_render_plans.py、tmp/inspect_corrupt.py（诊断 + 本地修复重渲染脚本）
+  - Agent.md（本条目）
+- Root cause: 两个层面。(a) 渲染层：`\ln/\cos/\hat/\bar/\gg` 等命令不在原 `_LATEX_MATH_COMMANDS` 白名单，PDF 泄漏原始 `\ln B`。(b) 数据层：plan 模型在 JSON 字符串里写裸反斜杠命令（`\t`、`\tau`、`\in`、`±`），JSON 解析器把 `\t`→tab、`\tau`→tab+"au"、`\in`→换行、`±`→"plusmn;"，损坏已写进 research-plan.json。
+- Verification: `pytest tests/unit/competition/test_contest_direct_plan_render.py --no-cov` = 19 passed；重渲染 q003/q050/q055 后 PDF 复验：q003 恢复 `y=x/t^{1/2} 与 τ=t`、`N∈[64,512]`、`Padé±`；q050 恢复 `ln B`；q055 恢复 `κ`；68 份交付 .md 全量扫描 corruption=0。
+- Problems: 无新增。
+- Follow-up: 交付文件夹 `runs/contest-delivery/delivery-125-plan/`（68 份 PDF+MD，题号命名）；剩 57 题待有额度后补跑；信息科学方向仍空（q091-q094）。
+
+### 2026-08-17 - DeepSeek Harness - Q1 主线数字守卫六连败诊断与修复
+
+- Request: 用户要求用 Q1 实测完整主线能否跑完；失败后要求排查为什么 fail-closed 守卫按设计工作但模型反复违反约束，并选择「提示词加固 + 自动重试抖动」修复方案。
+- Files changed:
+  - src/autoresearch/competition/contest_direct_plan_revision.py（新增 `ContestDirectPlanNumberGuardError` 子类；`_guard_observed_numbers` 四处拒绝改用该子类，`__all__` 同步）
+  - src/autoresearch/competition/contest_mainline_cli.py（`_MAINLINE_REVISION_REQUIREMENTS` 第 5 条加入具体负例 2310/“约 1/11”“约 31 倍”/10^10→10^9 与定性强弱词正例；新增 `_REVISION_RETRY_TEMPERATURES=(0.2,0.4,0.6)`、`_REVISION_RETRY_REQUIREMENT`、`_revision_temperatures`；`run_contest_mainline_delivery` 对数字守卫拒绝自动把拒绝原因追加为一条新要求并抖动温度重试，默认 3 次、`--revision-attempts` 可调；证据绑定类错误不重试）
+  - tests/unit/competition/test_contest_mainline_cli.py（新增 6 个测试：守卫拒绝重试成功路径（断言 requirements 逐次增长与温度 0.2/0.4/0.6）、耗尽失败关闭、attempts=1 不重试、非守卫错误不重试、温度排程、helper 边界）
+  - tests/unit/competition/test_contest_direct_plan_revision.py（新增 1 个断言守卫抛子类的测试）
+  - docs/contest/contest-mainline-handover.md（§5 增补「数字守卫内置重试」条目并重排编号）
+- Summary: 首次 live 运行 01-plan 与 02-preexperiment 完整通过，03-revision 被数字守卫 6/6 拒绝（2310×3、11、31、10^9）。取证根因：守卫允许集 = artifact+metrics+stdout/stderr 日志文本（281 个数；5 个原始间隙 CSV 只哈希校验、不进允许集也不进提示词）；禁新数字要求埋在 requirements 第 5 条且无正例；6 次重试 revision_id 前缀相同（input_hash 相同、提示词逐字节相同），temperature 0.2 下输出趋同，重试期望值低。修复后单命令 live 复跑（复用 01/02 阶段）第一次修订即通过。
+- Verification: `pytest tests/unit/competition/test_contest_mainline_cli.py tests/unit/competition/test_contest_direct_plan_revision.py --no-cov -p no:cacheprovider` = 34 passed；`ruff check` 4 个改动文件 All checks passed；`mypy` 2 个改动源文件 no issues；live：`py -3 -m autoresearch.competition.contest_mainline_cli --plan-source-dir .../01-plan --preexperiment-source-dir .../02-preexperiment`（新输出目录）exit 0，delivery-report status=completed、revision generation_calls=1（qwen3.7-max 一次通过）、page_count=8、pdf_text_verified=true、formal_experiment_executed=false、paper_claimed=false。
+- Problems: 新增 P-20260817-025；P-20260816-024 仍 Open（既有夹具漂移，与本次正交）。
+- Follow-up: tests/unit/competition 全量回归结果待确认；本工作副本无 .git（规范仓库在 E:\AIResearch），未创建 git commit，同步到规范仓库后需按任务纪律提交。
+
+### 2026-08-17 - DeepSeek Harness - Q75 渲染循环根因修复（JSON 折叠 \b→退格破坏 LaTeX）
+
+- Request: 用户报告 Q75（物质最小构成单元）在 125 问批量中唯一反复重试跑不出来，要求实跑观察并诊断。
+- Files changed:
+  - src/autoresearch/competition/contest_direct_plan_render.py（`_normalize_latex_math_in_text` 新增退格修复：JSON 解析把 `\b` 折叠成 0x08 退格字节，现按 `\x08([A-Za-z]+)` 恢复为 `\b`+词，再交给既有命令投影（`\bar{...}`→内文、`\beta`→β）；孤立退格直接丢弃）
+  - tests/unit/competition/test_contest_direct_plan_render.py（新增 2 个测试：退格命令修复断言 + 真实 xelatex 编译含折叠退格文本的 PDF）
+- Summary: 实跑 Q75 方向循环正常完成（8 次模型调用，无兼容预实验适配器），plan-only 计划生成正常（1 次调用），但最终 PDF 渲染失败 `LaTeX exited with code 1`（`Text line contains an invalid character`，l.48 处 `t^^H ar\{t\}`）。根因：Q75 属粒子物理，计划正文含 `$t\bar{t} \to \text{dilepton}$` 等裸 LaTeX 记号；JSON 解析把 `\b` 折叠成 0x08 退格字节（`\t` 折叠成 tab，已被上一轮修复覆盖），渲染写出 0x08 → xelatex 硬错误 → 每次重试重跑全部模型调用后必然在渲染处再次失败，形成循环。其它题目不写 `\bar`，故不受影响。修复后 resume 重跑（复用方向循环与计划，零模型调用）一次通过：question state=completed，最终 PDF 4 页、120KB，正文显示干净（`tt` 通道、`β` 等按设计投影）。
+- Verification: `pytest tests/unit/competition/test_contest_direct_plan_render.py --no-cov` = 21 passed（含真实编译用例）；ruff 2 个改动文件 All checks passed；mypy 源文件 no issues；live：`science125_batch --include-question-id q075 --resume` exit 0，state.json status=completed；pdftotext 抽取文本无 `t^^H` 残留、无控制字符乱码（仅跨页 \f）。
+- Problems: 新增 P-20260817-026；P-20260816-024 仍 Open（既有夹具漂移，与本次正交）。
+- Follow-up: 等 tests/unit/competition 全量回归结果；本工作副本无 .git，未 commit，需同步规范仓库 E:\AIResearch 后提交。
+
+### 2026-08-17 - DeepSeek Harness - 交付 125 问 PDF 的 LaTeX 泄漏修复与重渲染
+
+- Request: 用户指出 Desktop 交付文件夹（揭榜挂帅提交材料/delivery-125-plan）的 PDF 存在大量 LaTeX 格式错误（含本地 Q75 的 3text{sigma} 等），要求只读该文件夹、定位并修复。
+- Files changed:
+  - src/autoresearch/competition/contest_direct_plan_render.py（`_normalize_latex_math_in_text` 新增 tab 折叠修复：`\text`/`\tilde`/`\times`/`\theta` 的 `\t` 折叠恢复为原命令再走既有投影；`\tfrac`→`\frac`；`\mathcal`/`\mathbb`/`\mathfrak`/`\mathscr`/`bm`/`boldsymbol` 加入花括号内文塌缩；`\gtrsim`/`\lesssim` 加入命令映射与 `_MATH_SYMBOLS` 数学模式路由；模型写的字面 `\n`（JSON 转义产物）在命令映射后转为空格。`_self_contained_prose`/`_reference_plain_text`/`_markdown_value` 统一接入 `_normalize_latex_math_in_text`，使 PDF 与 MD 两种视图同步修复。tex 模板导言新增 `amsmath`/`amssymb` 宏包，支撑 `\ensuremath{\gtrsim}` 等符号）
+  - src/autoresearch/research/plans.py（`compile_research_plan_pdf` 的 xelatex 子进程补 `encoding="utf-8", errors="replace"`，修复 Windows GBK 默认解码 UTF-8 输出导致的随机 UnicodeDecodeError 与「编译日志末尾：None」）
+  - tests/unit/competition/test_contest_direct_plan_render.py（新增 3 个测试：tab 折叠命令恢复、`\mathcal`/`\mathbb`/`\gtrsim` 投影、字面 `\n` 转空格）
+- Summary: 只读扫描 Desktop 124 份 PDF：8 份泄漏（q050/q055/q061/q068/q076/q082/q092/q124，共 47 处：`\mathcal`/`\mathbb`/`\cos`/`\ln`/`\hat`/`\dot`/`\gtrsim`、字面 `\n`、`10times`、裸 hat{/bar{）；MD 另泄漏 58 处（含 q079/q001/q75）。根因两类：① Desktop PDF 为旧代码渲染产物（部分命令现映射表已覆盖）；② 当前代码仍缺 `\mathcal`/`\mathbb`/`\gtrsim` 映射、`\text` 等 `\t` 折叠残渣、markdown 路径未归一化。修复后从 E:\ai-researcher-loop\ai-researcher-loop-main\runs\contest-delivery\science125-batch-main 的源 payload（只读、零模型调用）重渲染 8 份，全部 0 泄漏，写入 Desktop 新文件夹 delivery-125-plan-fixed（原文件夹未改动）；本地 Q75 重渲染至 runs/science125-q75-refixed，0 泄漏。
+- Verification: `pytest tests/unit/competition/test_contest_direct_plan_render.py --no-cov` = 24 passed（含真实编译）；`pytest tests/unit/research/test_plans.py` = 8 passed；ruff/mypy 改动文件通过；8+1 份重渲染 PDF 经 pdftotext 逐份复验 leaks=NONE。
+- Problems: 新增 P-20260817-027。
+- Follow-up: 等 tests/unit/competition 全量回归；本副本无 .git 未 commit；Desktop 原文件夹保持只读未动，是否替换由用户决定；q076 等的 21 处 `\mathcal` 现塌缩为内文字母（A/Z 等），`\text{sigma}` 投影为字面 sigma（保持“内文投影”设计，未做词→符号映射）。
+
+### 2026-08-18 - DeepSeek Harness - 渲染泄漏自修复机制 + 根 web/ 功能化控制台迁移与 API bug 修复
+
+- Request: ① 用户要求泄漏处理改为「自动修复 + 报告」而非中断；② 在 E:\ai-researcher-source 根目录 web/ 提供可视化 UI，要求所有功能真实，从 E:\ai-researcher-loop 原样迁移并修复 bug。
+- Files changed:
+  - src/autoresearch/competition/contest_direct_plan_render.py（泄漏处理从硬门禁改为自修复：未知命令 `\cmd{...}` 塌缩为内文、裸 `\cmd` 去反斜杠保留词；修复动作写入线程本地 ledger + `logging` 警告 + 渲染 manifest 的 `latex_repairs` 字段；已知命令替换改为「后随非字母才匹配」的整词正则，修复 `\pm` 误食 `\pmatrix` 前缀；`_self_contained_prose` 重排为先路径清洗后归一化避免 Windows 路径误报）
+  - tests/unit/competition/test_contest_direct_plan_render.py（硬门禁测试改为自修复+报告测试；新增 manifest latex_repairs 断言、Windows 路径不误报、真实编译含未知命令用例；共 26 个测试）
+  - src/autoresearch/api/research_service.py（`_TWO_STAGE_LITERATURE_PROTOCOL` v4→v5，修复方向循环升级后 API 把新交付误判为 legacy 而失败的漂移 bug）
+  - src/autoresearch/api/app.py（静态根改为仓库根 web/，包内 static 仅作回退）
+  - tests/unit/api/test_research_api.py（夹具协议版本 v4→v5）
+  - web/（旧「研启智链」假数据设计稿移入 web/legacy-dashboard/ 保留；根 web/ 现在是从 api/static 原样迁移的功能性「科研计划台」控制台 index.html/app.js/styles.css）
+- Summary: 迁移经哈希比对确认两仓库同源文件逐字节一致；把功能性控制台作为根 web/ 唯一真实 UI。后端发现并修复两个真实 bug：① 协议漂移（API 校验 two_stage_literature_v4 而当前循环输出 v5，经 UI 创建的真实运行完成即被拒为 legacy）；② 静态根未指向根 web/。live 验证：服务器 127.0.0.1:8765 提供根 web/ 控制台；health/静态/运行列表/创建 dry-run/详情(stages=12)/evolution/skills/边界错误(resume/cancel/evolve 409)/批量 dry-run（真实 PDF 解析、schema v2+literature v5 校验通过）全部符合预期；两次真实方向循环运行均被循环自身科学门 fail-closed（一次 insufficient_distinct_required_role_anchors、一次 v4 反证查询缺可证伪概念），UI 正确显示失败状态、错误信息与阶段进度，续跑按钮真实可用（resume_count 递增）——失败源于「开发中」的方向循环质量门，非 UI/API 缺陷。
+- Verification: `pytest tests/unit/competition/test_contest_direct_plan_render.py` = 26 passed；`pytest tests/unit/api` = 23 passed；ruff/mypy 改动文件通过；`node --check web/app.js` 语法通过；live REST 冒烟见 Summary。
+- Problems: 新增 P-20260818-028（协议漂移）、P-20260818-029（方向循环 live 两连败记录）。
+- Follow-up: 全量回归结果待确认；本副本无 .git 未 commit；服务器命令：`py -3 -m autoresearch.api.app --host 127.0.0.1 --port 8765 --work-root runs/research-api-live --config config.yaml --env .env --vault-root autoresearch-vault --skills-root skills`。
+
+### 2026-08-18 - DeepSeek Harness - 125 问交付文件夹全量覆盖（修复代码重渲染，零模型调用）
+
+- Request: 用户要求把最终版全部 125 问的 md+PDF 覆盖写入 C:\Users\Z\Desktop\揭榜挂帅提交材料\delivery-125-plan，并追问 q75 为何仍有 text{dilepton} 泄漏。
+- Files changed: 无源码改动（本轮为交付重渲染）。工具脚本 _rerender_all_125.py（保留于仓库根，可复用）。
+- Summary: 源盘点：batch-main 103 题 + batch-full/subset/subset-fix1/fix2/r2/small 各根合计 124 题（每题取最新 completed 的 plan-only 计划），q001 取自本地已修复主链的 04-final-plan/_private/research-plan-source.json。全部 125 题用当前修复代码（tab 折叠恢复 + 退格修复 + 自修复 + amssymb）重新渲染：125/125 成功、进程内泄漏检查 ALL CLEAN，随后覆盖写入 Desktop 原文件夹（每对 q###.md/q###.pdf）。覆盖后独立终验：125 pdf + 125 md 全部干净（唯一正则命中是嵌入 SVG 的 CSS 选择器 text{font-family:...}，属合法内容非泄漏）。
+- q75 澄清: 用户看到的泄漏文本来自 10:27 被拷入 Desktop 的旧版两位数命名 q75.md/q75.pdf（本会话修复前的本地旧渲染），并非标准命名 q075.pdf；已删除旧文件，q075 现为修复版（无 text{/无 \text）。
+- Verification: `_final_scan.py` 独立扫描 125 pdf + 125 md = ALL CLEAN（q001.md 唯一命中为 SVG CSS 假阳性）；Desktop 现有 125 对标准命名文件 + README.md；已删除冗余的 delivery-125-plan-fixed 子文件夹。
+- Problems: 无新增（P-20260818-028/029 状态不变）。
+- Follow-up: 无 .git 未 commit；重渲染工具：`py -3 _rerender_all_125.py`。
+
+### 2026-08-18 - DeepSeek Harness - 方向循环两次真实失败根因诊断与 A/B/C 改进实施
+
+- Request: 用户要求查明两次真实运行失败（insufficient_distinct_required_role_anchors / v4 counterevidence missing a falsifying concept）的原因并实施改进（A+B+C）。
+- Files changed:
+  - src/autoresearch/competition/contest_planning_literature_gap_repair_runner.py（新增 `build_gap_repair_revision_message` 与 `gap_repair_failure_is_revisable`；`run_planning_literature_gap_repair_query` 支持 `revision_failure_reason`（附加确定性修订消息、温度 0.4）；回执新增可选 `revision_failure_reason` 字段且回放校验支持修订变体；stage hash 在无修订时保持旧形态保证历史检查点兼容）
+  - src/autoresearch/competition/contest_direction_research_loop_cli.py（`_run_bounded_gap_repair`：首次修复投影失败且可修订时，以带修订原因的新 stage hash 开启第二个 checkpointed_stage 重试一次，仍失败则 fail-closed；finalist 回执回放接受 `verification_failed_transport_preserved` 与 `verification_served_from_cache` 两种新结局并留痕）
+  - src/autoresearch/competition/contest_direction_plan_cli.py（`_verify_arxiv_finalist`：传输错误分类、一次 1.5s 延迟重试、跨运行状态缓存（`.cache/autoresearch/arxiv-finalist-status-cache.json`，TTL 7 天，命中/写穿均记录证据））
+  - tests/unit/competition/test_contest_planning_literature_gap_repair_runner.py（+3：修订消息内容、修订运行单调用与回放、可修订分类）
+  - tests/unit/competition/test_contest_direction_plan_cli.py（+4：传输重试一次、缓存命中服务、非传输不重试、成功写穿缓存）
+- Summary: 根因闭环。失败 1：planning-lock 权威门正确排除了 2 篇 Zenodo 仓库记录（repository_doi=10.5281/zenodo...、无期刊 DOI）——direct_core 语义 2/权威 0 → authority_shortfall，单轮 gap-repair 检索到的新论文同样为仓库记录，无法修复；arxiv 临时断连是次要扰动（focus 核验 3 条 degraded）。失败 2：r1 覆盖缺 counterevidence → 修复模型给反证角色替换的证据词缺强反证概念词 → 投影 v4 校验拒绝 → 该调用无重试路径。改进：B=v4 投影失败的一次有界修订（拒绝原因+强反证词表回喂、独立检查点哈希、温度抖动）；A'=finalist 核验传输失败分类+一次延迟重试+新结局留痕；C=跨运行状态缓存（7 天 TTL、命中/写穿证据化）。注意：失败 1 属「主题证据面被仓库上传污染」的正确 fail-closed，A/B/C 不放松该权威门（Zenodo-only 仍不得充当必需锚）。
+- Verification: 新增 7 个测试 + 相关文件 92 passed/1 skipped；ruff/mypy 3 个源文件全过；全量 tests/unit/competition 1505 passed，64 failed + 7 errors 与改动前基线一致（无新增失败）。
+- Problems: 新增 P-20260818-030（诊断与改进记录）。
+- Follow-up: 无 .git 未 commit；建议下次 arxiv 正常窗口用历史成功话题复跑验证 B 的修订路径；run 1 类失败在话题污染真实存在时仍会 fail-closed（正确行为）。
+
+### 2026-08-19 - DeepSeek Harness - 方向循环改进 live 复跑验证（B 生效，落点在诚实覆盖门）
+
+- Request: 用户确认后重跑真实方向循环，验证 A/B/C 改进。
+- Files changed: src/autoresearch/competition/contest_direction_literature.py（反证概念词识别从词表逐字相等改为确定性子串包含：`_counterevidence_term_strength` + `_counterevidence_gate_detail`，v3/v4 校验共用；`_STRONG/_WEAK_COUNTEREVIDENCE_PHRASES_SORTED`）；tests/unit/competition/test_contest_direction_literature.py（+3：证据短语内含强概念通过、缺失/弱仅拒绝、强度分类）。其余为运行产物。
+- Summary: live 复跑暴露 B 的残留缺口：模型第二次尝试其实选了含强反证概念的证据短语（"a finite-size artifact"、"residue-class biases to"），但旧校验要求与词表逐字相等而误拒——修复为确定性子串包含后，两个历史 escrow 响应在新代码下投影全部通过（重放验证）。重启服务器（旧进程内存持旧代码是上次续跑仍失败的根因）后再次续跑：v4 反证门通过、gap-repair 用重放响应零新增模型调用完成（schema v1、model_calls=1、无修订标记），失败点推进到 R2 覆盖门：insufficient_distinct_required_role_anchors（诊断：direct_core semantic_shortfall auth=0、counterevidence authority_shortfall auth=0——今日该话题证据面仍被 Zenodo 仓库记录污染，权威门按设计 fail-closed）。
+- Verification: `pytest tests/unit/competition/test_contest_direction_literature.py` = 34 passed；ruff/mypy 通过；live：run-20260819t015356 续跑后 gap-query-response/gap-repair-literature/layered-literature 均产出，API 错误从 v4 反证变为 R2 覆盖。
+- Problems: P-20260818-030 更新（B 子缺口已修，剩余为话题证据面问题）。
+- Follow-up: 若要一次完整成功演示，需在新检索窗口（arxiv 稳定、候选池新鲜）再发起一次新运行（约 ¥5-10、20 分钟）；或接受「改进已验证、诚实门正确拦截」的结论。
+
+### 2026-08-19 - DeepSeek Harness - 预实验数值占位符注入机制 + 方向循环 12 阶段全链 live 打通
+
+- Request: 用户提出「让模型编代码生成 data_source 并由渲染期自动填入数值」的思路；经分析后采用更安全等价方案：模型只写 [[pilot:字段路径]] 占位符，程序从已核验 metrics/artifact 注入真实值。随后用户确认重跑验证。
+- Files changed:
+  - src/autoresearch/competition/contest_direct_plan_revision.py（占位符机制：`_PILOT_PLACEHOLDER`、`_resolve_pilot_placeholders`（metrics 优先、artifact 回退；标量 .12g 格式化、标量数组顿号连接、{start,stop} 区间对象数组格式化为 `[a, b)`；未知路径/布尔/非标量 fail-closed 抛 ContestDirectPlanNumberGuardError 进入重试）；修订输入哈希并入 `messages_sha256` 使提示词模板变化产生新 revision_id；修订契约消息新增占位符用法说明）
+  - src/autoresearch/competition/contest_direction_research_loop_cli.py（修订阶段统一重试循环：重放/全新调用同循环、温度 0.2/0.4/0.6、独立检查点哈希含 revision_requirements；新增 `_revision_guard_retry_requirement`（按拒绝原因条件化追加中文要求：替代解释标记、必须引用核验数值）；`_load_preserved_revision_replay` 多响应时返回 None 交给检查点路径）
+  - src/autoresearch/competition/contest_mainline_cli.py（主链重试要求同样条件化追加替代解释标记要求）
+  - src/autoresearch/competition/model_authorship.py（同 interaction 且 response/parsed 哈希一致时复用既有收据——容忍续跑期上下文元数据漂移，模型输出字节仍不可变）
+  - tests/unit/competition/test_contest_direct_plan_revision.py（+4：占位符替换、未知路径、非标量、区间对象数组格式化）
+- Summary: live 验证 run-20260819t021716-28cad69d0ef51d0a：阶段 1-9 复用检查点；阶段 10 全新修订调用中模型完全遵循占位符约定（9 个 [[pilot:...]]、0 个手写数字），程序注入真实值后数字守卫一次通过；阶段 11 渲染产出 plan/research-plan.pdf（142KB）；阶段 12 独立科学评审给 major_revision 并正确拦截交付（发现：参考文献[3]对主指标方法的支持仅为 partial、残差问题新颖性未充分核实，另有 2 个 minor）——12/12 阶段首次全链走通，科学门诚实 fail-closed。期间归档了本运行阶段 10 的旧尝试检查点（stage10-archive-*，证据保留）。
+- Verification: `pytest tests/unit/competition/test_contest_direct_plan_revision.py` = 24 passed；loop/mainline 相关 59 passed；ruff/mypy 改动文件全过；live：12/12 阶段 completed、修订 0 手写数字、评审 major_revision 回执与 38KB 评审制品保留。
+- Problems: P-20260818-030 更新（占位符机制使数字转录类失败根除；剩余为科学评审门）。
+- Follow-up: major_revision 的自动修订不在方向循环内（设计边界，需人工决策或走科学修正 CLI）；无 .git 未 commit。
+### 2026-08-19 12:01 +08:00 - Codex - 国创赛 XH-202619 技术方案文档（Springer Nature LaTeX 模板版）
+
+- Request: 在 E:\ai-researcher-source\paper\Springer_Nature_LaTeX_Template 内，按照国创赛"揭榜挂帅"榜题 XH-202619（基于国产开源大模型的 AI Scientist 的研发与应用）要求，撰写技术方案文档。所选方向：赛道一（科学问题）方向 A「科学假设生成与研究计划设计」，面向《Science》125 个前沿科学问题的"问题理解—知识整合—候选假设生成—证据梳理—研究计划输出—反馈修正"闭环。
+- Files changed:
+  - paper/Springer_Nature_LaTeX_Template/technical-proposal.tex (new, ~31 KB，中文技术方案文档正文)
+  - paper/Springer_Nature_LaTeX_Template/technical-proposal.pdf (new，19 页 A4，XeLaTeX + ctex 编译产物)
+  - paper/Springer_Nature_LaTeX_Template/technical-proposal.xdv/aux/log/fls/fdb_latexmk (编译中间产物)
+  - 模板原文件（sn-jnl.cls 等）未改动
+- Summary:
+  - 依据榜题 PDF 提取的 10 字段《科学假设与研究计划》规范、评分标准与提交要求（技术方案 PDF ≤ 20 页），撰写 19 页中文技术方案文档，覆盖：① 研究问题与解决方法（含能力项映射表）；② 基于 Qwen（qwen3.7-max，阿里云百炼 DashScope）的多智能体/Skills 架构（TikZ 架构图、智能体角色表、上下文工程设计：固定消息顺序、10 字段 JSON 契约、Skill 两段式元数据路由、主权记忆与 Skill 自进化）；③ 六阶段科研闭环流水线；④ 真实案例：Science 125 第 1 题"素数为何如此特别？"（真实预实验 run_id prime-pilot-364398d69fc7f7d8：5 固定区间 × 4 零模型 × 199 次重抽样、Holm 校正、5000 次重采样 CI；r1 修订因证据外数字 2310 被数字守卫拒绝、r2 通过的真实迭代记录；预实验两张表由程序从已验证指标确定性投影）；⑤ 实验与评估（125/125 题全覆盖、质量门指标表、与无守卫基线对比、对照评分标准自评）；⑥ 源代码与可复现性（13 个核心模块表、数字守卫与修订重试真实代码节选、哈希绑定/断点续跑/凭证说明）；⑦ 结论与展望；⑧ 参考文献（18 条锁定真实文献目录，含 DOI/URL）。
+  - 所有数字（效应量、p 值、CI、运行时长、run_id、修订回执）均取自仓库真实交付物 runs/contest-delivery/ 与 runs/delivery-125-final/，无虚构。
+  - 编译链路：latexmk -xelatex + ctex（TeX Live 2026），documentclass[pdflatex,sn-mathphys-num]{sn-jnl}（pdflatex 选项仅为避免 breakurl 在 XeLaTeX 下加载）。
+- Verification:
+  - latexmk -xelatex -interaction=nonstopmode technical-proposal.tex 编译通过（All targets up-to-date），pdfinfo 确认 19 页 A4（满足榜题 ≤20 页要求）。
+  - pdftotext 核验：无未解析引用（?? / [?] 均无）、参考文献含全部 18 条真实条目、正文含数字守卫代码与 run_id 关键事实、中文渲染正常。
+  - 修复过程中处理的问题：JS 模板字符串转义导致 \t→TAB、\_→_ 等 LaTeX 源损坏（\texttt→\exttt/\extit、下划线未转义）；\allowbreak 后接字母被 TeX 合并为未定义控制序列（改用 \hspace{0pt}）；带圈数字 ①②③ 在 Latin Modern 缺字形（改为 1./2./3.）；表格列宽溢出（收窄 p 列宽、multicolumn 改 p 列、small 移到 tabular 外）；文件尾部在一次读写循环中丢失后已恢复并核验。
+- Problems added:
+  - P-20260819-060（见 Problem.md）：本工作副本 E:\ai-researcher-source 无 .git 目录（git rev-parse 报 not a git repository），无法按 AGENTS.md 创建 git commit；已在此条目记录，待仓库恢复版本控制后补交。
+- Follow-up:
+  - 参赛团队需替换 technical-proposal.tex 中的占位信息（TeamUniversity/TeamMembers/TeamAdvisors/email），并按榜题要求随作品提供阿里云百炼调用凭证/截图与演示视频。
+  - 可选的排版打磨：剩余 6 处 ≤19pt 的 Overfull hbox 警告（摘要与表格内少量不可断行 token），不影响内容与页数。
 
 ### 2026-08-19 +08:00 - DeepSeek Harness - yqzl 线上站点改为「用户输入题目」主界面；服务器装 texlive/poppler
 
@@ -17169,18 +17518,3 @@ ot，fixture 只给 2 条查询而 v4 编译器要求恰好 4 条；(2) 正式�
   - 清理全部测试残留后重启服务，`/api/runs` 与 `/api/batches` 均为空。
 - Problems: 新增并解决 P-20260819-024（yqzl 批量按钮无响应：Windows 路径 + 缺 pdftohtml 裸 500）。
 - Follow-up: (1) 用正式（非 dry-run）题目在线上跑一次端到端，确认服务器渲染的研究计划 PDF 可下载；(2) git commit 本次改动（web/ 三件套 + app.py 兜底捕获）。
-
-### 2026-08-19 +08:00 - DeepSeek Harness - 仓库整理与推送：遗留修复收口 + scratch 忽略
-
-- Request: 用户要求"整理一下然后把代码都 push 到仓库"。
-- Files changed:
-  - `tests/unit/runtime/test_continual_research_harness.py`（修正 `AuditLog` 导入排序，ruff I001）
-  - `.gitignore`（新增 `_pytest_mode_patch.py`、`tmp-ci-logs*.txt`、`tmp/dsh-fix-round2/`、`tmp/dsh-probe-campaign/`）
-  - `Agent.md`（本条目）
-- Summary: 收口 2026-08-16 会话遗留的 6 个未提交改动（sprint/benchmark 测试 deadline 由硬编码 2026-08-15 改为相对 now+30 天；`LocalScheduler` 测试补 `audit_log`；`official_lineage.py` 在 require_decision 分支补 `require_approved_plan` 物理前置），修复其中 1 处 ruff 导入排序，验证通过后分两个聚焦提交；根目录 scratch 文件与 pytest 探针产物加入 .gitignore（`tmp/` 内已有 157 个受跟踪文件，未做整体 ignore）。连同此前 web 主界面提交共 3 个 commit 推送到 origin/main。
-- Verification:
-  - `poetry run pytest tests/unit/campaign/test_autonomous_sprint.py tests/unit/campaign/test_systems_benchmark.py tests/unit/runtime/test_continual_research_harness.py tests/unit/competition/test_official_lineage.py -q --no-cov`：70 passed, 1 skipped。
-  - `poetry run ruff check` 对全部改动文件：All checks passed。
-  - `git push origin main`：`5999547..b357aff`，3 commits（058cb7a / 5a8829d / b357aff）。
-- Problems: 无新增。
-- Follow-up: 无（CI 观察后续由仓库所有者确认）。

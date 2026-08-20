@@ -29,6 +29,7 @@ from autoresearch.competition.contest_direct_plan_render import (
     materialize_contest_direct_plan,
 )
 from autoresearch.competition.contest_direct_plan_revision import (
+    ContestDirectPlanNumberGuardError,
     ContestDirectPlanRevisionArtifact,
     revise_contest_direct_plan,
 )
@@ -61,15 +62,43 @@ _SHA256_LENGTH = 64
 
 # 与已舍弃链 2 的修订要求一致；预实验数字守卫由 revise_contest_direct_plan 内置。
 # 最后一条是主链实践约束：模型曾引入验证输入中不存在的 2310（wheel-210 周期积）
-# 而被数字守卫拒绝，故明确要求正文不得引入新数值。
+# 而被数字守卫拒绝，故明确要求正文不得引入新数值。历史 live 复跑（r1-r6）还暴露
+# 另外两类高频违规——自推比值（如“约 1/11”）与改写数量级范围（10^10→10^9），
+# 因此把具体负例与定性比较正例一并写入要求，供模型照做。
 _MAINLINE_REVISION_REQUIREMENTS = (
     "输出符合榜题模板的完整中文《科学假设与研究计划》",
     "读取并如实反馈已核验的真实探索性预实验结果，据此修订主假设与后续研究设计",
     "观察数字必须来自所给指标或日志，不把有限尺度预实验外推为一般定理或开放猜想证明",
     "明确区分预实验与未来正式实验，并报告不支持主假设的结果及替代解释",
     "除所给指标与日志中已经出现的数值外，正文不得引入任何新数字；"
-    "如需引用轮筛周期长度等常数，只写其名称（如 wheel-210），不得写出其数值",
+    "如需引用轮筛周期长度等常数，只写其名称（如 wheel-210），不得写出其数值"
+    "（例如不得写 2310 或任何轮筛周期积）。不得计算或写出来源数值的比值、倍数、"
+    "百分比或差值（例如不得写“约 1/11”“约 31 倍”）；不得新增或改写数量级"
+    "范围（例如不得把 10^10 写成 10^9）。需要定量比较时，只逐字引用证据中"
+    "已有的数值并配合定性强弱词（如“远小于”“接近”“无显著差异”）表述。",
 )
+
+# 数字守卫拒绝后的重试策略：同提示词重试成功率低（历史 6 连败，input_hash 相同、
+# 输出高度趋同），因此每次重试把上次守卫拒绝原因追加为一条新要求，并抖动温度。
+_REVISION_RETRY_TEMPERATURES = (0.2, 0.4, 0.6)
+_REVISION_RETRY_REQUIREMENT = (
+    "上一次修订被程序数字守卫拒绝。重写时正文所有数值必须逐字来自本次输入中"
+    "已经出现的预实验 artifact、metrics、日志或原计划；禁止任何派生数值（比值、"
+    "倍数、百分比、轮筛周期积、改写数量级范围）；需要定量比较时，只引用证据中"
+    "已有的数值并配合定性强弱词（如“远小于”“接近”“无显著差异”）表述。"
+)
+
+
+def _revision_temperatures(attempts: int) -> tuple[float, ...]:
+    """Return the per-attempt temperature schedule for the requested attempt count."""
+
+    if attempts < 1:
+        raise ContestMainlineDeliveryError("revision_attempts must be at least 1")
+    base = _REVISION_RETRY_TEMPERATURES
+    if attempts <= len(base):
+        return base[:attempts]
+    cycles = (attempts + len(base) - 1) // len(base)
+    return (base * cycles)[:attempts]
 
 
 class ContestMainlineDeliveryError(RuntimeError):
@@ -93,6 +122,7 @@ def run_contest_mainline_delivery(
     skills_root: Path | str = _DEFAULT_SKILLS_ROOT,
     plan_max_tokens: int = 12_000,
     revision_max_tokens: int = 14_000,
+    revision_attempts: int = len(_REVISION_RETRY_TEMPERATURES),
     timeout_seconds: int = 900,
     render_timeout_seconds: int = 180,
     plan_source_dir: Path | str | None = None,
@@ -107,7 +137,9 @@ def run_contest_mainline_delivery(
     """Run the complete mainline once into a fresh ``output_dir``.
 
     Stages: 01-plan (chain 1) -> 02-preexperiment (real, mandatory) ->
-    03-revision (one model call over verified pilot numbers) ->
+    03-revision (one model call over verified pilot numbers; the observed-number
+    guard rejection retries up to ``revision_attempts`` with a jittered temperature
+    and the previous rejection reason appended as a requirement) ->
     04-final-plan (rendered JSON/MD/TeX/PDF with embedded pilot evidence).
 
     ``plan_source_dir`` / ``preexperiment_source_dir`` reuse an already completed
@@ -213,23 +245,44 @@ def run_contest_mainline_delivery(
     reference_catalog = default_question_one_reference_catalog(question)
     revision_root = root / "03-revision"
     revision_path = root / _REVISED_PLAN_NAME
-    revision = revision_runner(
-        original_plan=original_plan_path,
-        scientific_problem=scientific_problem,
-        requirements=_MAINLINE_REVISION_REQUIREMENTS,
-        selected_skill_contexts=skill_contexts,
-        reference_catalog=reference_catalog,
-        preexperiment_artifact=pilot_path,
-        preexperiment_metrics=None,
-        preexperiment_root=pilot_root,
-        output_dir=revision_root,
-        output_path=revision_path,
-        config_path=config_path,
-        env_path=env_path,
-        timeout_seconds=timeout_seconds,
-        max_tokens=revision_max_tokens,
-        temperature=0.2,
-    )
+    # 数字守卫拒绝属于模型输出质量问题：把上次拒绝原因追加为一条新要求，
+    # 抖动温度后重试；证据绑定类失败（哈希/文件缺失）不会进入重试，直接抛出。
+    revision: ContestDirectPlanRevisionArtifact | None = None
+    requirements: tuple[str, ...] = _MAINLINE_REVISION_REQUIREMENTS
+    for attempt_index, temperature in enumerate(
+        _revision_temperatures(revision_attempts), start=1
+    ):
+        try:
+            revision = revision_runner(
+                original_plan=original_plan_path,
+                scientific_problem=scientific_problem,
+                requirements=requirements,
+                selected_skill_contexts=skill_contexts,
+                reference_catalog=reference_catalog,
+                preexperiment_artifact=pilot_path,
+                preexperiment_metrics=None,
+                preexperiment_root=pilot_root,
+                output_dir=revision_root,
+                output_path=revision_path,
+                config_path=config_path,
+                env_path=env_path,
+                timeout_seconds=timeout_seconds,
+                max_tokens=revision_max_tokens,
+                temperature=temperature,
+            )
+            break
+        except ContestDirectPlanNumberGuardError as exc:
+            if attempt_index >= revision_attempts:
+                raise
+            retry_requirement = _REVISION_RETRY_REQUIREMENT
+            if "alternative explanation" in str(exc).casefold():
+                retry_requirement += (
+                    "Results 中必须明确写出至少一种替代解释，并使用“替代解释”或"
+                    "“另一种解释”字样开头。"
+                )
+            requirements = (*requirements, f"{retry_requirement}（上次拒绝原因：{exc}）")
+    if revision is None:  # pragma: no cover - exhaustion re-raises the guard error
+        raise ContestMainlineDeliveryError("feedback revision produced no artifact")
     if revision.generation_calls != 1:
         raise ContestMainlineDeliveryError(
             "feedback revision must contain exactly one model revision call"
@@ -484,6 +537,15 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--skills-root", type=Path, default=_DEFAULT_SKILLS_ROOT)
     parser.add_argument("--plan-max-tokens", type=int, default=12_000)
     parser.add_argument("--revision-max-tokens", type=int, default=14_000)
+    parser.add_argument(
+        "--revision-attempts",
+        type=int,
+        default=len(_REVISION_RETRY_TEMPERATURES),
+        help=(
+            "修订阶段最多尝试次数。数字守卫拒绝后追加拒绝原因并抖动温度重试，"
+            "超过次数后失败关闭。"
+        ),
+    )
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--render-timeout-seconds", type=int, default=180)
     parser.add_argument(
@@ -511,6 +573,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         skills_root=args.skills_root,
         plan_max_tokens=args.plan_max_tokens,
         revision_max_tokens=args.revision_max_tokens,
+        revision_attempts=args.revision_attempts,
         timeout_seconds=args.timeout_seconds,
         render_timeout_seconds=args.render_timeout_seconds,
         plan_source_dir=args.plan_source_dir,

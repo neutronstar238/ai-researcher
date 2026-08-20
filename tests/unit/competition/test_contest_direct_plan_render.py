@@ -341,6 +341,186 @@ def test_repository_doi_is_used_only_when_formal_doi_is_absent() -> None:
     assert "record_sha256" not in markdown
 
 
+def test_latex_math_notation_is_normalized_in_body_prose() -> None:
+    payload = _payload()
+    payload["technical_details"] = (
+        "在区间 $[10^5, 10^5 + 10^6]$ 上执行；嵌入维度 $m \\in \\{3, 4, 5, 6, 7\\}$，"
+        "显著性水平 α=0.01，区间扩展至 $10^8$。"
+    )
+
+    tex = render_contest_plan_tex(payload)
+
+    assert "$" not in tex
+    assert "\\textbackslash" not in tex
+    assert r"10\textasciicircum{}5" in tex
+    assert r"m \ensuremath{\in} \{3, 4, 5, 6, 7\}" in tex
+    assert r"\ensuremath{\alpha}=0.01" in tex
+    assert r"10\textasciicircum{}8" in tex
+
+
+def test_latex_frac_sqrt_and_text_commands_are_simplified() -> None:
+    payload = _payload()
+    payload["methods"] = "比值 R = \\frac{a}{b}，误差 e = \\sqrt{2}，\\text{固定}窗口。"
+
+    tex = render_contest_plan_tex(payload)
+
+    for forbidden in ("\\frac", "\\sqrt", "\\text{"):
+        assert forbidden not in tex
+    assert "a/b" in tex
+    assert r"\ensuremath{\surd}(2)" in tex
+    assert "固定" in tex
+
+
+def test_greek_and_math_unicode_never_leak_as_replacement_chars() -> None:
+    payload = _payload()
+    payload["metrics"] = "α∈(0,1)，β≥0，γ×10^3，δ→∞，σ≈0.5，λ±0.1"
+
+    tex = render_contest_plan_tex(payload)
+
+    assert "\ufffd" not in tex
+    for symbol in ("α", "β", "γ", "δ", "σ", "λ", "∈", "≥", "×", "∞", "≈", "±"):
+        assert symbol not in tex
+    for command in (
+        r"\ensuremath{\alpha}",
+        r"\ensuremath{\beta}",
+        r"\ensuremath{\gamma}",
+        r"\ensuremath{\delta}",
+        r"\ensuremath{\sigma}",
+        r"\ensuremath{\lambda}",
+        r"\ensuremath{\in}",
+        r"\ensuremath{\geq}",
+        r"\ensuremath{\times}",
+        r"\ensuremath{\infty}",
+        r"\ensuremath{\approx}",
+        r"\ensuremath{\pm}",
+    ):
+        assert command in tex
+
+
+def test_json_folded_backspace_commands_are_repaired_in_body_prose() -> None:
+    # The JSON parser folds ``\b`` into a raw backspace byte before this renderer
+    # runs: ``t\bar{t}`` becomes "t\x08ar{t}" and ``\beta`` becomes "\x08eta".
+    payload = _payload()
+    payload["methods"] = (
+        "选择顶夸克对产生通道 t\x08ar{t}；耦合常数使用记号 \x08eta；"
+        "额外写一个孤立控制字符 \x08 并继续。"
+    )
+
+    tex = render_contest_plan_tex(payload)
+
+    assert "\x08" not in tex
+    assert r"\bar" not in tex
+    assert "tt" in tex
+    assert r"\ensuremath{\beta}" in tex
+    assert "额外写一个孤立控制字符" in tex
+
+
+def test_real_chinese_pdf_compiles_with_json_folded_backspace(tmp_path: Path) -> None:
+    payload = _payload()
+    payload["methods"] = "在 $t\\bar{t} \\to \\text{dilepton}$ 通道上测量，并用 \\pmatrix{1,2} 记号。"
+    # Simulate the JSON-parser corruption the renderer must survive.
+    corrupted = payload["methods"].replace("\\b", "\x08").replace("\\t", "\t")
+    assert "\x08" in corrupted
+    payload["methods"] = corrupted
+    assert "\x08" in str(payload["methods"])
+
+    artifact = materialize_contest_direct_plan(payload=payload, output_dir=tmp_path / "plan")
+
+    assert artifact.pdf_path.is_file()
+    assert artifact.pdf_path.stat().st_size > 0
+    assert artifact.page_count >= 1
+    manifest = json.loads(artifact.manifest_path.read_text(encoding="utf-8"))
+    assert any("\\pmatrix{1,2} → 1,2" in repair for repair in manifest.get("latex_repairs", []))
+
+
+def test_json_folded_text_tilde_times_theta_commands_are_restored() -> None:
+    payload = _payload()
+    source = "显著性达到 5\\text{sigma}；采样率 10\\times 深度；角度 \\theta；扰动 \\tilde{x}。"
+    corrupted = source.replace("\\t", "\t")
+    payload["methods"] = corrupted
+
+    tex = render_contest_plan_tex(payload)
+    markdown = render_contest_plan_markdown(payload)
+
+    for output in (tex, markdown):
+        assert "text{" not in output
+    assert "times" not in markdown
+    assert "5sigma" in tex and "5sigma" in markdown
+    assert r"\ensuremath{\times}" in tex and "10×" in markdown
+    assert r"\ensuremath{\theta}" in tex and "θ" in markdown
+    assert "x。" in tex and "x。" in markdown
+    assert "\\times" not in markdown
+    assert "\\tilde" not in markdown and "\\tilde" not in tex
+
+
+def test_calligraphic_blackboard_and_relation_commands_are_projected() -> None:
+    payload = _payload()
+    payload["technical_details"] = (
+        "构建可观测量 \\mathcal{A}_R 与 \\mathbb{Z}_2 格点规范场；"
+        "约束为 t \\gtrsim 500 Myrs 且 \\dot{M} 有界。"
+    )
+
+    tex = render_contest_plan_tex(payload)
+    markdown = render_contest_plan_markdown(payload)
+
+    for output in (tex, markdown):
+        assert "\\mathcal" not in output
+        assert "\\mathbb" not in output
+        assert "\\dot" not in output
+        assert "M 有界" in output
+    assert r"A\_R" in tex and "A_R" in markdown
+    assert r"Z\_2" in tex and "Z_2" in markdown
+    assert r"\ensuremath{\gtrsim} 500" in tex and "≳ 500" in markdown
+    assert "\\gtrsim" not in markdown
+
+
+def test_model_literal_backslash_n_becomes_prose_space() -> None:
+    payload = _payload()
+    payload["results"] = "尚未执行预实验。\\n 支持判据：若显著非零，则支持假设。"
+
+    tex = render_contest_plan_tex(payload)
+    markdown = render_contest_plan_markdown(payload)
+
+    assert "。\\n" not in tex and "。\\n" not in markdown
+    assert "尚未执行预实验。" in tex and "尚未执行预实验。" in markdown
+    assert "支持判据" in tex and "支持判据" in markdown
+
+
+def test_unknown_latex_commands_are_self_repaired_and_reported(tmp_path: Path) -> None:
+    payload = _payload()
+    payload["methods"] = "采用 \\unknowncommand 建模，并用 \\foo{bar} 记号标注。"
+
+    tex = render_contest_plan_tex(payload)
+    markdown = render_contest_plan_markdown(payload)
+    for output in (tex, markdown):
+        assert "\\unknowncommand" not in output
+        assert "\\foo" not in output
+        assert "unknowncommand" in output
+        assert "bar" in output
+
+    # The artifact manifest records every automatic repair as an error report.
+    payload["methods"] = "采用 \\unknowncommand 建模，并用 \\foo{bar} 记号标注。"
+    artifact = materialize_contest_direct_plan(payload=payload, output_dir=tmp_path / "plan")
+    manifest = json.loads(artifact.manifest_path.read_text(encoding="utf-8"))
+    repairs = manifest.get("latex_repairs", [])
+    assert any("\\unknowncommand → unknowncommand" in repair for repair in repairs)
+    assert any("\\foo{bar} → bar" in repair for repair in repairs)
+
+
+def test_windows_paths_in_prose_do_not_trigger_the_render_gate() -> None:
+    payload = _payload()
+    payload["technical_details"] = (
+        "数据位于 C:\\Users\\example\\data\\run.json，脚本位于 scripts\\run.py，其余照旧。"
+    )
+
+    tex = render_contest_plan_tex(payload)
+    markdown = render_contest_plan_markdown(payload)
+
+    assert "本计划内嵌证据" in tex and "本计划内嵌证据" in markdown
+    assert "Users" not in tex and "Users" not in markdown
+    assert "run.json" not in tex and "run.json" not in markdown
+
+
 def test_embedded_evidence_renders_inline_tables_plot_and_analysis() -> None:
     payload = _payload()
     payload["embedded_evidence"] = _embedded_evidence()

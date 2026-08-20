@@ -604,6 +604,7 @@ def _merge_group(
     )
     origins: list[ContestMergedLiteratureOrigin] = []
     retrievals: list[ContestMergedLiteratureRetrieval] = []
+    seen_retrieval_keys: set[tuple[str, str, str]] = set()
     for stage, artifact, record in group:
         fetches = {item.fetch_id: item for item in artifact.fetches}
         origins.append(
@@ -631,6 +632,14 @@ def _merge_group(
                 raise ContestDirectionMergedLiteratureError(
                     "record points to a fetch outside its retrieval artifact"
                 )
+            retrieval_key = (stage, artifact.artifact_hash, pointer.fetch_id)
+            if retrieval_key in seen_retrieval_keys:
+                # One upstream fetch can return the same work twice with slightly
+                # different metadata; the artifact-level dedup keeps those as two
+                # records while the merge groups them.  A repeated (stage, artifact,
+                # fetch) edge carries no new provenance, so keep the first occurrence.
+                continue
+            seen_retrieval_keys.add(retrieval_key)
             retrievals.append(
                 ContestMergedLiteratureRetrieval(
                     stage=stage,

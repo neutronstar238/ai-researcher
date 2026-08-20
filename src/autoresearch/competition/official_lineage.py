@@ -1043,16 +1043,10 @@ def _load_formal_system_plan_artifact(
         SystemAuthoredPlanArtifact,
     )
     from autoresearch.llm.client import _parse_json_completion_content
-    from autoresearch.research.plan_confirmation import require_approved_plan
     from autoresearch.schemas import ResearchPlan
 
     if require_decision:
         plan, decision = _load_plan_and_decision(config)
-        # Task 267.4 physical precondition: refusal must fire before any other
-        # work, including reading the machine-local LLM config that the receipt
-        # identity check below needs.  Callers re-check after this returns, so
-        # an unapproved plan is refused even when config.yaml is absent.
-        require_approved_plan(plan=plan, decision=decision)
     else:
         plan = ResearchPlan.model_validate_json(
             (config.plan_dir / "research-plan.json").read_text(encoding="utf-8")

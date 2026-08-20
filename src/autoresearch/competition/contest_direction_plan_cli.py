@@ -13,9 +13,11 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import shutil
 import subprocess
+import time
 import unicodedata
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
@@ -1270,6 +1272,56 @@ def _parse_iso_date(value: Any) -> date | None:
             return None
 
 
+def _is_transport_error(exc: Exception) -> bool:
+    name = type(exc).__name__
+    if name in {"TimeoutError", "ConnectionError", "URLError", "socket.timeout"}:
+        return True
+    if isinstance(exc, OSError):
+        return exc.errno in {
+            10060,  # WinError: connection timed out
+            10061,  # WinError: connection refused
+            110,  # ETIMEDOUT
+            101,  # ENETUNREACH
+        }
+    message = str(exc).casefold()
+    return any(
+        token in message
+        for token in ("timed out", "timeout", "unreachable", "refused", "name or service")
+    )
+
+
+def _finalist_status_cache_path() -> Path:
+    return Path(".cache/autoresearch/arxiv-finalist-status-cache.json")
+
+
+def _load_finalist_status_cache(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _store_finalist_status_cache(path: Path, cache: dict[str, dict[str, Any]]) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        temporary.write_text(
+            json.dumps(cache, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
+    except OSError:
+        # The cache is a bounded convenience; a write failure never blocks the run.
+        return
+
+
+def _verification_transport_retry_seconds() -> float:
+    return 1.5
+
+
 def _verify_arxiv_finalist(
     record: dict[str, Any],
     context: str,
@@ -1325,12 +1377,80 @@ def _verify_arxiv_finalist(
         status_as_of=_parse_iso_date(record.get("status_as_of")),
         source="arxiv",
     )
-    try:
-        verified = verifier(paper)
-    except Exception as exc:  # noqa: BLE001 - status enrichment degrades per finalist.
-        receipt["outcome"] = "verification_failed_preserved_as_non_authoritative"
-        receipt["error"] = f"{type(exc).__name__}: {exc}"
+    cache_path = _finalist_status_cache_path()
+    cache_key = hashlib.sha256(
+        f"{arxiv_status_url}\n{original_status}".encode()
+    ).hexdigest()
+    cache = _load_finalist_status_cache(cache_path)
+    cached = cache.get(cache_key)
+    cached_age_days: float | None = None
+    if isinstance(cached, dict) and cached.get("cached_at"):
+        try:
+            cached_at = datetime.fromisoformat(str(cached["cached_at"]))
+            cached_age_days = (datetime.now(timezone.utc) - cached_at).total_seconds() / 86_400
+        except ValueError:
+            pass
+    verified: AcademicPaper | None = None
+    last_error: Exception | None = None
+    for attempt in range(2):
+        try:
+            verified = verifier(paper)
+            last_error = None
+            break
+        except Exception as exc:  # noqa: BLE001 - bounded retry for transport only
+            last_error = exc
+            if not _is_transport_error(exc):
+                break
+            if attempt == 0:
+                time.sleep(_verification_transport_retry_seconds())
+    if verified is None:
+        assert last_error is not None
+        if (
+            _is_transport_error(last_error)
+            and cached is not None
+            and cached.get("verified_status") in {"published", "preprint", "unknown"}
+            and cached_age_days is not None
+            and 0 <= cached_age_days <= 7
+        ):
+            record.update(
+                {
+                    "publication_status": cached["verified_status"],
+                    "status_source": cached.get("status_source"),
+                    "status_as_of": cached.get("status_as_of"),
+                }
+            )
+            receipt["outcome"] = "verification_served_from_cache"
+            receipt["verified_status"] = cached["verified_status"]
+            receipt["status_source"] = cached.get("status_source")
+            receipt["status_as_of"] = cached.get("status_as_of")
+            receipt["error"] = f"{type(last_error).__name__}: {last_error}"
+            receipt["cache_key"] = cache_key
+            verification_line = (
+                "最终候选状态复核（跨运行缓存，不改变原检索record_sha256）："
+                f"{cached['verified_status']}；来源={cached.get('status_source') or 'unknown'}；"
+                f"截至={cached.get('status_as_of') or 'unknown'}"
+            )
+            return record, f"{context}\n{verification_line}", receipt
+        outcome = (
+            "verification_failed_transport_preserved"
+            if _is_transport_error(last_error)
+            else "verification_failed_preserved_as_non_authoritative"
+        )
+        receipt["outcome"] = outcome
+        receipt["error"] = f"{type(last_error).__name__}: {last_error}"
         return record, context, receipt
+
+    cache[cache_key] = {
+        "source_url": arxiv_status_url,
+        "original_status": original_status,
+        "verified_status": verified.publication_status,
+        "status_source": verified.status_source,
+        "status_as_of": (
+            verified.status_as_of.isoformat() if verified.status_as_of is not None else None
+        ),
+        "cached_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _store_finalist_status_cache(cache_path, cache)
 
     record.update(
         {

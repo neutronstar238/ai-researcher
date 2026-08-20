@@ -706,50 +706,25 @@ def _compile_requested_plan_execution_contract(
     return compile_plan_execution_contract(research_plan)
 
 
-def _approval_plan(research_plan: Any) -> ResearchPlan:
-    """Recover the exact human-approved ``ResearchPlan`` from the caller's input.
+def _approval_plan_for_contract(
+    *,
+    research_plan: Any,
+    contract: _AnyPlanExecutionContract,
+) -> ResearchPlan:
+    """Recover the exact human-approved ``ResearchPlan`` without losing v2 identity."""
 
-    The plan gate must fire before any execution-contract compilation, so this
-    derives the approved plan directly rather than from a compiled contract.
-    Historical ``ResearchPlan`` inputs are the plan themselves; a formal
-    system-authored artifact carries the complete plan in its ``plan`` field; a
-    compiled prospective contract carries it in ``approved_plan``.
-    """
-
+    if isinstance(contract, ProspectivePlanExecutionContract):
+        return ResearchPlan.model_validate(contract.approved_plan)
     if isinstance(research_plan, ResearchPlan):
         return research_plan
-    if isinstance(research_plan, ProspectivePlanExecutionContract):
-        return ResearchPlan.model_validate(research_plan.approved_plan)
-    if isinstance(research_plan, PlanExecutionContract):
-        raise OfficialDevelopmentSearchError(
-            "a detached legacy v1 execution contract does not contain the complete "
-            "ResearchPlan required for human approval"
-        )
-    schema_version = (
-        research_plan.get("schema_version")
-        if isinstance(research_plan, Mapping)
-        else getattr(research_plan, "schema_version", None)
+    if isinstance(research_plan, Mapping) and research_plan.get("schema_version") != (
+        "plan-execution-contract-v1"
+    ):
+        return ResearchPlan.model_validate(research_plan)
+    raise OfficialDevelopmentSearchError(
+        "a detached legacy v1 execution contract does not contain the complete "
+        "ResearchPlan required for human approval"
     )
-    if schema_version == "system-authored-research-plan-v2":
-        plan_payload = (
-            research_plan.get("plan")
-            if isinstance(research_plan, Mapping)
-            else research_plan.plan
-        )
-        return ResearchPlan.model_validate(plan_payload)
-    if schema_version == "plan-execution-contract-v2":
-        approved = (
-            research_plan.get("approved_plan")
-            if isinstance(research_plan, Mapping)
-            else research_plan.approved_plan
-        )
-        return ResearchPlan.model_validate(approved)
-    if schema_version == "plan-execution-contract-v1":
-        raise OfficialDevelopmentSearchError(
-            "a detached legacy v1 execution contract does not contain the complete "
-            "ResearchPlan required for human approval"
-        )
-    return ResearchPlan.model_validate(research_plan)
 
 
 def _load_matching_plan_execution_contract(
@@ -1820,19 +1795,17 @@ def execute_official_stage(
     if research_plan is not None:
         from autoresearch.research.plan_confirmation import require_approved_plan
 
-        # The research-plan gate (Task 267.4) is the physical precondition and
-        # must fire before any contract compilation: an unapproved plan is
-        # refused even when its brief cannot yet be compiled, so a contract
-        # error can never mask a missing approval.
-        approval_plan = _approval_plan(research_plan)
+        expected_contract = _compile_requested_plan_execution_contract(research_plan)
+        if expected_contract is None:  # pragma: no cover - narrowed by the branch
+            raise OfficialDevelopmentSearchError("research plan contract is missing")
+        approval_plan = _approval_plan_for_contract(
+            research_plan=research_plan,
+            contract=expected_contract,
+        )
         # Raises unless a human recorded an approval against this exact plan.
         bound_plan_hash = require_approved_plan(
             plan=approval_plan, decision=plan_decision
         )
-
-        expected_contract = _compile_requested_plan_execution_contract(research_plan)
-        if expected_contract is None:  # pragma: no cover - narrowed by the branch
-            raise OfficialDevelopmentSearchError("research plan contract is missing")
         retained_contract = _load_matching_plan_execution_contract(
             output_root=output_root,
             expected=expected_contract,

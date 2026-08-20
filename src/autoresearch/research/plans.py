@@ -582,6 +582,8 @@ def compile_research_plan_pdf(
             cwd=tex_path.parent,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout_seconds,
             check=False,
         )
@@ -863,6 +865,12 @@ def _rubric_scores(*, issue_count: int, warning_count: int) -> dict[str, float]:
 
 
 def _latex_command(tex_path: Path) -> list[str] | None:
+    # Prefer xelatex directly: the research-plan document needs a single pass and
+    # xelatex has no external-script dependency.  MiKTeX's latexmk wrapper
+    # requires a `perl` script engine that is frequently absent, which would turn
+    # an otherwise-compilable document into a spurious `failed` result.
+    if shutil.which("xelatex"):
+        return ["xelatex", "-interaction=nonstopmode", "-halt-on-error", tex_path.name]
     if shutil.which("latexmk"):
         return [
             "latexmk",
@@ -871,8 +879,6 @@ def _latex_command(tex_path: Path) -> list[str] | None:
             "-halt-on-error",
             tex_path.name,
         ]
-    if shutil.which("xelatex"):
-        return ["xelatex", "-interaction=nonstopmode", "-halt-on-error", tex_path.name]
     return None
 
 

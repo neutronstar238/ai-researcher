@@ -17,11 +17,13 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import logging
 import os
 import re
 import shutil
 import subprocess
 import tempfile
+import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -297,6 +299,8 @@ def render_contest_plan_tex(payload: Mapping[str, Any]) -> str:
 
     return rf"""\documentclass[UTF8,12pt,a4paper]{{ctexart}}
 \usepackage[top=2.5cm,bottom=2.5cm,left=2.7cm,right=2.7cm]{{geometry}}
+\usepackage{{amsmath}}
+\usepackage{{amssymb}}
 \usepackage{{booktabs}}
 \usepackage{{enumitem}}
 \usepackage{{fancyhdr}}
@@ -398,6 +402,7 @@ def materialize_contest_direct_plan(
     validate_contest_plan_payload(payload)
     output = Path(output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
+    _pop_render_repairs()  # discard any repairs recorded by a previous render call
     source_hash = canonical_sha256(dict(payload))
     normalized_evidence_bindings = _normalize_evidence_bindings(evidence_bindings)
     evidence_bindings_hash = canonical_sha256({"evidence_bindings": normalized_evidence_bindings})
@@ -428,6 +433,7 @@ def materialize_contest_direct_plan(
     ).encode("utf-8")
     markdown_bytes = render_contest_plan_markdown(public_payload).encode("utf-8")
     tex_bytes = render_contest_plan_tex(public_payload).encode("utf-8")
+    latex_repairs = _pop_render_repairs()
 
     with tempfile.TemporaryDirectory(prefix=".research-plan-build-", dir=output) as temp_name:
         staging = Path(temp_name)
@@ -494,6 +500,7 @@ def materialize_contest_direct_plan(
             },
             "compile_status": "compiled",
             "compiler": _compiler_identity(),
+            "latex_repairs": list(latex_repairs),
             "page_count": page_count,
             "pdf_text_verified": True,
             "artifacts": {
@@ -1031,6 +1038,8 @@ def _self_contained_prose(value: Any) -> str:
     # Local artifact paths and sidecar filenames are implementation provenance,
     # not research prose.  The complete bytes remain in the private source and
     # manifest; the public plan directly embeds their reportable contents.
+    # Stripping happens before LaTeX normalization so Windows paths (C:\...) can
+    # never be mistaken for unresolved commands by the render gate.
     text = re.sub(
         r"(?i)(?:(?<![A-Za-z])[A-Za-z]:[/\\][^\s，。；]+|(?:[\w.-]+[/\\])+[\w.-]+\.(?:jsonl?|csv|tsv|log|txt))",
         "本计划内嵌证据",
@@ -1041,7 +1050,7 @@ def _self_contained_prose(value: Any) -> str:
         "本计划内嵌证据",
         text,
     )
-    return text
+    return _normalize_latex_math_in_text(text)
 
 
 def _markdown_table_cell(value: str) -> str:
@@ -1490,15 +1499,15 @@ def _markdown_value(
     if isinstance(value, list | tuple):
         prefix = (lambda index: f"{index}. ") if ordered else (lambda _index: "- ")
         return "\n".join(
-            f"{prefix(index)}{_self_contained_prose(item) if humanize else _text(item)}"
+            f"{prefix(index)}{_normalize_latex_math_in_text(_self_contained_prose(item) if humanize else _text(item))}"
             for index, item in enumerate(value, 1)
         )
     if isinstance(value, Mapping):
         return "\n".join(
-            f"- **{key}：** {_self_contained_prose(item) if humanize else _text(item)}"
+            f"- **{key}：** {_normalize_latex_math_in_text(_self_contained_prose(item) if humanize else _text(item))}"
             for key, item in value.items()
         )
-    return _self_contained_prose(value) if humanize else _text(value)
+    return _normalize_latex_math_in_text(_self_contained_prose(value) if humanize else _text(value))
 
 
 def _markdown_references(value: Any) -> str:
@@ -1510,9 +1519,10 @@ def _markdown_references(value: Any) -> str:
 
 def _reference_plain_text(reference: Any) -> str:
     projected = _project_reference_for_display(reference)
+    citation = _normalize_latex_math_in_text(projected.citation)
     if projected.url is None:
-        return projected.citation
-    return f"{projected.citation}；URL：{projected.url}"
+        return citation
+    return f"{citation}；URL：{projected.url}"
 
 
 def _tex_items(
@@ -1782,16 +1792,331 @@ def _write_immutable_json(path: Path, payload: Mapping[str, Any]) -> None:
             raise ContestDirectPlanRenderError(f"版本化展示审计已存在且内容不同：{path}") from None
 
 
+# Model-authored prose frequently carries raw LaTeX math notation (``$...$``,
+# ``\{...\}``, ``\in``, ``^{...}``, ``_{...}``).  Escaping those tokens verbatim
+# leaks ``\$`` / ``\textbackslash{}`` / ``\{`` into the human-facing document
+# instead of typesetting them.  This table maps the bounded command set the plan
+# model actually emits onto Unicode symbols that the escape path below renders
+# through ``\ensuremath{}`` (so they survive a font without CJK/math glyphs).
+_LATEX_MATH_COMMANDS: dict[str, str] = {
+    r"\in": "∈",
+    r"\notin": "∉",
+    r"\leq": "≤",
+    r"\le": "≤",
+    r"\geq": "≥",
+    r"\ge": "≥",
+    r"\neq": "≠",
+    r"\ne": "≠",
+    r"\times": "×",
+    r"\cdot": "·",
+    r"\pm": "±",
+    r"\mp": "∓",
+    r"\approx": "≈",
+    r"\simeq": "≃",
+    r"\sim": "∼",
+    r"\propto": "∝",
+    r"\to": "→",
+    r"\rightarrow": "→",
+    r"\leftarrow": "←",
+    r"\leftrightarrow": "↔",
+    r"\Rightarrow": "⇒",
+    r"\infty": "∞",
+    r"\sum": "∑",
+    r"\prod": "∏",
+    r"\int": "∫",
+    r"\partial": "∂",
+    r"\nabla": "∇",
+    r"\forall": "∀",
+    r"\exists": "∃",
+    r"\subset": "⊂",
+    r"\subseteq": "⊆",
+    r"\cup": "∪",
+    r"\cap": "∩",
+    r"\land": "∧",
+    r"\wedge": "∧",
+    r"\lor": "∨",
+    r"\vee": "∨",
+    r"\neg": "¬",
+    r"\ldots": "…",
+    r"\dots": "…",
+    r"\cdots": "⋯",
+    r"\mid": "|",
+    r"\ln": "ln",
+    r"\log": "log",
+    r"\exp": "exp",
+    r"\sin": "sin",
+    r"\cos": "cos",
+    r"\tan": "tan",
+    r"\cot": "cot",
+    r"\sec": "sec",
+    r"\csc": "csc",
+    r"\min": "min",
+    r"\max": "max",
+    r"\det": "det",
+    r"\lim": "lim",
+    r"\sup": "sup",
+    r"\inf": "inf",
+    r"\dim": "dim",
+    r"\deg": "deg",
+    r"\gg": "≫",
+    r"\ll": "≪",
+    r"\gtrsim": "≳",
+    r"\lesssim": "≲",
+    r"\star": "⋆",
+    r"\ast": "∗",
+    r"\Re": "ℜ",
+    r"\Im": "ℑ",
+    r"\hbar": "ħ",
+    r"\ell": "ℓ",
+    r"\langle": "⟨",
+    r"\rangle": "⟩",
+    r"\prime": "′",
+    r"\dagger": "†",
+    r"\angle": "∠",
+    r"\circ": "∘",
+    r"\Vert": "‖",
+    r"\vert": "|",
+    r"\alpha": "α",
+    r"\beta": "β",
+    r"\gamma": "γ",
+    r"\delta": "δ",
+    r"\epsilon": "ε",
+    r"\varepsilon": "ε",
+    r"\zeta": "ζ",
+    r"\eta": "η",
+    r"\theta": "θ",
+    r"\iota": "ι",
+    r"\kappa": "κ",
+    r"\lambda": "λ",
+    r"\mu": "μ",
+    r"\nu": "ν",
+    r"\xi": "ξ",
+    r"\pi": "π",
+    r"\rho": "ρ",
+    r"\sigma": "σ",
+    r"\tau": "τ",
+    r"\upsilon": "υ",
+    r"\phi": "φ",
+    r"\varphi": "φ",
+    r"\chi": "χ",
+    r"\psi": "ψ",
+    r"\omega": "ω",
+    r"\Gamma": "Γ",
+    r"\Delta": "Δ",
+    r"\Theta": "Θ",
+    r"\Lambda": "Λ",
+    r"\Xi": "Ξ",
+    r"\Pi": "Π",
+    r"\Sigma": "Σ",
+    r"\Phi": "Φ",
+    r"\Psi": "Ψ",
+    r"\Omega": "Ω",
+}
+
+# Unicode math symbols produced by the normalization pass (or already present in
+# model text) that the CJK body font may lack; render them through math mode.
+_MATH_SYMBOLS: dict[str, str] = {
+    "≤": r"\ensuremath{\leq}",
+    "≥": r"\ensuremath{\geq}",
+    "≠": r"\ensuremath{\neq}",
+    "∈": r"\ensuremath{\in}",
+    "∉": r"\ensuremath{\notin}",
+    "×": r"\ensuremath{\times}",
+    "·": r"\ensuremath{\cdot}",
+    "±": r"\ensuremath{\pm}",
+    "∓": r"\ensuremath{\mp}",
+    "≈": r"\ensuremath{\approx}",
+    "≃": r"\ensuremath{\simeq}",
+    "∼": r"\ensuremath{\sim}",
+    "∝": r"\ensuremath{\propto}",
+    "→": r"\ensuremath{\rightarrow}",
+    "←": r"\ensuremath{\leftarrow}",
+    "↔": r"\ensuremath{\leftrightarrow}",
+    "⇒": r"\ensuremath{\Rightarrow}",
+    "∞": r"\ensuremath{\infty}",
+    "∑": r"\ensuremath{\sum}",
+    "∏": r"\ensuremath{\prod}",
+    "∫": r"\ensuremath{\int}",
+    "√": r"\ensuremath{\surd}",
+    "∂": r"\ensuremath{\partial}",
+    "∇": r"\ensuremath{\nabla}",
+    "∀": r"\ensuremath{\forall}",
+    "∃": r"\ensuremath{\exists}",
+    "⊂": r"\ensuremath{\subset}",
+    "⊆": r"\ensuremath{\subseteq}",
+    "∪": r"\ensuremath{\cup}",
+    "∩": r"\ensuremath{\cap}",
+    "∧": r"\ensuremath{\land}",
+    "∨": r"\ensuremath{\lor}",
+    "¬": r"\ensuremath{\neg}",
+    "≳": r"\ensuremath{\gtrsim}",
+    "≲": r"\ensuremath{\lesssim}",
+    "−": r"\ensuremath{-}",
+    "α": r"\ensuremath{\alpha}",
+    "β": r"\ensuremath{\beta}",
+    "γ": r"\ensuremath{\gamma}",
+    "δ": r"\ensuremath{\delta}",
+    "ε": r"\ensuremath{\varepsilon}",
+    "ζ": r"\ensuremath{\zeta}",
+    "η": r"\ensuremath{\eta}",
+    "θ": r"\ensuremath{\theta}",
+    "ι": r"\ensuremath{\iota}",
+    "κ": r"\ensuremath{\kappa}",
+    "λ": r"\ensuremath{\lambda}",
+    "μ": r"\ensuremath{\mu}",
+    "ν": r"\ensuremath{\nu}",
+    "ξ": r"\ensuremath{\xi}",
+    "π": r"\ensuremath{\pi}",
+    "ρ": r"\ensuremath{\rho}",
+    "σ": r"\ensuremath{\sigma}",
+    "τ": r"\ensuremath{\tau}",
+    "υ": r"\ensuremath{\upsilon}",
+    "φ": r"\ensuremath{\varphi}",
+    "χ": r"\ensuremath{\chi}",
+    "ψ": r"\ensuremath{\psi}",
+    "ω": r"\ensuremath{\omega}",
+    "Γ": r"\ensuremath{\Gamma}",
+    "Δ": r"\ensuremath{\Delta}",
+    "Θ": r"\ensuremath{\Theta}",
+    "Λ": r"\ensuremath{\Lambda}",
+    "Ξ": r"\ensuremath{\Xi}",
+    "Π": r"\ensuremath{\Pi}",
+    "Σ": r"\ensuremath{\Sigma}",
+    "Φ": r"\ensuremath{\Phi}",
+    "Ψ": r"\ensuremath{\Psi}",
+    "Ω": r"\ensuremath{\Omega}",
+}
+
+_COMMANDS_SORTED_BY_LENGTH = tuple(
+    sorted(_LATEX_MATH_COMMANDS, key=len, reverse=True)
+)
+
+# Unknown commands remaining after every known projection: braced commands take
+# their inner text, bare commands keep the command word without the backslash.
+_UNKNOWN_COMMAND_RE = re.compile(r"\\(?P<command>[A-Za-z]+)(?:\s*\{(?P<inner>[^{}]*)\})?")
+
+
+class _RenderRepairLedger(threading.local):
+    """Per-thread ledger of automatic LaTeX repairs performed by one render."""
+
+    def __init__(self) -> None:
+        self.repairs: list[str] = []
+
+
+_render_repair_ledger = _RenderRepairLedger()
+
+
+def _pop_render_repairs() -> tuple[str, ...]:
+    """Return and clear the repairs recorded by the current render call."""
+
+    ledger = _render_repair_ledger.repairs
+    repairs = tuple(ledger)
+    ledger.clear()
+    return repairs
+
+
+def _normalize_latex_math_in_text(text: str) -> str:
+    r"""Project model-authored LaTeX math notation onto plain Unicode text.
+
+    This is a display-only normalization.  It never changes scientific content;
+    it only removes LaTeX math delimiters and command syntax so the document body
+    reads as clean text instead of leaking ``$``, ``\{``, or ``\in``.  The
+    resulting Unicode symbols are then routed through math mode by ``_tex_escape``
+    so they survive a CJK font that lacks Greek/math glyphs.
+    """
+
+    normalized = text.replace("$$", "").replace(r"\[", "").replace(r"\]", "")
+    normalized = normalized.replace(r"\(", "").replace(r"\)", "").replace("$", "")
+    # Repair the plan model's JSON-escaping corruption: a bare backslash command
+    # (``\t`` / ``\tau``) inside a JSON string value is folded by the JSON parser
+    # into a tab / tab+"au" before this renderer ever runs.  Plan prose never uses
+    # tabs, so these two replacements restore the intended math text.
+    normalized = normalized.replace("\t" + "au", "τ")
+    # Restore other LaTeX commands whose leading ``\t`` was folded into a tab by
+    # the JSON parser before this renderer runs.  The restored commands flow
+    # through the regular projections below (``\text{...}``/``\tilde{...}``
+    # collapse to their inner text, ``\times`` maps to ×, ``\theta`` maps to θ).
+    normalized = normalized.replace("\t" + "ext", r"\text")
+    normalized = normalized.replace("\t" + "ilde", r"\tilde")
+    normalized = normalized.replace("\t" + "imes", r"\times")
+    normalized = normalized.replace("\t" + "heta", r"\theta")
+    normalized = normalized.replace(r"\tfrac", r"\frac")
+    normalized = normalized.replace("\t", "t")
+    # Repair the same JSON-escaping corruption for ``\b`` (backspace escape):
+    # ``\bar`` / ``\beta`` / ``\binom`` become a raw backspace byte plus the
+    # remaining letters.  Restoring the ``\b`` prefix lets the command projections
+    # below process them normally (``\bar{...}`` collapses to its inner text,
+    # ``\beta`` maps to β); an unmatched stray backspace is dropped.
+    normalized = re.sub(r"\x08([A-Za-z]+)", r"\\b\1", normalized)
+    normalized = normalized.replace("\x08", "")
+    # Brace-grouped typographic/accent commands collapse to their inner text.
+    normalized = re.sub(
+        r"\\(?:text|mathrm|mathbf|mathit|mathsf|mathtt|textbf|textit|operatorname"
+        r"|bar|hat|vec|tilde|overline|underline|widehat|widetilde|dot|ddot|mathring"
+        r"|mathcal|mathbb|mathfrak|mathscr|bm|boldsymbol)"
+        r"\s*\{([^{}]*)\}",
+        r"\1",
+        normalized,
+    )
+    normalized = re.sub(r"\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}", r"\1/\2", normalized)
+    normalized = re.sub(r"\\sqrt\s*\{([^{}]*)\}", r"√(\1)", normalized)
+    normalized = normalized.replace(r"\{", "{").replace(r"\}", "}")
+    normalized = re.sub(r"\^\{([^{}]*)\}", r"^\1", normalized)
+    normalized = re.sub(r"_\{([^{}]*)\}", r"_\1", normalized)
+    # Known single-token commands map to their Unicode/math text equivalents.
+    # Matching requires a non-letter after the command so that a shorter known
+    # command can never eat the prefix of a longer unknown one (e.g. ``\pm``
+    # must not corrupt ``\pmatrix`` into ``±atrix``).
+    command_pattern = re.compile(
+        r"\\" + r"(?:"
+        + "|".join(re.escape(command[1:]) for command in _COMMANDS_SORTED_BY_LENGTH)
+        + r")(?![A-Za-z])"
+    )
+    normalized = command_pattern.sub(
+        lambda match: _LATEX_MATH_COMMANDS[match.group(0)], normalized
+    )
+    # A model-written literal ``\n`` (escaped backslash inside its JSON output)
+    # survives parsing as backslash+n; it means a line break, not a command.
+    normalized = normalized.replace(r"\n", " ")
+    # A redundant backslash directly before an already-Unicode math/greek symbol
+    # (e.g. ``\κ`` written instead of ``\kappa``) is dropped.
+    normalized = re.sub(r"\\(?=[\u0370-\u03ff\u2200-\u22ff])", "", normalized)
+    for command in (r"\,", r"\;", r"\quad", r"\qquad", r"\!", r"\ "):
+        normalized = normalized.replace(command, " ")
+    normalized = _SUPERSCRIPT_RUN.sub(
+        lambda match: "^" + match.group(0).translate(_SUPERSCRIPT_TRANSLATION),
+        normalized,
+    )
+    normalized = _SUBSCRIPT_RUN.sub(
+        lambda match: "_" + match.group(0).translate(_SUBSCRIPT_TRANSLATION),
+        normalized,
+    )
+    # Self-repair stage: any backslash-letter sequence still present after all
+    # projections is an unknown LaTeX command.  The renderer repairs it
+    # deterministically instead of aborting: braced commands collapse to their
+    # inner text, bare commands drop the backslash and keep the command word.
+    # Every repair is reported through the render log and the manifest so the
+    # model's notation drift stays observable without blocking delivery.
+    def _repair(match: re.Match[str]) -> str:
+        inner = match.group("inner")
+        repaired = inner if inner is not None else match.group("command")
+        record = f"\\{match.group('command')}" + (f"{{{inner}}}" if inner is not None else "")
+        _record_latex_repair(f"{record} → {repaired}")
+        return repaired
+
+    normalized = _UNKNOWN_COMMAND_RE.sub(_repair, normalized)
+    return normalized
+
+
+def _record_latex_repair(repair: str) -> None:
+    ledger = _render_repair_ledger.repairs
+    if repair not in ledger:
+        ledger.append(repair)
+    logging.getLogger("autoresearch.render").warning("自动修复未消解 LaTeX 命令：%s", repair)
+
+
 def _tex_escape(value: Any) -> str:
-    text = _text(value)
-    math_symbols = {
-        "≤": r"\ensuremath{\leq}",
-        "≥": r"\ensuremath{\geq}",
-        "τ": r"\ensuremath{\tau}",
-        "Δ": r"\ensuremath{\Delta}",
-        "×": r"\ensuremath{\times}",
-        "−": r"\ensuremath{-}",
-    }
+    text = _normalize_latex_math_in_text(_text(value))
     replacements = {
         "\\": r"\textbackslash{}",
         "&": r"\&",
@@ -1805,7 +2130,8 @@ def _tex_escape(value: Any) -> str:
         "^": r"\textasciicircum{}",
     }
     return "".join(
-        math_symbols.get(character, replacements.get(character, character)) for character in text
+        _MATH_SYMBOLS.get(character, replacements.get(character, character))
+        for character in text
     )
 
 

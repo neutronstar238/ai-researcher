@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -43,6 +44,7 @@ from autoresearch.competition.contest_direct_plan_render import (
     materialize_contest_direct_plan,
 )
 from autoresearch.competition.contest_direct_plan_revision import (
+    ContestDirectPlanNumberGuardError,
     ContestDirectPlanRevisionArtifact,
     revise_contest_direct_plan,
 )
@@ -139,7 +141,9 @@ from autoresearch.competition.contest_planning_literature_gap_repair import (
     write_planning_literature_gap_repair_projection,
 )
 from autoresearch.competition.contest_planning_literature_gap_repair_runner import (
+    PlanningLiteratureGapRepairResponseError,
     PlanningLiteratureGapRepairResponseReceipt,
+    gap_repair_failure_is_revisable,
     load_planning_literature_gap_repair_response,
     planning_literature_gap_repair_stage_input_hash,
     run_planning_literature_gap_repair_query,
@@ -169,6 +173,7 @@ from autoresearch.literature.clients import (
     SemanticScholarClient,
     semantic_scholar_enabled,
 )
+from autoresearch.literature.doi_verification import verify_reference_records
 from autoresearch.literature.models import AcademicPaper
 from autoresearch.llm.client import LLMJsonCompletionResult
 
@@ -214,6 +219,24 @@ _LOOP_REQUIREMENTS = (
     "独立目标评审发生在预实验之后，随后生成详细中文研究计划",
     "最终独立科学评审只旁路评价，不删除或改写最终计划",
     "预实验不是正式实验、数学证明或论文；所有数字必须来自已核验证据",
+)
+# 反馈修订阶段的结果边界要求（与 mainline 的 P-20260816-022 修复一致，并补 live 暴露的两条）：
+# - 数字边界：模型曾引入验证输入中不存在的数字（如 10^9、2310）而被数字守卫拒绝。
+# - 替代解释：数字守卫要求 Results 必须给出至少一种替代解释。
+# - 数据规模一致性：live 暴露修订把 technical_details/target 改成 10^9 却漏改 datasets（仍 10^8）。
+# - 禁止无文献支撑机制归因：live 暴露修订把微弱残差归因到「高阶 Hardy-Littlewood k-tuple」等锁定文献不支持的机制。
+_REVISION_RESULT_REQUIREMENTS = (
+    "除所给指标与日志中已经出现的数值外，正文不得引入任何新数字；"
+    "如需引用轮筛周期长度等常数，只写其名称（如 wheel-210），不得写出其数值",
+    "当预实验结果不支持主假设或效应微弱时，Results 必须明确写出至少一种替代解释"
+    "（如更强的模算术约束、有限样本波动、非平稳密度梯度等），并如实收窄结论。",
+    "Datasets/Source/Target 与 Technical Details、Methods、Experiments 中的数据规模必须完全一致；"
+    "若正式实验要扩大区间（如从 10^8 扩到 10^9），必须同步更新 Datasets 与 Technical Details"
+    "中所有出现的区间上界，不得只改一处。",
+    "结果与局限性部分绝对禁止出现任何命名的数学猜想或机制名称——包括但不限于 "
+    "Hardy-Littlewood、黎曼、Cramér、k-tuple、二级项、猜想——即使以「可能是」「不能排除」"
+    "的方式提及也禁止。解释微小残差时只能用描述性表述（如「更高阶模算术约束，如 wheel-2310」"
+    "「有限样本偏差」「区间伪影」「并列处理偏差」），并明确这些只是有待检验的假设、而非已证实机制。",
 )
 _ADAPTER_DESCRIPTOR: dict[str, Any] = {
     "adapter_id": _ADAPTER_ID,
@@ -923,6 +946,7 @@ def run_contest_direction_research_loop(
     plan_path = root / "system-authored-revised-research-plan.json"
     revision_requirements = (
         *_LOOP_REQUIREMENTS,
+        *_REVISION_RESULT_REQUIREMENTS,
         "内部 provisional 只作证据修订基线，不得当作最终计划或已完成研究。",
         "以下是预实验后的独立目标评审上下文（模型判断，不是额外实验事实）："
         + json.dumps(postpilot_context, ensure_ascii=False, sort_keys=True),
@@ -1118,7 +1142,7 @@ def run_contest_direction_research_loop(
         checkpoint_root=root,
     ) as context_completion:
         final_review = scientific_review_runner(
-            final_plan=rendered.json_path,
+            final_plan=plan,
             preexperiment_artifact=pilot_path,
             reference_catalog=final_reference_catalog,
             selected_skill_contexts=tuple(
@@ -1614,6 +1638,12 @@ def _prepare_two_stage_literature(
         raise ContestDirectionResearchLoopError(
             "two-stage retrieval did not yield the required 5–10 complete references"
         )
+    if _doi_verification_enabled():
+        _record_finalist_doi_verification(
+            literature_root / "finalist-doi-verification.json",
+            planning_catalog,
+            resume=resume,
+        )
     _persist_exact_coverage_receipt(planning_coverage_path, planning_coverage)
     planning_lock_payload = _load_or_write_planning_literature_lock(
         planning_lock_path,
@@ -1777,21 +1807,50 @@ def _prepare_bounded_gap_repair(
             diagnosis,
             evidence_inputs,
         )
-        with context_runtime.checkpointed_stage(
-            "planning-literature-gap-repair-query",
-            input_hash=stage_input_hash,
-            checkpoint_root=root,
-        ) as completion:
-            response = run_planning_literature_gap_repair_query(
-                diagnosis=diagnosis,
-                evidence_inputs=evidence_inputs,
-                config_path=config_path,
-                env_path=env_path,
-                timeout_seconds=timeout_seconds,
-                max_tokens=retrieval_max_tokens,
-                completion=completion,
-                output_path=response_path,
+        try:
+            with context_runtime.checkpointed_stage(
+                "planning-literature-gap-repair-query",
+                input_hash=stage_input_hash,
+                checkpoint_root=root,
+            ) as completion:
+                response = run_planning_literature_gap_repair_query(
+                    diagnosis=diagnosis,
+                    evidence_inputs=evidence_inputs,
+                    config_path=config_path,
+                    env_path=env_path,
+                    timeout_seconds=timeout_seconds,
+                    max_tokens=retrieval_max_tokens,
+                    completion=completion,
+                    output_path=response_path,
+                )
+        except PlanningLiteratureGapRepairResponseError as first_exc:
+            if not gap_repair_failure_is_revisable(first_exc):
+                raise
+            # One bounded revision: re-ask once with the exact rejection reason and
+            # the strong-counterevidence-term requirement in a fresh checkpointed
+            # stage (its input hash binds the revision reason).
+            revision_reason = str(first_exc)
+            revision_hash = planning_literature_gap_repair_stage_input_hash(
+                diagnosis,
+                evidence_inputs,
+                revision_failure_reason=revision_reason,
             )
+            with context_runtime.checkpointed_stage(
+                "planning-literature-gap-repair-query",
+                input_hash=revision_hash,
+                checkpoint_root=root,
+            ) as revision_completion:
+                response = run_planning_literature_gap_repair_query(
+                    diagnosis=diagnosis,
+                    evidence_inputs=evidence_inputs,
+                    config_path=config_path,
+                    env_path=env_path,
+                    timeout_seconds=timeout_seconds,
+                    max_tokens=retrieval_max_tokens,
+                    completion=revision_completion,
+                    output_path=response_path,
+                    revision_failure_reason=revision_reason,
+                )
     if projection_path.is_file():
         projection = load_planning_literature_gap_repair_projection(projection_path)
         if projection != response.projection:
@@ -2860,6 +2919,30 @@ def _recall_stage_memory(
         }
 
 
+def _revision_guard_retry_requirement(reason: str) -> str:
+    """One Chinese retry requirement tailored to the exact guard rejection."""
+
+    parts = [
+        "上一次修订被程序数字守卫拒绝（",
+        reason,
+        "）。重写时正文所有数值必须逐字来自本次输入中已经出现的预实验 artifact、"
+        "metrics、日志或原计划；禁止任何派生数值（比值、倍数、百分比、轮筛周期积、"
+        "改写数量级范围或正负符号），需要定量比较时只引用证据中已有的数值并配合"
+        "定性强弱词表述。",
+    ]
+    lowered = reason.casefold()
+    if "alternative explanation" in lowered:
+        parts.append(
+            "Results 中必须明确写出至少一种替代解释，并使用“替代解释”或“另一种解释”"
+            "字样开头（例如“替代解释：局部筛结构同样可以解释该差异”）。"
+        )
+    if "quote at least one verified" in lowered:
+        parts.append(
+            "Results 中必须至少引用一个已核验的预实验数值（使用 [[pilot:字段路径]] 占位符）。"
+        )
+    return "".join(parts)
+
+
 def _memory_bound_input_hash(
     payload: Mapping[str, Any],
     context: dict[str, Any] | None,
@@ -3642,6 +3725,13 @@ def _resume_existing_direction_research_loop(
             and (revision_recall_preexisting or (not plan_preexisting and revision_replay is None))
         ),
     )
+    base_revision_requirements = (
+        *_LOOP_REQUIREMENTS,
+        *_REVISION_RESULT_REQUIREMENTS,
+        "内部 provisional 只作证据修订基线，不得当作最终计划或已完成研究。",
+        "以下是预实验后的独立目标评审上下文（模型判断，不是额外实验事实）："
+        + json.dumps(postpilot_context, ensure_ascii=False, sort_keys=True),
+    )
     revision_stage_input_hash = _memory_bound_input_hash(
         {
             "provisional_plan_artifact_hash": provisional.artifact_hash,
@@ -3649,6 +3739,7 @@ def _resume_existing_direction_research_loop(
             "postpilot_objective_artifact_hash": _artifact_hash(postpilot),
             "reference_catalog": list(final_reference_catalog),
             "selected_skill_hashes": routing.selected_skill_hashes,
+            "revision_requirements": list(base_revision_requirements),
         },
         revision_memory_context,
     )
@@ -3671,66 +3762,94 @@ def _resume_existing_direction_research_loop(
             ) from exc
         _verify_revision_sidecars(root / "revision", plan)
     else:
-        revision_requirements = (
-            *_LOOP_REQUIREMENTS,
-            "内部 provisional 只作证据修订基线，不得当作最终计划或已完成研究。",
-            "以下是预实验后的独立目标评审上下文（模型判断，不是额外实验事实）："
-            + json.dumps(postpilot_context, ensure_ascii=False, sort_keys=True),
-        )
-        revision_call_kwargs: dict[str, Any] = {}
-        if revision_replay is not None:
-            revision_replay_used = True
-            revision_call_kwargs["llm_call"] = revision_replay
-            plan = plan_revision_runner(
-                original_plan=provisional,
-                scientific_problem=scientific_direction,
-                requirements=revision_requirements,
-                selected_skill_contexts=tuple(
-                    {"skill_id": item["skill_id"], "content": item["content"]}
-                    for item in selected_skills
-                ),
-                reference_catalog=final_reference_catalog,
-                preexperiment_artifact=pilot_path,
-                preexperiment_metrics=None,
-                preexperiment_root=pilot_root,
-                derived_memory_context=revision_memory_context,
-                output_dir=root / "revision",
-                output_path=plan_path,
-                config_path=config_path,
-                env_path=env_path,
-                timeout_seconds=timeout_seconds,
-                max_tokens=plan_max_tokens,
-                temperature=0.2,
-                **revision_call_kwargs,
-            )
-        else:
-            with context_runtime.checkpointed_stage(
-                "final-plan-revision",
-                input_hash=revision_stage_input_hash,
-                checkpoint_root=root,
-            ) as context_completion:
-                plan = plan_revision_runner(
-                    original_plan=provisional,
-                    scientific_problem=scientific_direction,
-                    requirements=revision_requirements,
-                    selected_skill_contexts=tuple(
-                        {"skill_id": item["skill_id"], "content": item["content"]}
-                        for item in selected_skills
-                    ),
-                    reference_catalog=final_reference_catalog,
-                    preexperiment_artifact=pilot_path,
-                    preexperiment_metrics=None,
-                    preexperiment_root=pilot_root,
-                    derived_memory_context=revision_memory_context,
-                    output_dir=root / "revision",
-                    output_path=plan_path,
-                    config_path=config_path,
-                    env_path=env_path,
-                    timeout_seconds=timeout_seconds,
-                    max_tokens=plan_max_tokens,
-                    temperature=0.2,
-                    llm_call=context_completion,
+        # 数字守卫拒绝属于模型输出质量问题：把拒绝原因追加为一条新要求、抖动温度
+        # 后重试（重放响应与全新检查点阶段统一走同一循环）；证据绑定类失败不重试。
+        revision_requirements: tuple[str, ...] = base_revision_requirements
+        guard_reason: str | None = None
+        revised_plan: ContestDirectPlanRevisionArtifact | None = None
+        for attempt_index, temperature in enumerate((0.2, 0.4, 0.6), start=1):
+            attempt_hash = (
+                revision_stage_input_hash
+                if attempt_index == 1
+                else _memory_bound_input_hash(
+                    {
+                        "provisional_plan_artifact_hash": provisional.artifact_hash,
+                        "preexperiment_artifact_hash": pilot.artifact_hash,
+                        "postpilot_objective_artifact_hash": _artifact_hash(postpilot),
+                        "reference_catalog": list(final_reference_catalog),
+                        "selected_skill_hashes": routing.selected_skill_hashes,
+                        "revision_requirements": list(revision_requirements),
+                    },
+                    revision_memory_context,
                 )
+            )
+            try:
+                if attempt_index == 1 and revision_replay is not None:
+                    revision_replay_used = True
+                    revised_plan = plan_revision_runner(
+                        original_plan=provisional,
+                        scientific_problem=scientific_direction,
+                        requirements=revision_requirements,
+                        selected_skill_contexts=tuple(
+                            {"skill_id": item["skill_id"], "content": item["content"]}
+                            for item in selected_skills
+                        ),
+                        reference_catalog=final_reference_catalog,
+                        preexperiment_artifact=pilot_path,
+                        preexperiment_metrics=None,
+                        preexperiment_root=pilot_root,
+                        derived_memory_context=revision_memory_context,
+                        output_dir=root / "revision",
+                        output_path=plan_path,
+                        config_path=config_path,
+                        env_path=env_path,
+                        timeout_seconds=timeout_seconds,
+                        max_tokens=plan_max_tokens,
+                        temperature=temperature,
+                        llm_call=revision_replay,
+                    )
+                else:
+                    with context_runtime.checkpointed_stage(
+                        "final-plan-revision",
+                        input_hash=attempt_hash,
+                        checkpoint_root=root,
+                    ) as context_completion:
+                        revised_plan = plan_revision_runner(
+                            original_plan=provisional,
+                            scientific_problem=scientific_direction,
+                            requirements=revision_requirements,
+                            selected_skill_contexts=tuple(
+                                {"skill_id": item["skill_id"], "content": item["content"]}
+                                for item in selected_skills
+                            ),
+                            reference_catalog=final_reference_catalog,
+                            preexperiment_artifact=pilot_path,
+                            preexperiment_metrics=None,
+                            preexperiment_root=pilot_root,
+                            derived_memory_context=revision_memory_context,
+                            output_dir=root / "revision",
+                            output_path=plan_path,
+                            config_path=config_path,
+                            env_path=env_path,
+                            timeout_seconds=timeout_seconds,
+                            max_tokens=plan_max_tokens,
+                            temperature=temperature,
+                            llm_call=context_completion,
+                        )
+                break
+            except ContestDirectPlanNumberGuardError as exc:
+                guard_reason = str(exc)
+                if attempt_index >= 3:
+                    raise
+                revision_requirements = (
+                    *revision_requirements,
+                    _revision_guard_retry_requirement(guard_reason or ""),
+                )
+        if revised_plan is None:  # pragma: no cover - exhaustion re-raises the guard error
+            raise ContestDirectionResearchLoopError(
+                "final plan revision produced no artifact"
+            )
+        plan = revised_plan
     _verify_plan_references(
         plan,
         literature_context=final_reference_catalog,
@@ -3885,7 +4004,7 @@ def _resume_existing_direction_research_loop(
             checkpoint_root=root,
         ) as context_completion:
             final_review = scientific_review_runner(
-                final_plan=rendered.json_path,
+                final_plan=plan,
                 preexperiment_artifact=pilot_path,
                 reference_catalog=final_reference_catalog,
                 selected_skill_contexts=tuple(
@@ -4362,6 +4481,52 @@ def _load_verified_source_literature(
     )
 
 
+_DOI_VERIFICATION_SCHEMA = "contest-direction-finalist-doi-verification-v1"
+
+
+def _doi_verification_enabled() -> bool:
+    """Return whether finalist Crossref DOI verification should run.
+
+    Off by default: the references already come from ArXiv/OpenAlex with real
+    identifiers, and the extra Crossref round-trip is an opt-in evidence
+    enrichment for deployments that want a title-consistency audit per finalist.
+    """
+
+    explicit = os.getenv("AUTORESEARCH_ENABLE_DOI_VERIFICATION")
+    return bool(explicit and explicit.strip().lower() in {"1", "true", "yes", "on"})
+
+
+def _record_finalist_doi_verification(
+    path: Path,
+    catalog: Sequence[Mapping[str, Any]],
+    *,
+    resume: bool,
+    timeout_seconds: int = 20,
+) -> dict[str, Any]:
+    """Verify finalist DOIs and persist a non-blocking audit receipt.
+
+    This is an evidence enrichment, not an eligibility gate: a Crossref
+    transport error degrades to a per-DOI ``error`` status and never aborts the
+    direction loop.  On resume the existing receipt is reused instead of
+    re-issuing Crossref requests, matching the finalist-status receipt policy.
+    """
+
+    if resume and path.is_file():
+        payload = _read_json(path)
+        if payload.get("schema_version") == _DOI_VERIFICATION_SCHEMA:
+            return payload
+    receipt = verify_reference_records(catalog, timeout_seconds=timeout_seconds)
+    payload = receipt.to_dict()
+    payload["schema_version"] = _DOI_VERIFICATION_SCHEMA
+    payload["catalog_record_ids"] = [
+        str(item.get("record_id") or "") for item in catalog
+    ]
+    payload["verification_count"] = len(receipt.verified)
+    payload["artifact_hash"] = canonical_model_hash(payload)
+    _write_new_json(path, payload)
+    return payload
+
+
 def _write_finalist_status_verification(
     path: Path,
     *,
@@ -4473,12 +4638,26 @@ def _apply_finalist_status_verification(
                     )
                 updated[record_id] = record
                 continue
+            if raw.get("outcome") == "verification_failed_transport_preserved":
+                if verified_status != original_status or not str(raw.get("error") or ""):
+                    raise ContestDirectionResearchLoopError(
+                        "transport-failed finalist status receipt is internally inconsistent"
+                    )
+                updated[record_id] = record
+                continue
             expected_outcome = (
                 "excluded_from_positive_planning"
                 if verified_status in {"withdrawn", "retracted"}
                 else "eligible_after_verification"
             )
-            if raw.get("outcome") != expected_outcome:
+            if raw.get("outcome") == "verification_served_from_cache":
+                if not str(raw.get("error") or "") or not isinstance(
+                    raw.get("cache_key"), str
+                ):
+                    raise ContestDirectionResearchLoopError(
+                        "cache-served finalist status receipt is internally inconsistent"
+                    )
+            elif raw.get("outcome") != expected_outcome:
                 raise ContestDirectionResearchLoopError(
                     "finalist status receipt outcome disagrees with verified status"
                 )
@@ -4489,10 +4668,16 @@ def _apply_finalist_status_verification(
                     "status_as_of": raw.get("status_as_of"),
                 }
             )
+            cache_key_text = (
+                str(raw.get("cache_key") or "")[:12] + "…"
+                if raw.get("outcome") == "verification_served_from_cache"
+                else ""
+            )
             context_suffixes[record_id] = (
                 "最终候选状态复核（不改变原检索record_sha256）："
                 f"{verified_status}；来源={raw.get('status_source') or 'unknown'}；"
                 f"截至={raw.get('status_as_of') or 'unknown'}"
+                + (f"；复核方式=跨运行缓存（cache_key={cache_key_text}）" if cache_key_text else "")
             )
         updated[record_id] = record
 
@@ -6323,9 +6508,11 @@ def _load_preserved_revision_replay(
     if not responses and not receipts:
         return None
     if len(responses) != 1 or len(receipts) != 1:
-        raise ContestDirectionResearchLoopError(
-            "resume revision sidecars are partial or contain multiple provider attempts"
-        )
+        # The bounded revision may legitimately persist more than one
+        # guard-rejected attempt.  An ambiguous sidecar set is left for the
+        # checkpointed stage (which replays by stage hash or makes one fresh
+        # call) instead of fabricating a replay.
+        return None
     response_path = responses[0].resolve()
     receipt_path = receipts[0].resolve()
     try:

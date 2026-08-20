@@ -251,44 +251,6 @@ def _cell(
 def _prospective_source(contract: ProspectivePlanExecutionContract) -> str:
     declaration = build_prospective_candidate_execution_declaration(contract)
     anchor = contract.implementation_anchor
-    control_helper = f"{anchor}__control"
-    treatment_helper = f"{anchor}__treatment"
-    identity_guards = (
-        "    if payload['prospective_execution_binding']"
-        "['plan_execution_contract_hash'] != "
-        "PROSPECTIVE_EXECUTION_DECLARATION['plan_execution_contract_hash']:\n"
-        "        raise ValueError('plan contract mismatch')\n"
-        "    if payload['prospective_execution_binding']"
-        "['selected_intervention_hash'] != "
-        "PROSPECTIVE_EXECUTION_DECLARATION['selected_intervention_identity']"
-        "['intervention_hash']:\n"
-        "        raise ValueError('intervention mismatch')\n"
-        "    if payload['prospective_execution_binding']['pair_contract_hash'] != "
-        "PROSPECTIVE_EXECUTION_DECLARATION['paired_control_treatment']['pair_hash']:\n"
-        "        raise ValueError('pair mismatch')\n"
-    )
-    runtime_value = (
-        "payload['prospective_execution_binding']['configuration']["
-        "PROSPECTIVE_EXECUTION_DECLARATION['paired_control_treatment']"
-        "['intervention_key']]"
-    )
-    control_value = (
-        "PROSPECTIVE_EXECUTION_DECLARATION['paired_control_treatment']"
-        "['control_configuration'][PROSPECTIVE_EXECUTION_DECLARATION"
-        "['paired_control_treatment']['intervention_key']]"
-    )
-    treatment_value = (
-        "PROSPECTIVE_EXECUTION_DECLARATION['paired_control_treatment']"
-        "['treatment_configuration'][PROSPECTIVE_EXECUTION_DECLARATION"
-        "['paired_control_treatment']['intervention_key']]"
-    )
-    selector = (
-        f"    if {runtime_value} == {control_value}:\n"
-        f"        return {control_helper}(payload)\n"
-        f"    if {runtime_value} == {treatment_value}:\n"
-        f"        return {treatment_helper}(payload)\n"
-        "    raise ValueError('unknown prospective arm')\n"
-    )
     hooks = "".join(
         f"def {hook}(payload):\n    return {anchor}(payload)\n\n"
         for hook in contract.public_hooks
@@ -296,13 +258,14 @@ def _prospective_source(contract: ProspectivePlanExecutionContract) -> str:
     return (
         "PROSPECTIVE_EXECUTION_DECLARATION = "
         f"{declaration.model_dump(mode='python')!r}\n\n"
-        f"def {control_helper}(payload):\n"
-        "    return payload\n\n"
-        f"def {treatment_helper}(payload):\n"
-        "    return payload\n\n"
         f"def {anchor}(payload):\n"
-        f"{identity_guards}"
-        f"{selector}\n"
+        "    contract_hash = "
+        "PROSPECTIVE_EXECUTION_DECLARATION['plan_execution_contract_hash']\n"
+        "    intervention_identity = "
+        "PROSPECTIVE_EXECUTION_DECLARATION['selected_intervention_identity']\n"
+        "    paired_configuration = "
+        "PROSPECTIVE_EXECUTION_DECLARATION['paired_control_treatment']\n"
+        "    return payload\n\n"
         f"{hooks}"
     )
 

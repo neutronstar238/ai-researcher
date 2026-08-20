@@ -7210,23 +7210,138 @@ update a factual problem entry below.
 - Verification: 新主线测试 9 个全过（含阶段复用与 plan 绑定校验）；r2 最终 PDF 7 页、`pdf_text_verified=true`，正文全部数字来自指标（observed_mean_entropy=0.9294、delta=-0.0251/-0.0012、Holm p=0.02），无"尚未执行预实验"、无 2310；wheel-210 仅以名称形式出现。
 - Linked tasks: 榜题主线修正（交接文档 `docs/contest/contest-mainline-handover.md` §1/§2/§5/§6）。
 
-### P-20260816-023 - CI 在 mypy 与 pytest 阶段连续失败：本地"无问题"代码因类型推断与测试漂移在 CI 挂掉
+### P-20260816-023 - latexmk 依赖 perl 导致研究计划 PDF 编译假失败
 
 - Status: Resolved
 - Severity: Medium
 - Discovered: 2026-08-16
-- Source: GitHub Actions 最近 4 次运行全部 failure（8-03 mypy、8-07/8-08 ruff、8-15 mypy），最新运行在 `Run mypy` 步骤失败，`Run smoke and unit tests` 被跳过。
-- Symptom: 最新 CI 失败为 `src/autoresearch/research/adaptive_capabilities.py:158: error: Argument "citation_count" to "AdaptiveRetrievedPaper" has incompatible type "int | None"; expected "int"  [arg-type]`。本地日常环境（Python 3.13）不报错，但 CI 与本地 3.10 poetry 环境（mypy 1.20.2，与 poetry.lock 一致）都稳定复现；同时该处把 `None` 传入 `int` 字段，运行时 pydantic 会抛 ValidationError（无引用数的论文走该路径即崩溃），是真实的潜在运行缺陷。
-- Impact: 主分支 CI 自 2026-07-17 后从未全绿；mypy 失败还掩盖了 pytest 阶段的一批测试漂移（消息布局演进、source-query-compiler-v4 恰好 4 条查询、正式计划审批门顺序、v3 候选对齐审计、作者身份回放、技能目录新增），以及一处硬编码本机路径 `C:/Users/Z/.codex/skills/.../quick_validate.py` 在 Linux CI 会 FileNotFoundError。
-- Root cause: `AcademicPaper.citation_count` 为 `int | None`，直接传入只接受 `int` 的字段，缺省 0 语义从未归一化；随后多个提交在 mypy 已红的情况下合入，下游测试漂移从未在 CI 上被执行验证。
-- Next action: 修复后推送到 main，观察 CI 全绿。
-- Resolution:
-  - `from_academic_paper` 统一把 `paper.citation_count or 0` 归一化后同时用于内容寻址 payload 与构造参数（缺失引用数与显式 0 语义一致，不改变既有 int 值的哈希）。
-  - `contest_direction_skill_evolution.py` 停用词表补 `or`/`not`；其 fixture 提供 4 条合法 v4 布尔查询；本机 quick_validate 外部 lint 改为仅在本机存在时执行。
-  - `official_development_search.py` 审批门移到合同编译之前；`model_authorship.py` 回放时剥离系统预置的 `required_intervention_identity` 声明；相关 fixture 同步。
-  - 更新 5 处过期测试断言（消息数 [2,3]→[3,4]、v3 候选源生成器、回执哈希排除组、技能目录 6 个 ID）。
-- Verification: 本地 3.10 环境（与 CI 同版工具链）`ruff check src tests` 与 `mypy src` 全绿；`pytest tests/smoke tests/unit` 3101 passed；剩余 10 个本地失败全部为 Windows DSH 沙箱对 0o700 临时目录/ACL 的限制（Linux CI 无此路径，其中 2 个在 CI 上按 skipif 跳过）。等待推送到 main 后的 CI 运行确认。
-- Linked tasks: 用户请求"修复 CI"（本地通过、CI WA）。
+- Source: 修复方向A正文 LaTeX 数学符号泄漏时，运行真实 PDF 编译冒烟测试 	est_materialize_real_chinese_pdf_and_manifest。
+- Symptom: compile_research_plan_pdf 在本机（MiKTeX，已装 xelatex/latexmk）失败：MiKTeX could not find the script engine 'perl' which is required to execute 'latexmk'。研究计划 PDF 无法产出，尽管文档本身可编译。
+- Impact: 任何优先选择 latexmk 的部署若只有 MiKTeX 而未装 perl，方向A研究计划会在渲染阶段报 ailed，即使 xelatex 可用、内容完全合法。这与用户报告的"LaTeX 编译有问题"属同类环境假失败。
+- Evidence: pytest test_materialize_real_chinese_pdf_and_manifest 在修复前失败于 latexmk 缺 perl；kpsewhich ctexart.cls / Fandol 字体均存在，xelatex 可用。
+- Root cause: esearch/plans.py::_latex_command 优先探测 latexmk（其 MiKTeX 包装需要 perl 脚本引擎），而不是能独立单遍编译的 xelatex。
+- Workaround: 手动改 xelatex 或安装 perl。
+- Next action: 无（已修复）。
+- Resolution: _latex_command 改为优先 xelatex，latexmk 仅作回退。研究计划文档无需多遍交叉引用，单遍 xelatex 足够。
+- Verification: 修复后 	est_materialize_real_chinese_pdf_and_manifest 通过（真实 xelatex 编译 PDF，pdf_text_verified=true）；	est_contest_direct_plan_render.py 19 passed。
+- Linked tasks: 榜题方向A链路修复。
+
+### P-20260816-024 - test_contest_direction_skill_evolution.py 的 completed_direction 夹具与 v4 编译器不兼容（既有无关失败）
+
+- Status: Open（本次改动前已存在，非本次引入）
+- Severity: Low（仅测试夹具，不影响生产链路）
+- Discovered: 2026-08-16
+- Source: `pytest tests/unit/competition/ --no-cov -x` 在 345 passed 后于 `test_contest_direction_skill_evolution.py` 7 个用例的 module 级 `completed_direction` 夹具 setup 处报错。
+- Symptom: `retrieve_contest_direction_literature` → `_project_queries` → `_validate_v4_query_plan` 抛 `source-query-compiler-v4 requires exactly 4 queries; received 2`。
+- Root cause: 该夹具的 `llm_call` mock 硬编码只返回 2 条 queries（`prime gaps residue entropy null models` / `prime sequence permutation entropy mechanism`），而 `_QUERY_COMPILER_VERSION` 已是 `source-query-compiler-v4`（要求恰好 4 条）。夹具在 v4 成为当前编译器后未同步更新。
+- Next action: 把夹具 mock 改为返回 4 条合规 v4 查询（或改用 v3 路径），使该文件回归；与本次「方向A批量修复」正交，未阻塞批量。
+- Note: 本次方向A改动（v4 反证词表 + 焦点桥放宽）只改 prompt 文本与 coverage 选择层，未触碰 `_project_queries`/`_validate_v4_query_plan`/skill_evolution；已确认该失败独立存在。
+
+### P-20260817-025 - Q1 主线修订被数字守卫连续 6 次拒绝（模型持续引入证据外数字）
+
+- Status: Resolved
+- Severity: High（主线无法自动走完 03 修订阶段）
+- Discovered: 2026-08-17
+- Source: `py -3 -m autoresearch.competition.contest_mainline_cli` live 运行 + 断点续跑 6 次修订重试。
+- Symptom: 01-plan 与 02-preexperiment 每次完整通过；03-revision 6/6 被 `_guard_observed_numbers` 拒绝：2310（r1/r5/r6，模型从 wheel-210 联想 2·3·5·7·11=2310）、11（r2，自推比值“1/11”）、31（r3，自推倍数）、10^9（r4，改写原计划的 10^10）。04-final-plan 从未到达。
+- Impact: 主线全链无法自动完成；人工反复重跑同提示词修订，期望值低、浪费模型调用。
+- Root cause: (1) 守卫允许集 = 预实验 artifact + metrics + stdout/stderr 日志文本，共 281 个数；5 个原始间隙 CSV（几十万行）只做哈希校验，既不进提示词也不进允许集，模型可引用的数字面很窄。(2) 禁新数字要求埋在 requirements 第 5 条且无正例，模型在“如实反馈/替代解释”任务中习惯性生成派生比值与轮筛周期积。(3) 6 次重试 revision_id 前缀相同（input_hash 相同），提示词逐字节相同，temperature 0.2 下输出高度趋同。
+- Next action: 无（已修复）。
+- Resolution: 提示词第 5 条加入具体负例（2310、“约 1/11”“约 31 倍”、10^10→10^9）与定性强弱词正例；新增 `ContestDirectPlanNumberGuardError` 子类；主线对数字守卫拒绝自动把拒绝原因追加为一条新要求、温度 0.2→0.4→0.6 重试（默认 3 次，`--revision-attempts` 可调）；证据绑定类错误不进入重试、直接失败关闭。
+- Verification: 34 个聚焦测试通过；ruff/mypy 通过；live 复跑（复用 01/02 阶段）第一次修订即通过，delivery-report completed、revision generation_calls=1、最终 PDF 8 页、pdf_text_verified=true。
+- Linked tasks: 榜题方向A主线（docs/contest/contest-mainline-handover.md §5）。
+
+### P-20260817-026 - Q75 计划渲染被 JSON 折叠的退格字节破坏，导致批量无限重试
+
+- Status: Resolved
+- Severity: High（125 问中唯一反复重试跑不出来的题目）
+- Discovered: 2026-08-17
+- Source: `py -3 -m autoresearch.competition.science125_batch --include-question-id q075` 实跑复现。
+- Symptom: Q75 方向循环（8 次模型调用）与 plan-only 计划生成（1 次调用）均正常，但最终 PDF 渲染失败：`ContestDirectPlanRenderError: LaTeX exited with code 1`，xelatex 日志 `! Text line contains an invalid character. l.48 ...（t^^H ar\{t\} to text\{dilepton\...`。每次重试重复全部模型调用后在渲染处必然失败，形成无限循环。
+- Impact: Q75 永远无法产出交付物；每次重试浪费约 9 次模型调用与额度。
+- Root cause: Q75 为粒子物理题，计划正文含 `$t\bar{t} \to \text{dilepton}$` 等裸 LaTeX 记号。模型响应经 JSON 解析时 `\b` 被折叠为 0x08 退格字节（`\t` 折叠为 tab——上一轮修复已覆盖 tab+au→τ、tab→t，但未覆盖 `\b`）；0x08 进入 .tex 后 xelatex 报非法字符退出。其它题目正文不写 `\bar`，故全部通过。
+- Next action: 无（已修复）。
+- Resolution: `_normalize_latex_math_in_text` 在 tab 修复后新增：`\x08([A-Za-z]+)` → `\b`+词（交由既有命令投影处理：`\bar{...}`→内文、`\beta`→β），孤立退格丢弃。纯显示层修复，不改变证据边界与科学内容。
+- Verification: 21 个渲染测试通过（含真实 xelatex 编译折叠文本用例）；ruff/mypy 通过；live resume 重跑 exit 0、state=completed、最终 PDF 4 页/120KB、正文无 `^^H` 残留。
+- Linked tasks: 榜题方向A 125 问批量交付（science125_batch.py plan-only 路径）。
+
+### P-20260817-027 - 交付 125 问 PDF/MD 存在 LaTeX 泄漏（旧渲染 + 归一化缺口）
+
+- Status: Resolved
+- Severity: High（交付物出现 `\mathcal`、`3text{sigma}`、`10times`、字面 `\n` 等格式错误）
+- Discovered: 2026-08-17
+- Source: 只读扫描 C:\Users\Z\Desktop\揭榜挂帅提交材料\delivery-125-plan 全部 PDF/MD。
+- Symptom: 8 份 PDF 共 47 处泄漏（q050/q055/q061/q068/q076/q082/q092/q124）；8 份 MD 共 58 处（含 q079/q001/q75）。本地 Q75 版 PDF 有 22 处 text{...} 类泄漏。
+- Impact: 交付物呈现未渲染的 LaTeX 命令，影响人工评审观感与专业性。
+- Root cause: (1) Desktop PDF 为修复前旧代码渲染产物；(2) 当前渲染器仍有缺口：`\mathcal`/`\mathbb`/`\gtrsim`/`\lesssim` 不在映射表；JSON 折叠 `\t` 生成的 `\text{...}`/`\times`/`\theta` 残渣未修复；Markdown 渲染路径未接入 `_normalize_latex_math_in_text`；`compile_research_plan_pdf` 子进程按系统 GBK 解码 UTF-8 输出；tex 模板缺 amssymb 导致 `\gtrsim` 未定义。
+- Next action: 无（已修复）。
+- Resolution: 归一化扩展 + Markdown 路径接入 + 子进程 UTF-8 解码 + 模板补 amsmath/amssymb；从 loop-main 源 payload 只读重渲染 8 份（零模型调用）写入 delivery-125-plan-fixed；本地 Q75 重渲染至 runs/science125-q75-refixed。
+- Verification: 24 个渲染测试 + 8 个 plans 测试通过；ruff/mypy 通过；9 份重渲染 PDF 经 pdftotext 逐份复验 0 泄漏。
+- Linked tasks: 榜题方向A 125 问交付（delivery-125-plan）。
+
+### P-20260818-028 - API 文献协议常量漂移（v4 vs v5）导致真实运行完成后被判 legacy 失败
+
+- Status: Resolved
+- Severity: High（Web 控制台创建的真实运行 100% 失败）
+- Discovered: 2026-08-18
+- Source: 迁移 Web UI 时逐字段比对 api/app.py、research_service.py 与当前方向循环输出。
+- Symptom: 方向循环当前输出 literature_protocol=two_stage_literature_v5，而 ResearchApiService._TWO_STAGE_LITERATURE_PROTOCOL=two_stage_literature_v4；任何经 UI 创建的真实运行完成后会被 `_validate_current_direction_result` 判为 "legacy or unknown direction delivery" 而标记 failed。
+- Impact: 根 web/ 控制台的「新建运行」功能对真实任务形同虚设。
+- Root cause: 方向循环升级 v4→v5 后 API 层校验常量未同步。
+- Next action: 无（已修复）。
+- Resolution: research_service.py 常量改为 v5；API 测试夹具同步 v5；批量报告字段已确认含 v5 与 schema v2，live 批量 dry-run 校验通过。
+- Verification: tests/unit/api 23 passed；live 批量 dry-run receipt: schema=science125-batch-report-v2, literature=two_stage_literature_v5。
+- Linked tasks: 根 web/ 控制台迁移。
+
+### P-20260818-029 - 方向循环 live 两连败：文献覆盖门与 v4 反证查询门（UI 如实呈现）
+
+- Status: Open（循环层已知脆弱点，非 UI/API 缺陷；fail-closed 属预期行为）
+- Severity: Medium（真实运行成功率低）
+- Discovered: 2026-08-18
+- Source: 通过根 web/ 控制台 API 创建两次真实方向循环运行。
+- Symptom: run-...b68ae0d00（方向：素数间隙排列熵与零模型对照）阶段 1-3 完成后 failed：planning literature coverage failed after the one allowed repair: insufficient_distinct_required_role_anchors；续跑一次同门再次失败。run-...7325bec（历史上跑通的原话）failed：source-query-compiler-v4 counterevidence missing a falsifying concept。
+- Impact: UI 全链路（排队→运行→阶段→失败→错误→续跑）验证真实可用，但无法用当前模型+话题完成一次完整交付作端到端成功演示。
+- Root cause: 方向循环（开发中）的文献角色锚覆盖门与 v4 查询编译器在 qwen3.7-max + 当前 arxiv 状态下的通过率低；gap-repair 检索本身成功（arxiv/openalex completed）。
+- Next action: 待模型额度与话题选择策略优化后复跑；必要时用历史成功话题 + 成功快照的 delivery 做 UI 演示。
+- Verification: API 详情接口 stages/error/resume_count 与磁盘 checkpoint 一致；续跑后 resume_count=1、阶段 1-3 保持 completed。
+- Linked tasks: 根 web/ 控制台迁移验证。
+
+### P-20260818-030 - 方向循环两次真实失败：权威门正确排除 Zenodo 仓库记录 + 反证修复词缺强概念无重试
+
+- Status: Resolved（B/A'/C 已实施；失败 1 的权威门行为保留）
+- Severity: Medium
+- Discovered: 2026-08-18
+- Source: 根 web/ 控制台两次真实方向循环运行。
+- Symptom: run b68ae0d00：planning literature coverage failed after the one allowed repair: insufficient_distinct_required_role_anchors（诊断 direct_core gap_kind=authority_shortfall，语义 2/权威 0）；run 7325bec：source-query-compiler-v4 counterevidence missing a falsifying concept。
+- Root cause: ① 两篇 direct_core 均为 Zenodo 仓库记录（repository_doi=10.5281/zenodo.*、publication_doi=None），v5 权威门「published_repository_only_records_excluded_from_required_anchors」按设计排除；单轮 gap-repair 检索到的新论文同为仓库记录；arxiv 临时断连使 focus 核验 3 条 degraded（次要扰动）。② 修复模型给 counterevidence 角色替换的证据词缺强反证概念词，投影 v4 校验拒绝且无重试路径。
+- Next action: 无（已实施改进）。
+- Resolution: B=v4 投影失败的一次有界修订（拒绝原因+强反证词表回喂、独立 stage 哈希、温度 0.4、全程留痕）；A'=finalist 核验传输失败分类+一次延迟重试+verification_failed_transport_preserved 结局；C=跨运行状态缓存（TTL 7 天、verification_served_from_cache 结局+上下文留痕）。权威门本身不放松。
+- Verification: 新增 7 测试 + 92 passed/1 skipped；ruff/mypy 全过；全量 competition 回归 64+7 与基线一致。
+- Linked tasks: 根 web/ 控制台验证；方向循环开发中清单。
+### P-20260819-060 - 工作副本无 .git 目录，无法创建 git commit
+
+- Status: Open
+- Severity: Medium
+- Discovered: 2026-08-19
+- Source: 国创赛 XH-202619 技术方案文档（technical-proposal.tex/pdf）完成后，按 AGENTS.md 要求准备提交时执行 `git rev-parse --is-inside-work-tree`。
+- Symptom: `git rev-parse` 报 `fatal: not a git repository (or any of the parent directories): .git`；E:\ai-researcher-source 虽有 .gitattributes/.github 等痕迹，但无 .git 目录。
+- Impact: 无法按 AGENTS.md「Git Version Management」创建任务提交；技术方案文档（technical-proposal.tex/.pdf）与 Agent.md/Problem.md 更新暂未纳入版本控制，存在丢失风险。
+- Evidence: `git status --short` 与 `git rev-parse --is-inside-work-tree` 均报 fatal；Agent.md 最近一条（2026-08-19 DeepSeek Harness）也记录「无 .git 未 commit」，确认非本次操作引起。
+- Workaround: 已在本条目与 Agent.md 条目中如实记录；若仓库恢复版本控制（git init 或挂载原 .git），应补一次包含 paper/Springer_Nature_LaTeX_Template/technical-proposal.*、Agent.md、Problem.md 的提交。
+- Next action: 等待仓库所有者恢复 .git 后补交，或由用户决定是否 git init 新建仓库。
+
+### P-20260819-061 - 用代码生成 LaTeX 源时 JS 转义破坏命令（教训记录）
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-19
+- Source: 撰写 technical-proposal.tex 时的编译排错过程。
+- Symptom: 通过 run_code 的 JS 模板字符串生成 LaTeX 源时，多处转义被 JS 消化：`\t` 变 TAB（`\texttt`→`<TAB>exttt`、`\textit`→`<TAB>extit`）、`\_` 变裸 `_`、tikz 节点内 `\` 换行变单反斜杠（`\Skill` 等未定义控制序列）；`\allowbreak` 后直接接字母被 TeX 合并为 `\allowbreakhash` 等未定义控制序列；带圈数字 ①-⑥ 在 Latin Modern 字体缺字形。
+- Impact: 多次编译失败与 17 页后的 Emergency stop；文件尾部（sakana2 文献条目与 \end{document}）在一次全量读改写循环中丢失，靠 git 不可用时以 PowerShell 校验恢复。
+- Evidence: latexmk 日志中的 `! Undefined control sequence`（\exttt、\extit、\allowbreakhash）、`Missing character: There is no ① (U+2460)`、`Misplaced \noalign`（\small 放在 tabular 前导后）、`Emergency stop`（文件尾缺失）。
+- Resolution: 修复方式：(1) 全角标点与 \texttt/\textit 等一律用双反斜杠或避免经 JS 转义；写完后用 grep 扫描 TAB、\ext、裸 _ 与 \allowbreak 后接字母的模式；(2) \allowbreak 改为 \hspace{0pt}；(3) 带圈数字改 1./2./3.；(4) \small 放 \begin{tabular} 之前；(5) 每次整文件 write 后校验结尾 \end{document} 存在。
+- Verification: 修复后 latexmk 编译通过（All targets up-to-date），pdfinfo 19 页 A4，pdftotext 无 ?? / [?]，18 条参考文献完整。
+- Next action: 后续任何 agent 用程序生成 LaTeX 时，先阅读本条目；写入后立即校验文件尾部与危险模式。
 
 ### P-20260819-024 - yqzl 线上批量任务按钮"点了没反应"；服务器缺 texlive/pdftohtml
 

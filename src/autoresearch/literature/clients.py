@@ -394,11 +394,18 @@ class ArxivClient:
         http_get: HttpGet = _urllib_get_text,
         rate_limiter: RateLimiter | None = None,
         retry: RetryConfig = RetryConfig(),
+        circuit_breaker: RateLimitCircuitBreaker | None = None,
+        circuit_state_path: Path | str | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.http_get = http_get
         self.rate_limiter = rate_limiter or RateLimiter(3.0)
         self.retry = retry
+        self.circuit_breaker = circuit_breaker or RateLimitCircuitBreaker(
+            reset_after_seconds=_float_env("ARXIV_CIRCUIT_RESET_SECONDS", 60.0),
+            state_path=circuit_state_path,
+            state_key="arxiv",
+        )
         self.sleep = sleep
 
     def search(self, query: str, *, limit: int = 10) -> list[AcademicPaper]:
@@ -450,6 +457,7 @@ class ArxivClient:
     ) -> str:
         last_error: Exception | None = None
         for attempt in range(1, self.retry.max_attempts + 1):
+            self.circuit_breaker.raise_if_open()
             self.rate_limiter.wait()
             _emit_source_http_attempt(
                 phase="reservation",
@@ -462,6 +470,28 @@ class ArxivClient:
             )
             try:
                 text = self.http_get(url, params, None)
+            except urllib.error.HTTPError as exc:
+                last_error = exc
+                _emit_source_http_attempt(
+                    phase="failed",
+                    source="arxiv",
+                    operation=operation,
+                    endpoint=url,
+                    params=params,
+                    attempt_index=attempt,
+                    max_attempts=self.retry.max_attempts,
+                    error=exc,
+                )
+                if exc.code == 429:
+                    retry_after = _retry_after_seconds(exc)
+                    self.circuit_breaker.record_rate_limit(retry_after_seconds=retry_after)
+                    remaining = self.circuit_breaker.remaining_seconds()
+                    msg = f"arXiv HTTP 429 rate limited; circuit open for {remaining:.1f}s"
+                    raise SourceRateLimitError(msg) from exc
+                if _non_retryable_http_error(exc):
+                    raise
+                if attempt < self.retry.max_attempts:
+                    self.sleep(_backoff_delay(self.retry, attempt))
             except Exception as exc:  # noqa: BLE001 - client boundary wraps transport errors.
                 last_error = exc
                 _emit_source_http_attempt(
@@ -477,6 +507,7 @@ class ArxivClient:
                 if attempt < self.retry.max_attempts:
                     self.sleep(_backoff_delay(self.retry, attempt))
             else:
+                self.circuit_breaker.record_success()
                 _emit_source_http_attempt(
                     phase="completed",
                     source="arxiv",

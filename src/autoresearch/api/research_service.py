@@ -79,7 +79,7 @@ _PRIVATE_PARTS = frozenset(
 _HUMAN_PLAN_FILENAMES = frozenset(
     {"research-plan.json", "research-plan.md", "research-plan.tex", "research-plan.pdf"}
 )
-_TWO_STAGE_LITERATURE_PROTOCOL = "two_stage_literature_v4"
+_TWO_STAGE_LITERATURE_PROTOCOL = "two_stage_literature_v5"
 _DIRECTION_DELIVERY_SCHEMA = "contest-direction-research-loop-delivery-v2"
 _BATCH_REPORT_SCHEMA = "science125-batch-report-v2"
 

@@ -136,11 +136,12 @@
 ## 5. 效果不好时的反复自我迭代机制
 
 1. **单次修订**（最小件）：`contest_direct_plan_revision.py::revise_contest_direct_plan`——原计划 + 证据（预实验/文献/评审发现）→ 一次完整修订，绑定 `original_plan_id` 与证据哈希。
-2. **科学修正（推荐对主链计划用）**：`contest_direction_scientific_amendment_cli.py`——确定性红队生成 RT-01…RT-07 findings（含参考文献真实性、预实验边界、统计解释等）→ 模型按 findings 修订 1 次 → 独立评审（`review_contest_direct_plan_science`）1 次 → 确定性审计；失败可再走一次 v3（带 prior 失败证据），超过即停止，不无限重试。
+2. **数字守卫内置重试（v2 主线已内置）**：`contest_mainline_cli.py` 在修订阶段自动重试——数字守卫拒绝（`ContestDirectPlanNumberGuardError`）时，把上次拒绝原因追加为一条新要求、按 `0.2→0.4→0.6` 抖动温度重跑（默认 3 次，`--revision-attempts` 可调）。历史 live 六连败（r1-r6 同提示词、输出趋同）已通过该机制与提示词负例加固（禁派生比值/轮筛周期积/改写数量级）缓解；证据绑定类失败不进入重试、直接失败关闭。
+3. **科学修正（推荐对主链计划用）**：`contest_direction_scientific_amendment_cli.py`——确定性红队生成 RT-01…RT-07 findings（含参考文献真实性、预实验边界、统计解释等）→ 模型按 findings 修订 1 次 → 独立评审（`review_contest_direct_plan_science`）1 次 → 确定性审计；失败可再走一次 v3（带 prior 失败证据），超过即停止，不无限重试。
    - ⚠️ 当前该 CLI 的 source 契约要求 `contest-direction-research-loop-delivery-v1` 格式，与主链（`contest-question-one-delivery-v1`）产物**格式不匹配**；接入主链需要写一个薄适配或调整 source 校验（见 §6 遗留事项 2）。
-3. **定向修复**：`contest_direction_targeted_scientific_repair_cli.py`——只修指定 finding，保留其余已通过项。
-4. **通用自纠正**（工程/协议层）：observe → 确定性诊断 → 模型在封闭选项集中提案 → 守卫审计拒绝危险路线（如伪造效应、削弱基线），用于协议矛盾而非科学内容。
-5. **原则**：所有迭代都是"新版本 + 绑定父哈希"，不回改已揭示证据；格式失败不触发科学重写；达到版本上限即停止并保留负结果。
+4. **定向修复**：`contest_direction_targeted_scientific_repair_cli.py`——只修指定 finding，保留其余已通过项。
+5. **通用自纠正**（工程/协议层）：observe → 确定性诊断 → 模型在封闭选项集中提案 → 守卫审计拒绝危险路线（如伪造效应、削弱基线），用于协议矛盾而非科学内容。
+6. **原则**：所有迭代都是"新版本 + 绑定父哈希"，不回改已揭示证据；格式失败不触发科学重写；达到版本上限即停止并保留负结果。
 
 ---
 

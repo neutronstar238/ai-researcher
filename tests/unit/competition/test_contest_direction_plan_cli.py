@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import inspect
 import json
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -1142,6 +1143,132 @@ def test_finalist_status_query_uses_arxiv_url_without_replacing_catalog_identity
     assert verifier_calls == [arxiv_url]
     assert receipt["verification_attempted"] is True
     assert receipt["source_url"] == catalog_url
+
+
+def _preprint_record() -> dict[str, Any]:
+    return {
+        "record_id": "transport-preprint",
+        "title": "A transport-retried preprint method paper",
+        "authors": ["A. Researcher"],
+        "abstract": "A synthetic preprint used to test transport-failure handling.",
+        "source_url": "https://arxiv.org/abs/2401.09999",
+        "url": "https://arxiv.org/abs/2401.09999",
+        "retrieved_from": "arxiv,openalex",
+        "retrieved_at": _RETRIEVED_AT,
+        "publication_status": "preprint",
+        "repository_doi": "10.48550/arxiv.2401.09999",
+    }
+
+
+def test_finalist_transport_failure_retries_once_then_preserves(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[int] = []
+
+    def verify(_paper: AcademicPaper) -> AcademicPaper:
+        calls.append(1)
+        raise TimeoutError("connection timed out")
+
+    monkeypatch.setattr(direction_cli, "_verification_transport_retry_seconds", lambda: 0.0)
+    monkeypatch.setattr(
+        direction_cli, "_finalist_status_cache_path", lambda: tmp_path / "cache.json"
+    )
+
+    _verified, _context, receipt = direction_cli._verify_arxiv_finalist(
+        _preprint_record(), "synthetic context", verifier=verify
+    )
+
+    assert len(calls) == 2
+    assert receipt["outcome"] == "verification_failed_transport_preserved"
+    assert "TimeoutError" in receipt["error"]
+
+
+def test_finalist_transport_failure_served_from_cross_run_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    arxiv_url = "https://arxiv.org/abs/2401.09999"
+    cache_key = hashlib.sha256(f"{arxiv_url}\npreprint".encode()).hexdigest()
+    cache_file = tmp_path / "cache.json"
+    cache_file.write_text(
+        json.dumps(
+            {
+                cache_key: {
+                    "source_url": arxiv_url,
+                    "original_status": "preprint",
+                    "verified_status": "preprint",
+                    "status_source": "arxiv_atom",
+                    "status_as_of": "2026-08-15",
+                    "cached_at": datetime.now(timezone.utc).isoformat(),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(direction_cli, "_verification_transport_retry_seconds", lambda: 0.0)
+    monkeypatch.setattr(direction_cli, "_finalist_status_cache_path", lambda: cache_file)
+
+    def verify(_paper: AcademicPaper) -> AcademicPaper:
+        raise TimeoutError("connection timed out")
+
+    record = _preprint_record()
+    _verified, context, receipt = direction_cli._verify_arxiv_finalist(
+        record, "synthetic context", verifier=verify
+    )
+
+    assert receipt["outcome"] == "verification_served_from_cache"
+    assert receipt["verified_status"] == "preprint"
+    assert record["status_source"] == "arxiv_atom"
+    assert "跨运行缓存" in context
+
+
+def test_finalist_non_transport_failure_does_not_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[int] = []
+
+    def verify(_paper: AcademicPaper) -> AcademicPaper:
+        calls.append(1)
+        raise ValueError("unexpected status payload")
+
+    monkeypatch.setattr(direction_cli, "_verification_transport_retry_seconds", lambda: 0.0)
+    monkeypatch.setattr(
+        direction_cli, "_finalist_status_cache_path", lambda: tmp_path / "cache.json"
+    )
+
+    _verified, _context, receipt = direction_cli._verify_arxiv_finalist(
+        _preprint_record(), "synthetic context", verifier=verify
+    )
+
+    assert len(calls) == 1
+    assert receipt["outcome"] == "verification_failed_preserved_as_non_authoritative"
+
+
+def test_finalist_success_writes_status_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_file = tmp_path / "cache.json"
+    monkeypatch.setattr(direction_cli, "_finalist_status_cache_path", lambda: cache_file)
+
+    def verify(paper: AcademicPaper) -> AcademicPaper:
+        return paper.model_copy(
+            update={
+                "publication_status": "preprint",
+                "status_source": "arxiv_atom",
+                "status_as_of": date(2026, 8, 15),
+            }
+        )
+
+    _verified, _context, receipt = direction_cli._verify_arxiv_finalist(
+        _preprint_record(), "synthetic context", verifier=verify
+    )
+
+    assert receipt["outcome"] == "eligible_after_verification"
+    assert cache_file.is_file()
+    payload = json.loads(cache_file.read_text(encoding="utf-8"))
+    assert any(
+        item.get("source_url") == "https://arxiv.org/abs/2401.09999"
+        for item in payload.values()
+    )
 
 
 def test_opt_in_live_direction_delivery(tmp_path: Path) -> None:

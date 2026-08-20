@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
 
@@ -65,7 +65,7 @@ def test_live_local_qwen_selects_three_executable_sprint_programs() -> None:
             "Select the strongest falsifiable local task-level experiment about "
             "evidence-bound autonomous research loops."
         ),
-        deadline=datetime.now(timezone.utc) + timedelta(days=30),
+        deadline=datetime(2026, 8, 15, tzinfo=timezone.utc),
         route_a_campaign_path="route-a",
         route_a_manifest_sha256="a" * 64,
         llm_config_path="configs/campaign/ollama-qwen35-sprint-8k.yaml",

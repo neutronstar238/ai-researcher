@@ -242,7 +242,7 @@ def _select_v4_receipt(
         policy_version="v4",
     )
     eligible_ids = tuple(item.record_id for item in candidates)
-    selected, assignments, failures = coverage_module._select_classified_planning_literature(
+    selected, assignments, failures, _warnings = coverage_module._select_classified_planning_literature(
         classifications,
         maximum_records=maximum_records,
         maximum_total_context_characters=None,
@@ -283,6 +283,19 @@ def test_boolean_parser_preserves_boolean_words_inside_a_quoted_term() -> None:
     )
 
     assert query.must_groups == (("law and order",), ("robustness", "stability"))
+
+
+def test_boolean_parser_accepts_apostrophe_inside_a_quoted_term() -> None:
+    query = role_query_from_boolean(
+        PlanningLiteratureRole.DIRECT_CORE,
+        "query-apostrophe",
+        '("Amdahl\'s law" OR "Moore\'s law") AND ("memory wall" OR "scaling limit")',
+    )
+
+    assert query.must_groups == (
+        ("amdahl's law", "moore's law"),
+        ("memory wall", "scaling limit"),
+    )
 
 
 @pytest.mark.parametrize(
@@ -452,9 +465,11 @@ def test_v5_explicit_method_focus_basis_does_not_drift_with_a_repaired_direct_qu
         method_focus_basis_queries=basis_queries,
     )
 
-    assert default_receipt.passed is False
-    assert "insufficient_method_focus_bridge_anchors" in default_receipt.failure_reasons
+    assert default_receipt.passed is True
+    assert "method_focus_bridge_relaxed" in default_receipt.warnings
+    assert "unbridged-method" in default_receipt.selected_record_ids
     assert bound_receipt.passed is True
+    assert "method_focus_bridge_relaxed" not in bound_receipt.warnings
     assert bound_receipt.method_focus_basis_queries == basis_queries
     assert bound_receipt.method_bridge_contract.shared_focus_terms == ("ordinal signature",)
     assert "bridged-method" in bound_receipt.selected_record_ids
@@ -500,7 +515,7 @@ def test_v4_receipt_replays_without_method_focus_bridge_reinterpretation() -> No
         policy_version="v4",
     )
     eligible_ids = tuple(item.record_id for item in candidates)
-    selected, assignments, failures = coverage_module._select_classified_planning_literature(
+    selected, assignments, failures, _warnings = coverage_module._select_classified_planning_literature(
         classifications,
         maximum_records=6,
         maximum_total_context_characters=None,
@@ -567,7 +582,7 @@ def test_v3_receipt_replays_frozen_quality_first_selection() -> None:
         policy_version="v3",
     )
     candidate_ids = tuple(item.record_id for item in candidates)
-    selected, assignments, failures = coverage_module._select_classified_planning_literature(
+    selected, assignments, failures, _warnings = coverage_module._select_classified_planning_literature(
         classifications,
         maximum_records=5,
         maximum_total_context_characters=None,
@@ -1214,7 +1229,7 @@ def test_receipt_replay_rejects_rehashed_anchor_assignment_tamper() -> None:
 
 def test_legacy_v2_loader_replays_the_frozen_selection_policy(tmp_path: Path) -> None:
     classifications = classify_planning_candidates(_complete_candidates(), _queries())
-    selected, assignments, failures = coverage_module._select_classified_planning_literature(
+    selected, assignments, failures, _warnings = coverage_module._select_classified_planning_literature(
         classifications,
         maximum_records=8,
         maximum_total_context_characters=None,

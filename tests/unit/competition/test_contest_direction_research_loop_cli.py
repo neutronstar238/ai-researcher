@@ -3383,3 +3383,68 @@ def test_resume_loader_rejects_legacy_raw_plan_render(tmp_path: Path) -> None:
         match="not a self-contained v3 delivery",
     ):
         loop_cli._load_rendered_plan(root)
+
+
+def test_doi_verification_enabled_flag_is_opt_in(monkeypatch) -> None:
+    monkeypatch.delenv("AUTORESEARCH_ENABLE_DOI_VERIFICATION", raising=False)
+    assert loop_cli._doi_verification_enabled() is False
+
+    monkeypatch.setenv("AUTORESEARCH_ENABLE_DOI_VERIFICATION", "1")
+    assert loop_cli._doi_verification_enabled() is True
+
+    monkeypatch.setenv("AUTORESEARCH_ENABLE_DOI_VERIFICATION", "off")
+    assert loop_cli._doi_verification_enabled() is False
+
+
+def test_record_finalist_doi_verification_writes_and_reuses_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from autoresearch.literature.doi_verification import (
+        DoiVerification,
+        ReferenceVerificationReceipt,
+    )
+
+    calls: list[int] = []
+
+    def fake_verify(
+        records: object,
+        *,
+        mailto: object = None,
+        timeout_seconds: object = 30,
+        http_get: object = None,
+    ) -> ReferenceVerificationReceipt:
+        del mailto, timeout_seconds, http_get
+        count = len(records) if isinstance(records, list) else 0
+        calls.append(count)
+        return ReferenceVerificationReceipt(
+            verified=(
+                DoiVerification(
+                    doi="10.1000/x",
+                    status="resolved",
+                    resolved_title="T",
+                    title_match="match",
+                    resolved_authors=(),
+                    container_title=None,
+                ),
+            ),
+            skipped_count=1,
+        )
+
+    monkeypatch.setattr(loop_cli, "verify_reference_records", fake_verify)
+
+    catalog = [
+        {"record_id": "r1", "title": "T", "doi": "10.1000/x"},
+        {"record_id": "r2", "title": "Repository only", "repository_doi": "10.48550/arXiv.1"},
+    ]
+    path = tmp_path / "finalist-doi-verification.json"
+
+    fresh = loop_cli._record_finalist_doi_verification(path, catalog, resume=False)
+    assert fresh["schema_version"] == "contest-direction-finalist-doi-verification-v1"
+    assert fresh["catalog_record_ids"] == ["r1", "r2"]
+    assert fresh["verification_count"] == 1
+    assert len(calls) == 1
+
+    resumed = loop_cli._record_finalist_doi_verification(path, catalog, resume=True)
+    assert resumed == fresh
+    assert len(calls) == 1

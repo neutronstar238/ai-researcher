@@ -790,9 +790,18 @@ def build_contest_direction_literature_messages(
                 "并把它作为独立的必需命中组；该对象组不得只写 generic model、system、"
                 "method，也不得用泛化的模型、系统或方法代替具体研究对象。第2条必须写成"
                 "“方法族 OR组 AND 定义、估计、偏差或验证 OR 组”，不得强制包含具体研究"
-                "对象，也不得把拟议的专用零模型、干预组合或自造术语当作方法基础。第4条"
+                "对象，也不得把拟议的专用零模型、干预组合或自造术语当作方法基础。为保证"
+                "方法文献能建立『不可变焦点桥』，第2条的第一必需组（方法族 OR 组）必须"
+                "至少包含一个与第1条第二必需组（直接现象 OR 组）逐字相同的焦点桥接术语；"
+                "若方法族确实无法复用直接现象术语，则必须复用第1条第一必需组（核心对象"
+                "OR 组）中的某个对象术语，但不得用该对象术语取代真正的方法族词。第4条"
                 "的第二个必需组必须包含可能推翻、限制或替代正向解释的概念，使用短而常用"
-                "的英文检索术语，例如 limitations、failure modes、artifacts 或 bias。仅由"
+                "的英文检索术语。第二个必需组必须至少包含下列完整强反证词表中的一个概念："
+                "limitation、limitations、failure mode、failure modes、artifact、artifacts、"
+                "bias、biases、confounder、confounders、confounding、negative result、"
+                "negative results、null explanation、null explanations、false positive、"
+                "false positives、spurious effect、spurious effects、alternative explanation、"
+                "alternative explanations。仅由"
                 "anomalies、deviations、counterexamples、irregularities 组成的弱概念组不合格；也不得"
                 "把 no、zero、without 或 not 与 counterexample 等概念组成否定式命中。"
                 "每条恰好使用两个顶层 AND 概念组；每个 OR 组使用2至4个短而常用、可能原样出现在"
@@ -1225,6 +1234,23 @@ def _build_messages_for_query_compiler(
     )
 
 
+def _strip_stray_json_delimiters(query: str) -> str:
+    """Strip JSON array/object delimiters a model may leak into a query string.
+
+    The v4 query grammar uses only parentheses and double quotes, never square
+    or curly brackets or commas, so leading/trailing occurrences of those
+    characters are model formatting artifacts (e.g. a leaked ``]`` closing a
+    JSON array inside the last string) rather than part of a valid Boolean term.
+    """
+
+    stripped = query.strip()
+    while stripped and stripped[0] in "[{":
+        stripped = stripped[1:].lstrip()
+    while stripped and stripped[-1] in "]},;":
+        stripped = stripped[:-1].rstrip()
+    return stripped
+
+
 def _project_queries(
     payload: Mapping[str, Any],
     *,
@@ -1246,6 +1272,7 @@ def _project_queries(
         if not isinstance(value, str):
             continue
         query = re.sub(r"^\s*(?:[-*•]|\d+[.)、])\s*", "", value).strip()
+        query = _strip_stray_json_delimiters(query)
         if query and query not in queries:
             queries.append(query)
         if compiler_version != "source-query-compiler-v4" and len(queries) == 4:
@@ -1303,6 +1330,45 @@ _NEGATED_COUNTER_TERM = re.compile(
 )
 
 
+def _counterevidence_term_strength(term: str) -> Literal["strong", "weak", "none"]:
+    """Classify one counterevidence alternative deterministically.
+
+    The gate recognizes a falsifying concept both as an exact lexicon phrase and
+    inside a longer evidence-bound phrase (e.g. ``a finite-size artifact``
+    carries the strong concept ``artifact``).  Exact membership remains the
+    primary signal; containment keeps evidence-copied multi-word phrases from
+    being misclassified as concept-free.
+    """
+
+    normalized = " ".join(term.casefold().split())
+    if not normalized:
+        return "none"
+    for phrase in _STRONG_COUNTEREVIDENCE_PHRASES_SORTED:
+        if phrase in normalized:
+            return "strong"
+    for phrase in _WEAK_COUNTEREVIDENCE_PHRASES_SORTED:
+        if phrase in normalized:
+            return "weak"
+    return "none"
+
+
+_STRONG_COUNTEREVIDENCE_PHRASES_SORTED = tuple(
+    sorted(_STRONG_COUNTEREVIDENCE_TERMS, key=len, reverse=True)
+)
+_WEAK_COUNTEREVIDENCE_PHRASES_SORTED = tuple(
+    sorted(_WEAK_COUNTEREVIDENCE_TERMS, key=len, reverse=True)
+)
+
+
+def _counterevidence_gate_detail(counter_terms: tuple[str, ...]) -> str | None:
+    strengths = tuple(_counterevidence_term_strength(term) for term in counter_terms)
+    if any(strength == "strong" for strength in strengths):
+        return None
+    if strengths and all(strength == "weak" for strength in strengths):
+        return "weak-only group"
+    return "missing a falsifying concept"
+
+
 def _validate_v3_query_plan(queries: tuple[str, ...]) -> None:
     """Reject a fourth query that cannot retrieve genuine counterevidence."""
 
@@ -1340,10 +1406,8 @@ def _validate_v3_query_plan(queries: tuple[str, ...]) -> None:
         raise ContestDirectionLiteratureError(
             "source-query-compiler-v3 counterevidence terms must not be negated"
         )
-    strong_terms = set(counter_terms).intersection(_STRONG_COUNTEREVIDENCE_TERMS)
-    if not strong_terms:
-        weak_only = bool(counter_terms) and set(counter_terms).issubset(_WEAK_COUNTEREVIDENCE_TERMS)
-        detail = "weak-only group" if weak_only else "missing a falsifying concept"
+    detail = _counterevidence_gate_detail(counter_terms)
+    if detail is not None:
         raise ContestDirectionLiteratureError(f"source-query-compiler-v3 counterevidence {detail}")
 
 
@@ -1393,10 +1457,8 @@ def _validate_v4_query_plan(queries: tuple[str, ...]) -> None:
         raise ContestDirectionLiteratureError(
             "source-query-compiler-v4 counterevidence terms must not be negated"
         )
-    strong_terms = set(counter_terms).intersection(_STRONG_COUNTEREVIDENCE_TERMS)
-    if not strong_terms:
-        weak_only = bool(counter_terms) and set(counter_terms).issubset(_WEAK_COUNTEREVIDENCE_TERMS)
-        detail = "weak-only group" if weak_only else "missing a falsifying concept"
+    detail = _counterevidence_gate_detail(counter_terms)
+    if detail is not None:
         raise ContestDirectionLiteratureError(f"source-query-compiler-v4 counterevidence {detail}")
 
 

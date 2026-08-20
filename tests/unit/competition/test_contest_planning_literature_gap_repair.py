@@ -135,6 +135,7 @@ def _freeze_as_v4(receipt):  # type: ignore[no-untyped-def]
         "method_bridge_contract",
         "method_bridge_assessments",
         "eligible_role_family_counts",
+        "warnings",
     ):
         payload.pop(field)
     payload["schema_version"] = "contest-planning-literature-coverage-v4"
@@ -235,7 +236,7 @@ def test_frozen_v4_failure_remains_diagnosable_after_v5_becomes_current() -> Non
     assert diagnosis.repairable_roles == (PlanningLiteratureRole.COUNTEREVIDENCE,)
 
 
-def test_v5_method_focus_bridge_failure_repairs_only_the_method_second_group() -> None:
+def test_v5_method_focus_bridge_shortfall_relaxes_to_warning() -> None:
     candidates = tuple(item for item in _complete_candidates() if item.record_id != "method-1") + (
         _candidate(
             "method-unbridged",
@@ -244,52 +245,18 @@ def test_v5_method_focus_bridge_failure_repairs_only_the_method_second_group() -
             PlanningLiteratureRole.METHOD_FOUNDATION,
         ),
     )
-    failed = select_planning_literature(candidates, _queries(), maximum_records=8)
+    relaxed = select_planning_literature(candidates, _queries(), maximum_records=8)
 
-    diagnosis = diagnose_planning_literature_gap(failed)
-    method_gap = next(
+    assert relaxed.passed is True
+    assert relaxed.failure_reasons == ()
+    assert "method_focus_bridge_relaxed" in relaxed.warnings
+    assert "method-unbridged" in relaxed.selected_record_ids
+    method_anchor = next(
         item
-        for item in diagnosis.role_diagnostics
+        for item in relaxed.anchor_assignments
         if item.role is PlanningLiteratureRole.METHOD_FOUNDATION
     )
-    assert failed.failure_reasons == ("insufficient_method_focus_bridge_anchors",)
-    assert method_gap.gap_kind == "method_focus_bridge_shortfall"
-    assert method_gap.semantic_anchor_count == 1
-    assert method_gap.authority_eligible_anchor_count == 1
-    assert method_gap.selection_eligible_anchor_count == 0
-    assert diagnosis.repairable_roles == (PlanningLiteratureRole.METHOD_FOUNDATION,)
-
-    evidence = _evidence_inputs()
-    repair = PlanningLiteratureRoleQueryRepair(
-        role=PlanningLiteratureRole.METHOD_FOUNDATION,
-        replacement_terms=(
-            PlanningLiteratureRepairTermProvenance(
-                term="sensitivity analyses",
-                evidence_hash=evidence[2].evidence_hash,
-                matched_field="title",
-            ),
-            PlanningLiteratureRepairTermProvenance(
-                term="uncertainty estimates",
-                evidence_hash=evidence[2].evidence_hash,
-                matched_field="abstract",
-            ),
-        ),
-    )
-    projection = project_planning_literature_query_repair(
-        diagnosis,
-        evidence_inputs=evidence,
-        repairs=(repair,),
-    )
-    r1 = diagnosis.coverage_receipt.role_queries
-    r2 = projection.r2_role_queries
-    assert r2[0] == r1[0]
-    assert r2[2:] == r1[2:]
-    assert r2[1].must_groups[0] == r1[1].must_groups[0]
-    assert r2[1].must_groups[1] == (
-        "sensitivity analyses",
-        "uncertainty estimates",
-    )
-    assert r2[1].query_id == f"{r1[1].query_id}-r2"
+    assert method_anchor.record_id == "method-unbridged"
 
 
 def test_diagnosis_rejects_passing_or_historical_coverage() -> None:

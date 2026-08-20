@@ -811,6 +811,11 @@ def _build_brainstorm_tasks(
             "诱导距离/间隙、未列出的主指标或其他runner不会计算的步骤，必须返回no_adapter。"
             "不得用对象/观测量关键词掩盖科学语义变化。适配器元数据不是实验结果。"
         ),
+        "字段要求": (
+            "所有字符串字段必须非空且语义完整。即使 adapter_id=no_adapter，"
+            "scientific_object、observable、metric 也必须用你自己的话分别描述"
+            "拟研究的科学对象、可观测信号与评估指标，禁止留空或只写占位符。"
+        ),
         "阶段边界": "当前只生成未评审候选；没有预实验结果，不得进行科学评审。",
     }
     schema = _brainstorm_schema(
@@ -1060,16 +1065,16 @@ def _brainstorm_schema(
             "reference_indices",
         ],
         "properties": {
-            "hypothesis_cn": {"type": "string"},
-            "research_objective_cn": {"type": "string"},
-            "falsification_cn": {"type": "string"},
-            "nearest_work_difference_cn": {"type": "string"},
-            "transferred_method_baseline_cn": {"type": "string"},
-            "strongest_counterevidence_cn": {"type": "string"},
+            "hypothesis_cn": {"type": "string", "minLength": 1},
+            "research_objective_cn": {"type": "string", "minLength": 1},
+            "falsification_cn": {"type": "string", "minLength": 1},
+            "nearest_work_difference_cn": {"type": "string", "minLength": 1},
+            "transferred_method_baseline_cn": {"type": "string", "minLength": 1},
+            "strongest_counterevidence_cn": {"type": "string", "minLength": 1},
             "adapter_id": {"type": "string", "enum": [*adapter_ids, "no_adapter"]},
-            "scientific_object": {"type": "string"},
-            "observable": {"type": "string"},
-            "metric": {"type": "string"},
+            "scientific_object": {"type": "string", "minLength": 1},
+            "observable": {"type": "string", "minLength": 1},
+            "metric": {"type": "string", "minLength": 1},
             "null_models": {
                 "type": "array",
                 "items": {"type": "string"},

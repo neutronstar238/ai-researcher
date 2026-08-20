@@ -12,6 +12,7 @@ import pytest
 from autoresearch.competition.contest_direct_plan import generate_contest_direct_plan
 from autoresearch.competition.contest_direct_plan_render import validate_contest_plan_payload
 from autoresearch.competition.contest_direct_plan_revision import (
+    ContestDirectPlanNumberGuardError,
     ContestDirectPlanRevisionError,
     revise_contest_direct_plan,
 )
@@ -353,6 +354,25 @@ def test_invented_observed_number_is_rejected_without_retry(tmp_path: Path) -> N
     assert calls == 1
     assert len(tuple((revision_root / "responses").glob("*.txt"))) == 1
     assert len(tuple((revision_root / "interactions").glob("*.json"))) == 1
+
+
+def test_guard_rejection_raises_number_guard_subclass(tmp_path: Path) -> None:
+    artifact_path, metrics_path, _ = _pilot(tmp_path)
+    payload = _revised_payload()
+    payload["results"] += "，并观察到0.99的额外效应。"
+
+    with pytest.raises(ContestDirectPlanNumberGuardError, match="absent from verified"):
+        revise_contest_direct_plan(
+            original_plan=_original_plan(),
+            scientific_problem="素数为何如此特别？",
+            requirements="中文研究计划",
+            selected_skill_contexts=("计算数论方法。",),
+            reference_catalog=("Bandt & Pompe (2002)",),
+            preexperiment_artifact=artifact_path,
+            preexperiment_metrics=metrics_path,
+            output_dir=tmp_path / "revision",
+            llm_call=lambda **_: _completion(payload),
+        )
 
 
 def test_verified_rounding_percent_ci_and_model_labels_are_accepted(
@@ -775,3 +795,96 @@ def test_prime_artifact_relative_manifest_schema_is_consumed_without_adapter(
         item["verified_text"] == "program_status=completed\n"
         for item in evidence_message["verified_files"]
     )
+
+
+def test_pilot_placeholders_are_substituted_with_verified_values(tmp_path: Path) -> None:
+    artifact_path, metrics_path, _ = _pilot(tmp_path)
+    payload = _revised_payload()
+    payload["results"] = (
+        "预实验标准化效应为 [[pilot:standardized_effect_a]]，残差条件比例为 "
+        "[[pilot:residue_conditioned_variable_position_fraction]]，95% 区间为 "
+        "[[pilot:fixed_interval_resampling_delta_ci95]]；"
+        "替代解释是筛结构造成表面差异。"
+    )
+
+    result = revise_contest_direct_plan(
+        original_plan=_original_plan(),
+        scientific_problem="素数为何如此特别？",
+        requirements="中文研究计划",
+        selected_skill_contexts=("计算数论方法。",),
+        reference_catalog=("Bandt & Pompe (2002)",),
+        preexperiment_artifact=artifact_path,
+        preexperiment_metrics=metrics_path,
+        output_dir=tmp_path / "revision-placeholders",
+        llm_call=lambda **_: _completion(payload),
+    )
+
+    assert "[[pilot:" not in result.plan.results
+    assert "-7.526" in result.plan.results
+    assert "0.929353" in result.plan.results
+    assert "-0.0024、0.0001" in result.plan.results
+
+
+def test_unknown_pilot_placeholder_fails_closed(tmp_path: Path) -> None:
+    artifact_path, metrics_path, _ = _pilot(tmp_path)
+    payload = _revised_payload()
+    payload["results"] = (
+        "预实验为 [[pilot:no_such_field]]；替代解释是筛结构造成表面差异。"
+    )
+
+    with pytest.raises(ContestDirectPlanNumberGuardError, match="path not found"):
+        revise_contest_direct_plan(
+            original_plan=_original_plan(),
+            scientific_problem="素数为何如此特别？",
+            requirements="中文研究计划",
+            selected_skill_contexts=("计算数论方法。",),
+            reference_catalog=("Bandt & Pompe (2002)",),
+            preexperiment_artifact=artifact_path,
+            preexperiment_metrics=metrics_path,
+            output_dir=tmp_path / "revision-unknown-placeholder",
+            llm_call=lambda **_: _completion(payload),
+        )
+
+
+def test_non_scalar_pilot_placeholder_fails_closed(tmp_path: Path) -> None:
+    artifact_path, metrics_path, _ = _pilot(tmp_path)
+    payload = _revised_payload()
+    payload["results"] = (
+        "预实验区间为 [[pilot:intervals]]；替代解释是筛结构造成表面差异。"
+    )
+
+    with pytest.raises(ContestDirectPlanNumberGuardError, match="non-scalar"):
+        revise_contest_direct_plan(
+            original_plan=_original_plan(),
+            scientific_problem="素数为何如此特别？",
+            requirements="中文研究计划",
+            selected_skill_contexts=("计算数论方法。",),
+            reference_catalog=("Bandt & Pompe (2002)",),
+            preexperiment_artifact=artifact_path,
+            preexperiment_metrics=metrics_path,
+            output_dir=tmp_path / "revision-nonscalar-placeholder",
+            llm_call=lambda **_: _completion(payload),
+        )
+
+
+def test_interval_object_lists_format_deterministically() -> None:
+    from autoresearch.competition.contest_direct_plan_revision import (
+        _resolve_pilot_placeholders,
+    )
+
+    artifact = {
+        "parameters": {
+            "intervals": [
+                {"start": 1000000, "stop": 2000000},
+                {"start": 5000000, "stop": 6000000},
+            ]
+        }
+    }
+    substituted, resolved = _resolve_pilot_placeholders(
+        {"results": "区间为 [[pilot:parameters.intervals]]。"},
+        preexperiment_metrics={},
+        preexperiment_artifact=artifact,
+    )
+
+    assert substituted["results"] == "区间为 [1000000, 2000000)、[5000000, 6000000)。"
+    assert resolved[0]["path"] == "parameters.intervals"

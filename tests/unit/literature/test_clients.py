@@ -216,6 +216,62 @@ def test_arxiv_status_verification_ignores_generic_withdrawal_policy_text() -> N
     assert verified.status_source == "arxiv_atom"
 
 
+def test_arxiv_429_opens_circuit_breaker_without_hammering() -> None:
+    breaker = RateLimitCircuitBreaker(failure_threshold=1, reset_after_seconds=60.0)
+    calls = 0
+
+    def fake_get(
+        url: str,
+        _params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        nonlocal calls
+        calls += 1
+        raise HTTPError(url, 429, "Too Many Requests", {"Retry-After": "30"}, None)
+
+    client = ArxivClient(
+        http_get=fake_get,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=3, backoff_seconds=0),
+        circuit_breaker=breaker,
+        sleep=lambda _seconds: None,
+    )
+
+    with pytest.raises(SourceRateLimitError, match="429"):
+        client.search("prime gaps", limit=1)
+    with pytest.raises(CircuitBreakerOpenError):
+        client.search("prime gaps", limit=1)
+
+    # One physical attempt opens the circuit; the second search is refused before
+    # any further HTTP request is made.
+    assert calls == 1
+    assert breaker.remaining_seconds() > 0
+
+
+def test_arxiv_429_honors_retry_after_cooldown() -> None:
+    breaker = RateLimitCircuitBreaker(failure_threshold=1, reset_after_seconds=60.0)
+
+    def fake_get(
+        url: str,
+        _params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        raise HTTPError(url, 429, "Too Many Requests", {"Retry-After": "120"}, None)
+
+    client = ArxivClient(
+        http_get=fake_get,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+        circuit_breaker=breaker,
+        sleep=lambda _seconds: None,
+    )
+
+    with pytest.raises(SourceRateLimitError):
+        client.search("prime gaps", limit=1)
+
+    assert breaker.remaining_seconds() > 60.0
+
+
 def test_semantic_scholar_client_parses_mocked_response() -> None:
     payload = {
         "data": [

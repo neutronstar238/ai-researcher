@@ -10,9 +10,14 @@ from typing import Any
 
 import pytest
 
+from autoresearch.competition.contest_direct_plan_revision import (
+    ContestDirectPlanNumberGuardError,
+    ContestDirectPlanRevisionError,
+)
 from autoresearch.competition.contest_mainline_cli import (
     ContestMainlineDeliveryError,
     _load_selected_skill_contexts,
+    _revision_temperatures,
     run_contest_mainline_delivery,
 )
 
@@ -382,3 +387,131 @@ def test_reused_preexperiment_plan_binding_enforced(tmp_path: Path, skill_file: 
             evidence_builder=lambda *_, **__: None,
             plan_materializer=_materializer_stub,
         )
+
+
+def _plan_and_pilot(tmp_path: Path, skill_file: Path) -> tuple[Path, Path]:
+    plan_source = tmp_path / "plan-source"
+    _write_plan_stage(plan_source, skill_file)
+    pilot_source = tmp_path / "pilot-source"
+    pilot_source.mkdir()
+    (pilot_source / "prime-preexperiment.json").write_text("{}", encoding="utf-8")
+    (pilot_source / "metrics.json").write_text("{}", encoding="utf-8")
+    pilot = _pilot_stub(metrics_sha256=hashlib.sha256(b"{}").hexdigest())
+    pilot.source_plan_sha256 = hashlib.sha256(
+        json.dumps({"title": "渲染计划"}).encode("utf-8")
+    ).hexdigest()
+    return plan_source, pilot_source, pilot
+
+
+def test_guard_rejection_retries_with_feedback_and_jittered_temperature(
+    tmp_path: Path, skill_file: Path
+) -> None:
+    plan_source, pilot_source, pilot = _plan_and_pilot(tmp_path, skill_file)
+    seen: list[dict[str, Any]] = []
+
+    def flaky_revision_runner(**kwargs: Any) -> _Stub:
+        seen.append({"requirements": kwargs["requirements"], "temperature": kwargs["temperature"]})
+        if len(seen) < 3:
+            raise ContestDirectPlanNumberGuardError(
+                "revised Results contain numbers absent from verified preexperiment evidence: 2310"
+            )
+        Path(kwargs["output_dir"]).mkdir(parents=True, exist_ok=True)
+        Path(kwargs["output_path"]).write_text("{}", encoding="utf-8")
+        return _revision_stub()
+
+    report = run_contest_mainline_delivery(
+        question_pdf=tmp_path / "booklet.pdf",
+        output_dir=tmp_path / "out",
+        plan_source_dir=plan_source,
+        preexperiment_source_dir=pilot_source,
+        preexperiment_loader=lambda *_, **__: pilot,
+        revision_runner=flaky_revision_runner,
+        evidence_builder=lambda *_, **__: None,
+        plan_materializer=_materializer_stub,
+    )
+    assert report["status"] == "completed"
+    assert len(seen) == 3
+    assert [attempt["temperature"] for attempt in seen] == [0.2, 0.4, 0.6]
+    assert len(seen[0]["requirements"]) == 5
+    assert len(seen[1]["requirements"]) == 6
+    assert "2310" in seen[1]["requirements"][-1]
+    assert "数字守卫拒绝" in seen[1]["requirements"][-1]
+    assert len(seen[2]["requirements"]) == 7
+
+
+def test_guard_rejection_exhausts_and_fails_closed(tmp_path: Path, skill_file: Path) -> None:
+    plan_source, pilot_source, pilot = _plan_and_pilot(tmp_path, skill_file)
+
+    def always_rejected(**_: Any) -> _Stub:
+        raise ContestDirectPlanNumberGuardError(
+            "revised evidence claims introduced numbers absent from verified inputs: 2310"
+        )
+
+    with pytest.raises(ContestDirectPlanNumberGuardError, match="2310"):
+        run_contest_mainline_delivery(
+            question_pdf=tmp_path / "booklet.pdf",
+            output_dir=tmp_path / "out",
+            plan_source_dir=plan_source,
+            preexperiment_source_dir=pilot_source,
+            preexperiment_loader=lambda *_, **__: pilot,
+            revision_runner=always_rejected,
+            evidence_builder=lambda *_, **__: None,
+            plan_materializer=_materializer_stub,
+        )
+
+
+def test_revision_attempts_one_disables_retry(tmp_path: Path, skill_file: Path) -> None:
+    plan_source, pilot_source, pilot = _plan_and_pilot(tmp_path, skill_file)
+    calls = 0
+
+    def rejected_once(**_: Any) -> _Stub:
+        nonlocal calls
+        calls += 1
+        raise ContestDirectPlanNumberGuardError(
+            "revised Results contain numbers absent from verified preexperiment evidence: 11"
+        )
+
+    with pytest.raises(ContestDirectPlanNumberGuardError, match="11"):
+        run_contest_mainline_delivery(
+            question_pdf=tmp_path / "booklet.pdf",
+            output_dir=tmp_path / "out",
+            plan_source_dir=plan_source,
+            preexperiment_source_dir=pilot_source,
+            preexperiment_loader=lambda *_, **__: pilot,
+            revision_runner=rejected_once,
+            revision_attempts=1,
+            evidence_builder=lambda *_, **__: None,
+            plan_materializer=_materializer_stub,
+        )
+    assert calls == 1
+
+
+def test_non_guard_revision_error_is_not_retried(tmp_path: Path, skill_file: Path) -> None:
+    plan_source, pilot_source, pilot = _plan_and_pilot(tmp_path, skill_file)
+    calls = 0
+
+    def binding_error(**_: Any) -> _Stub:
+        nonlocal calls
+        calls += 1
+        raise ContestDirectPlanRevisionError("preexperiment artifact lacks a valid artifact_hash")
+
+    with pytest.raises(ContestDirectPlanRevisionError, match="artifact_hash"):
+        run_contest_mainline_delivery(
+            question_pdf=tmp_path / "booklet.pdf",
+            output_dir=tmp_path / "out",
+            plan_source_dir=plan_source,
+            preexperiment_source_dir=pilot_source,
+            preexperiment_loader=lambda *_, **__: pilot,
+            revision_runner=binding_error,
+            evidence_builder=lambda *_, **__: None,
+            plan_materializer=_materializer_stub,
+        )
+    assert calls == 1
+
+
+def test_revision_temperatures_schedule() -> None:
+    assert _revision_temperatures(1) == (0.2,)
+    assert _revision_temperatures(3) == (0.2, 0.4, 0.6)
+    assert _revision_temperatures(5) == (0.2, 0.4, 0.6, 0.2, 0.4)
+    with pytest.raises(ContestMainlineDeliveryError, match="at least 1"):
+        _revision_temperatures(0)

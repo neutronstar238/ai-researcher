@@ -21,6 +21,7 @@ from autoresearch.competition.contest_planning_literature_gap_repair import (
 )
 from autoresearch.competition.contest_planning_literature_gap_repair_runner import (
     PlanningLiteratureGapRepairResponseError,
+    _candidate_terms,
     build_planning_literature_gap_repair_messages,
     load_planning_literature_gap_repair_response,
     run_planning_literature_gap_repair_query,
@@ -290,6 +291,20 @@ def test_runner_rejects_invented_terms_and_does_not_persist(tmp_path: Path) -> N
     assert not output.exists()
 
 
+def test_candidate_terms_exclude_negated_leading_n_grams() -> None:
+    candidates = _candidate_terms(
+        "Astrophysical constraints",
+        "The model is limited because there is no room for large extra dimensions "
+        "without observational bias. Astrophysical uncertainties remain.",
+    )
+    assert candidates
+    for item in candidates:
+        assert item["term"].casefold().split()[0] not in {"no", "zero", "without", "not"}
+    terms = {item["term"].casefold() for item in candidates}
+    assert "no room for" not in terms
+    assert "without observational bias" not in terms
+
+
 def test_runner_rejects_extra_response_fields() -> None:
     diagnosis = diagnose_planning_literature_gap(_failed_coverage())
     payload = {**_valid_payload(), "answer": "not allowed"}
@@ -317,3 +332,70 @@ def test_tampered_response_receipt_fails_replay(tmp_path: Path) -> None:
 
     with pytest.raises((ValidationError, ValueError), match="messages|hash"):
         load_planning_literature_gap_repair_response(output)
+
+
+def test_revision_message_binds_rejection_and_strong_counterevidence_terms() -> None:
+    from autoresearch.competition.contest_planning_literature_gap_repair_runner import (
+        build_gap_repair_revision_message,
+    )
+
+    message = build_gap_repair_revision_message(
+        "source-query-compiler-v4 counterevidence missing a falsifying concept"
+    )
+
+    assert message["role"] == "user"
+    assert "missing a falsifying concept" in message["content"]
+    assert "limitation" in message["content"]
+    assert "negative result" in message["content"]
+    assert "alternative explanation" in message["content"]
+
+
+def test_revision_runner_makes_one_call_with_revision_message_and_replays(
+    tmp_path: Path,
+) -> None:
+    diagnosis = diagnose_planning_literature_gap(_failed_coverage())
+    calls: list[dict[str, Any]] = []
+
+    def completion(**kwargs: Any) -> LLMJsonCompletionResult:
+        calls.append(kwargs)
+        return _completion(_valid_payload())
+
+    output = tmp_path / "gap-query-response.json"
+    receipt = run_planning_literature_gap_repair_query(
+        diagnosis=diagnosis,
+        evidence_inputs=_evidence(),
+        completion=completion,
+        output_path=output,
+        revision_failure_reason=(
+            "source-query-compiler-v4 counterevidence missing a falsifying concept"
+        ),
+    )
+
+    assert len(calls) == 1
+    assert calls[0]["temperature"] == 0.4
+    assert len(receipt.messages) == 4
+    assert receipt.model_calls == 1
+    assert receipt.revision_failure_reason is not None
+    assert load_planning_literature_gap_repair_response(output) == receipt
+
+
+def test_revision_failure_classification() -> None:
+    from autoresearch.competition.contest_planning_literature_gap_repair_runner import (
+        gap_repair_failure_is_revisable,
+    )
+
+    assert gap_repair_failure_is_revisable(
+        PlanningLiteratureGapRepairResponseError(
+            "source-query-compiler-v4 counterevidence missing a falsifying concept"
+        )
+    )
+    assert gap_repair_failure_is_revisable(
+        PlanningLiteratureGapRepairResponseError(
+            "source-query-compiler-v4 counterevidence weak-only group"
+        )
+    )
+    assert not gap_repair_failure_is_revisable(
+        PlanningLiteratureGapRepairResponseError(
+            "targeted role-query contract is invalid: direct core object group uses a generic term"
+        )
+    )
