@@ -7320,15 +7320,28 @@ update a factual problem entry below.
 - Linked tasks: 根 web/ 控制台验证；方向循环开发中清单。
 ### P-20260819-060 - 工作副本无 .git 目录，无法创建 git commit
 
-- Status: Open
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-08-19
 - Source: 国创赛 XH-202619 技术方案文档（technical-proposal.tex/pdf）完成后，按 AGENTS.md 要求准备提交时执行 `git rev-parse --is-inside-work-tree`。
 - Symptom: `git rev-parse` 报 `fatal: not a git repository (or any of the parent directories): .git`；E:\ai-researcher-source 虽有 .gitattributes/.github 等痕迹，但无 .git 目录。
-- Impact: 无法按 AGENTS.md「Git Version Management」创建任务提交；技术方案文档（technical-proposal.tex/.pdf）与 Agent.md/Problem.md 更新暂未纳入版本控制，存在丢失风险。
+- Impact: 当时无法按 AGENTS.md「Git Version Management」创建任务提交；现已恢复版本控制，不再阻断后续任务提交。
 - Evidence: `git status --short` 与 `git rev-parse --is-inside-work-tree` 均报 fatal；Agent.md 最近一条（2026-08-19 DeepSeek Harness）也记录「无 .git 未 commit」，确认非本次操作引起。
-- Workaround: 已在本条目与 Agent.md 条目中如实记录；若仓库恢复版本控制（git init 或挂载原 .git），应补一次包含 paper/Springer_Nature_LaTeX_Template/technical-proposal.*、Agent.md、Problem.md 的提交。
-- Next action: 等待仓库所有者恢复 .git 后补交，或由用户决定是否 git init 新建仓库。
+- Workaround: 已在本条目与 Agent.md 条目中如实记录。
+- Resolution: 2026-08-20 按用户明确要求在 `E:\ai-researcher-source` 初始化 `main`，绑定并抓取 `https://github.com/neutronstar238/ai-researcher-loop`，以保留当前文件的 mixed reset 对齐远端历史；提交 `9aa84097a606876e010647eaea2712a1aa1ca408` 后执行 `git push --force origin main`，远端 `main` 已核验为同一 SHA。当前目录可正常执行 `git status`、提交和推送。
+- Next action: 无；后续任务继续按文件范围创建聚焦提交。
+
+### P-20260820-062 - 125 题均有 pilot 方案，但不能等同于 125 项已实测 pilot
+
+- Status: Resolved（通过证据分层和文档措辞消除过度声明风险）
+- Severity: High（参赛材料科学诚信与可核验性）
+- Discovered: 2026-08-20
+- Source: 核验 `C:\Users\Z\Desktop\揭榜挂帅提交材料\delivery-125-plan` 与 `E:\ai-researcher-loop\ai-researcher-loop-main\runs\contest-delivery` 的既有成果。
+- Symptom: 用户确认 125 个问题均有对应 pilot 并将全部提交；文件层面确有 q001--q125 共 125 份 Markdown 与 125 份 PDF，且每题均含定制预实验设计、基线、指标和可证伪判据。但独立扫描发现 124 份 Markdown 明示“尚未执行预实验”；适配器选择记录中大多数为 `no_compatible_adapter`。只有素数间隙方向保存了可核验原始 CSV、零模型样本、参数、日志、指标与 manifest。q001 的十二阶段运行最终被独立科学评审以 `major_revision` 阻断，而非通过交付门。
+- Impact: 若把“125 个 pilot 方案”写成“125 项真实实验均已完成”，会制造无法由运行产物支持的科学主张；若完全不呈现 125 题，又会低估现有成果覆盖度。
+- Resolution: XH-202619 技术方案明确写为“125/125 均形成对应 pilot/预实验方案并输出 Markdown/PDF”，同时将 q001 标记为已执行探索性 pilot，将 q050/q091/q119 标记为优秀的计划态跨领域案例；正文、表格和结论均保持该证据状态。q001 的 `major_revision`、引用/创新性问题与阻断回执被作为真实反馈迭代案例披露。
+- Verification: 文件计数 `md=125, pdf=125`；文本扫描 `files_marked_unexecuted=124`；q001 指标与运行 `live-verify-q001-v2-20260816` 的 metrics/manifest 一致；最终 PDF 文本含“尚未执行预实验”和 `major revision`，未出现“125 项实验均已执行”的声明。
+- Next action: 若后续要声称 125 项均完成实测，必须为其余领域接入兼容数据/仿真/仪器适配器，逐项执行并保存原始产物、回执与独立评审结果。
 
 ### P-20260819-061 - 用代码生成 LaTeX 源时 JS 转义破坏命令（教训记录）
 

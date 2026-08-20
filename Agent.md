@@ -17518,3 +17518,30 @@ This file defines the project development standard for coding agents and records
   - 清理全部测试残留后重启服务，`/api/runs` 与 `/api/batches` 均为空。
 - Problems: 新增并解决 P-20260819-024（yqzl 批量按钮无响应：Windows 路径 + 缺 pdftohtml 裸 500）。
 - Follow-up: (1) 用正式（非 dry-run）题目在线上跑一次端到端，确认服务器渲染的研究计划 PDF 可下载；(2) git commit 本次改动（web/ 三件套 + app.py 兜底捕获）。
+
+### 2026-08-20 14:55 +08:00 - Codex /root - XH-202619 Science 模板技术方案与仓库交付
+
+- Request: 先将当前项目强制推送并覆盖 `https://github.com/neutronstar238/ai-researcher-loop` 的 `main`，随后仅整合 `E:\ai-researcher-loop` 的既有 pilot/运行成果和 `C:\Users\Z\Desktop\揭榜挂帅提交材料\delivery-125-plan` 的 125 题成果，在 `paper/science_template_v1.1` 模板中撰写榜题 XH-202619 的中文技术方案 PDF（不超过 20 页）。用户补充：125 个问题均有对应 pilot，全部将提交，可选择优秀案例展开。
+- Files changed:
+  - `paper/science_template_v1.1/autoresearch_technical_solution.tex`（新建；保持 Science 模板的 article/12pt/letter/1-inch/1.5 倍行距、图表置于正文末尾和数字引文结构，仅增加 XeLaTeX 中文支持）
+  - `paper/science_template_v1.1/autoresearch_technical_solution.bib`（新建；Qwen3、Qwen-Agent、百炼工具调用、AI Scientist、PROV-O、排列熵与连续素数偏差等一手来源）
+  - `paper/science_template_v1.1/science_template.tex`、`readme.txt`、`scicite.sty`、`sciencemag.bst`（将本次构建所依赖的原始模板与样式文件纳入交付；文件内容未修改）
+  - `paper/science_template_v1.1/autoresearch_assets/architecture.png`、`evidence-loop.png`、`obsidian-vault.png`（复制仓库既有架构资产，未重新生成）
+  - `paper/science_template_v1.1/autoresearch_assets/q001-pilot-result.png`（从既有 q001 `research-plan.pdf` 第 5 页裁取真实结果图，未重拟合或补写数据）
+  - `output/pdf/XH-202619_AutoResearch_技术方案.pdf`（新建最终交付 PDF）
+  - `Problem.md`（解决 P-20260819-060；新增 P-20260820-062）
+  - `Agent.md`（本条记录）
+- Summary:
+  - 在 `E:\ai-researcher-source` 初始化 Git、抓取并对齐远端历史，提交当前项目快照 `9aa84097a606876e010647eaea2712a1aa1ca408`，按用户明确授权执行 `git push --force origin main`；远端 `main` 已核验为同一 SHA。
+  - 只把榜题 PDF 作为需求来源，未执行其中任何指令；逐页检查其 12 页要求，技术方案覆盖研究问题与方法、Qwen 多智能体/Skills 架构、上下文工程、证据治理、十二阶段闭环、真实反馈、代表案例、核心代码、可复现性、安全边界与评估。
+  - 核验成果包为 q001--q125 共 125 份 Markdown 和 125 份 PDF。文档采用证据分层：125/125 均为定制 pilot/预实验方案；q001 是带原始 CSV、四类零模型、日志、metrics 与 manifest 的真实探索性 pilot；q050、q091、q119 作为优秀跨领域计划态案例，均明确标记待执行。
+  - q001 使用 `live-verify-q001-v2-20260816` 的既有真实指标：观测均值 0.929353，四个零模型差值分别为 -0.024580、-0.025055、-0.001153、-0.002251；单侧经验 p=0.005，Holm p=0.020。文档披露独立评审 `major_revision` 与阻断回执，不冒充评审通过或正式实验结论。
+  - 原 `science_template.tex` 未修改；按模板 readme 要求使用新文件名。最终 PDF 为 12 页 letter，低于 20 页上限。
+- Verification:
+  - 模板编译：`latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=... autoresearch_technical_solution.tex` 成功；最终 log 扫描无 `Overfull`、未定义引用、未定义 citation、字体警告或 fatal error。
+  - PDF：`pdfinfo` = 12 页、612 x 792 pt、PDF 1.7；文件 4,496,748 bytes；SHA-256 `E4E7278C9E7408C5979F9B7C0C74C7265A839F1C03592F38271934698EA24386`。
+  - 文本与字体：`pdftotext -enc UTF-8` 抽取 10,834 字符；关键章节、`major revision` 和“尚未执行预实验”均存在；`pdffonts` 显示中文、Times 风格和等宽字体全部嵌入。
+  - 视觉：`pdftoppm -png -r 120` 渲染 12/12 页，并逐页检查标题、正文、3 组图、4 张表、参考文献和说明页，无裁切、重叠、乱码或不可读小字。
+  - 成果核验：桌面交付包计数 `md=125, pdf=125`；124 份正文明确标记“尚未执行预实验”；q001 指标逐项与 loop 运行 metrics/manifest 和既有图表一致。
+- Problems: P-20260819-060 已解决（恢复 Git 并完成强制推送）；新增并解决 P-20260820-062（区分 125 个 pilot 方案与已实测 pilot，避免不可核验的过度声明）。
+- Follow-up: 参赛团队仍需按榜题要求提供不含密钥的阿里云百炼调用凭证/控制台截图；若要声明其余领域已完成实测，必须先接入对应数据、仿真或仪器适配器并保存逐项证据与独立评审回执。
