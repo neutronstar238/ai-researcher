@@ -7373,3 +7373,15 @@ update a factual problem entry below.
   - `src/autoresearch/api/app.py` 的 `_create_run`/`_create_batch` 增加兜底 `except Exception`：记录 traceback 并把消息作为 `service_error` 返回给前端，不再裸 500。
 - Verification: 本地 API 单测 21 passed；公网页面/静态资源 200 且为新版本；批量 dry-run 解析出 125 题（manifest 哈希与本地一致）；单题 dry-run 创建成功；xelatex 中文冒烟编译通过；清理测试残留后 runs/batches 为空。
 - Linked tasks: 用户请求"web 端针对用户输入题目 + 服务器装 texlive"。
+
+### P-20260820-063 - 技术方案所需系统级量化指标与 Skill 晋级运行证据尚不完整
+
+- Status: Open（已在 V2 技术方案中显式披露并给出补测协议）
+- Severity: Medium（影响系统级性能主张，但不影响现有 125 题方案覆盖与 q001 事实成立）
+- Discovered: 2026-08-20
+- Source: 对照 XH-202619 榜题要求，交叉核验 `E:\ai-researcher-loop\ai-researcher-loop-main` 的代码、运行目录、125 题交付包与独立评审回执。
+- Symptom: 现有证据尚不能给出批量 JSON Schema 合规率、数值/引用对抗错误率、检查点恢复率、单题时间与成本、人工修改量、多轮质量提升、跨模型消融、Skills 开关消融，以及 Skill 真实晋级/回滚运行成功率等系统级统计。代码中可定位 Skill 生命周期和晋级条件，但未发现足以支撑“已完成 Skill 晋级验证”的独立运行证据。
+- Impact: 若直接填入估计值或将代码能力写成已验证效果，会造成实现事实、运行事实与推断结论混淆，并削弱材料的可核验性。
+- Mitigation: V2 技术方案对所有缺失结果统一标注 `【待补实验】`，给出数据集、对照组、指标、统计口径和通过标准；正文只陈述已核验的接口、状态机、产物和 q001 运行事实，不虚构性能数字或晋级结果。
+- Verification: PDF 与 A--J 编辑稿均包含“待补实验”协议；正文未声称上述系统指标已通过，也未将 Skills 晋级代码等同于已发生的运行事件。
+- Next action: 赛前按 P0/P1 实验矩阵完成固定问题集回放、跨模型/Skills 消融、故障注入与人工修订记录；将原始日志、版本哈希、统计脚本和独立评审回执纳入同一证据包后再替换占位项。

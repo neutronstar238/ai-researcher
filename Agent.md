@@ -17545,3 +17545,29 @@ This file defines the project development standard for coding agents and records
   - 成果核验：桌面交付包计数 `md=125, pdf=125`；124 份正文明确标记“尚未执行预实验”；q001 指标逐项与 loop 运行 metrics/manifest 和既有图表一致。
 - Problems: P-20260819-060 已解决（恢复 Git 并完成强制推送）；新增并解决 P-20260820-062（区分 125 个 pilot 方案与已实测 pilot，避免不可核验的过度声明）。
 - Follow-up: 参赛团队仍需按榜题要求提供不含密钥的阿里云百炼调用凭证/控制台截图；若要声明其余领域已完成实测，必须先接入对应数据、仿真或仪器适配器并保存逐项证据与独立评审回执。
+
+### 2026-08-20 15:52 +08:00 - Codex /root - XH-202619 技术方案 V2 全量重构
+
+- Request: 基于现有技术方案、代码、125 题 pilot 成果和真实运行证据，对参赛技术方案进行审稿级全量重构；按 A--J 顺序交付审计、创新矩阵、补实验方案、14--16 页 A4 正文、图表规范、附录与终审清单，并保持科学诚信边界。
+- Files changed:
+  - `paper/science_template_v1.1/autoresearch_technical_solution_v2.tex`（新建；16 页 A4 中文技术方案，含可点击目录、书签、8 幅编号 TikZ 矢量图和 1--13 节正文）
+  - `paper/science_template_v1.1/autoresearch_technical_solution_v2_audit.md`（新建；事实与证据审计、结构问题和重构决策）
+  - `paper/science_template_v1.1/autoresearch_technical_solution_v2_editorial_package.md`（新建；A--J 顺序的完整编辑交付包及 P1--P16 逐页稿）
+  - `output/pdf/XH-202619_AutoResearch_技术方案_v2.pdf`（新建；最终可提交 PDF）
+  - `Problem.md`（新增 P-20260820-063）
+  - `Agent.md`（本条记录）
+- Summary:
+  - 重构叙事主线为“证据约束的科研闭环基础设施”，覆盖问题理解、证据检索、假设生成、研究计划、pilot/仿真、独立审查、反馈修订和可追溯交付；明确 Qwen 为当前核心模型且模型提供方可替换。
+  - 以代码与运行产物为证据锚点讲解多智能体/临时智能体、Skills 路由与演化边界、分层上下文工程、状态机、十二阶段工作流、引用锁、数值守卫和交付门；不把代码能力写成未经运行验证的效果。
+  - 维持 `125/125` 结构化方案、125 份 Markdown 与 125 份 PDF 的准确表述；只将 q001 作为已执行探索性 pilot，q050/q091/q119 明确为计划态案例。完整披露 q001 的 `major_revision` 与 `blocked_by_independent_scientific_review`，并明确系统没有证明或否定任何素数猜想。
+  - 对缺少实证支撑的系统指标统一标注 `【待补实验】`，补充可执行的实验对象、对照、指标、统计方式与验收门槛；没有使用“首个”“领先”或“全面优于”等无证据宣传性结论。
+  - 科学示意图按统一的对象、过程、证据和阻断语义设计为 TikZ 矢量图；案例页使用真实数值与负面评审形成“反馈不是装饰，而是会阻断交付”的可核验闭环。
+- Verification:
+  - XeLaTeX 连续 3 次编译成功；最终仅有一处 0.76 pt 的轻微 overfull 警告，无未定义引用、缺失 citation 或 fatal error。
+  - `pdfinfo`：16 页、A4（595.28 x 841.89 pt）、PDF 1.7、未加密；最终文件 705,952 bytes，SHA-256 `D549FA34E3E0150DD0E5AEA038C5CE170D9F84315BD8FFCCA4A19E5D7D7A8E79`。
+  - 目录/书签：pypdf 核验 outline 存在，目录页含 33 个内部链接注释；章节编号为 1--13。
+  - 文本核验：`pdftotext` 命中 `125/125`、q001/q050/q091/q119、`major revision`、`blocked_by_independent_scientific_review`、`【待补实验】`、Qwen 与“没有证明或否定任何素数猜想”等关键边界陈述。
+  - 视觉核验：以 110 dpi 渲染 16/16 页并逐页检查，未见裁切、重叠、乱码、空白尾页或不可读图注；封面、可点击目录、架构图、状态机、案例、评估与附录均完整。
+  - 编辑包核验：A--J 标题顺序完整，P1--P16 页标记共 16 个；审计、创新矩阵、补实验方案、正文、图表建议、信息框、附录与 15 项 QA 清单齐全。
+- Problems: 新增 P-20260820-063（系统级量化指标与 Skill 晋级运行证据仍待补；文档已显式披露，未伪造数据）。
+- Follow-up: 按文档 P0/P1 实验矩阵补齐系统级量化证据后，再将 `【待补实验】` 替换为经独立复核的结果；阿里云百炼凭证或控制台证明需由参赛团队以不泄露密钥的方式补充。
