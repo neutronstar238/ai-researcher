@@ -17783,3 +17783,22 @@ This file defines the project development standard for coding agents and records
 - Problems: 新增并解决 P-20260821-075；Vite 大包提示和测试期 TanStack Query 缺省查询提示均不影响本次验收。
 - Follow-up: 可将前端代码分包和测试查询默认值清理作为独立性能／测试卫生任务；本次不扩展修改范围。
 - Git: 用户已明确授权直接强制覆盖 `main`；在隔离克隆中基于远端 `6f051ed7965bb048fbc57311bab3f847ce531fda` 组装、审计和提交，最终远端 SHA 在推送后独立核验。
+
+### 2026-08-21 13:19 +08:00 - Codex /root - main CI 自适应能力回归修复
+
+- Request: 在 source_v2 覆盖发布后修复仓库 CI，并将最小修补继续发布到 main。
+- Files changed:
+  - `src/autoresearch/research/adaptive_capabilities.py`（缺失引用次数归一化）
+  - `tests/unit/research/test_adaptive_capabilities.py`（空值回归断言与临时代理消息布局断言）
+  - `Problem.md`（新增并解决 P-20260821-076）
+  - `Agent.md`（本条记录）
+- Summary:
+  - GitHub Actions 运行 32449860699 在 mypy 阶段精确暴露 int 或 None 传入非负整数模型的问题；将缺失引用次数在内容寻址前归一化为 0，保证哈希负载与模型实例一致。
+  - 定向测试进一步发现 source_v2 将既有临时代理消息布局断言错误回退为 [2, 3]；实现实际固定包含系统、显式输入和派工三条基础消息，选中 Skill 后为四条，因此恢复 [3, 4] 与契约注释，不修改安全消息实现。
+- Verification:
+  - `python -m pytest tests/unit/research/test_adaptive_capabilities.py --no-cov -p no:cacheprovider -q` = 3 passed。
+  - `python -m ruff check src/autoresearch/research/adaptive_capabilities.py tests/unit/research/test_adaptive_capabilities.py` = All checks passed。
+  - 本机 Python 3.13 的 mypy --follow-imports=skip 仍报告同文件既有 no-any-return（第 787 行）；GitHub Python 3.10 完整 mypy 在修补前仅报告本次已解决的 citation_count 一项，最终 CI 以远端新运行结果为准。
+- Problems: 新增并解决 P-20260821-076。
+- Follow-up: 等待并核验远端 GitHub Actions 全流程。
+- Git: 作为已授权 main 发布的 CI 修复追加一个聚焦提交。

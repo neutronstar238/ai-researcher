@@ -7527,3 +7527,15 @@ update a factual problem entry below.
 - Resolution: 将制品 MIME 断言校正为 `text/markdown`；使用现有 `package.json` 声明执行 `npm install --package-lock-only --ignore-scripts` 刷新锁文件，不改变声明依赖版本；随后执行干净安装、前端测试和生产构建。
 - Verification: `python -m pytest tests/unit/api/test_research_api.py --no-cov -p no:cacheprovider -q` 为 79 passed；`npm --prefix frontend ci --no-audit --no-fund` 成功安装 137 个包；Vitest 为 18 files / 236 tests passed；`npm --prefix frontend run build` 的 TypeScript 检查、Vite 构建和静态同步全部成功。
 - Next action: 无。Vite 的单包体积提示和测试中的 TanStack Query 缺省查询警告为非阻断提示，可在后续前端性能任务中单独处理。
+
+### P-20260821-076 - source_v2 快照回退了自适应检索空值归一化与消息布局断言
+
+- Status: Resolved
+- Severity: High（阻断 GitHub Actions CI）
+- Discovered: 2026-08-21 13:16 +08:00
+- Source: 覆盖发布后的 GitHub Actions 运行 32449860699，以及本地定向执行 tests/unit/research/test_adaptive_capabilities.py。
+- Symptom: AcademicPaper.citation_count 允许为 None，但 AdaptiveRetrievedPaper.citation_count 要求非负整数；source_v2 快照将既有的 None 到 0 归一化删除，导致 mypy arg-type 和 Pydantic 运行时校验同时失败。该快照还把临时代理消息布局断言从真实的 [3, 4] 改回 [2, 3]。
+- Impact: GitHub Actions 在 poetry run mypy src 阶段失败；定向单元测试为 1/3 通过，无法证明自适应检索和临时代理派工契约可用。
+- Resolution: 在形成内容哈希和构造模型前，将缺失引用次数统一归一化为 0；恢复“系统消息 + 显式输入 + 派工消息，选中 Skill 再增加一条独立只读上下文”的 [3, 4] 断言，并增加空值归一化回归断言。
+- Verification: python -m pytest tests/unit/research/test_adaptive_capabilities.py --no-cov -p no:cacheprovider -q 为 3 passed；python -m ruff check src/autoresearch/research/adaptive_capabilities.py tests/unit/research/test_adaptive_capabilities.py 通过。后续 GitHub Actions 结果记录在对应 Agent 条目。
+- Next action: 无。

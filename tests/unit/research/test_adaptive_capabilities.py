@@ -169,6 +169,7 @@ def test_retrieval_captures_normalized_catalog_and_redacts_transport_error(
     )
     artifact = AdaptiveLiteratureRetrievalArtifact.model_validate_json(artifact_path.read_bytes())
     assert artifact.papers[0].title.startswith("Governed Evolving")
+    assert artifact.papers[0].citation_count == 0
     assert artifact.fetches[1].error_type == "RuntimeError"
     raw = store.load_record(
         artifact.normalized_catalog_binding.record_relative_path,
@@ -312,6 +313,8 @@ description: 用于寻找候选机制的反例、混杂和替代解释，不提�
     assert outcome.all_runtime_identities_removed
     assert outcome.main_agent_retains_stage_control
     assert len(calls) == 2
-    assert sorted(len(messages) for messages in calls) == [2, 3]
+    # Base layout is system + 题目与显式输入 + 派工编号; each selected Skill adds one
+    # independent read-only context message.
+    assert sorted(len(messages) for messages in calls) == [3, 4]
     archives = list((tmp_path / "run" / "temporary").rglob("archives/*.json"))
     assert len(archives) == 2
