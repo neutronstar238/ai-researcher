@@ -17864,3 +17864,13 @@ This file defines the project development standard for coding agents and records
 - Problems: 新增并解决 P-20260821-081。
 - Follow-up: 推送 main、部署后端与 Web，并通过生产 Chrome 页面复核。
 - Git: 用户已授权直接更新 main；提交严格排除 `.env`、`runs/`、Vault、缓存与本地产物。
+
+### 2026-08-21 17:30 +08:00 - Codex /root - 最终计划交付入口与进化兼容修复
+
+- Request: 在生产运行详情中直接提供研究计划 Markdown/PDF，并定位、修复运行详情和智能体中心的进化失败。
+- Files changed: `src/autoresearch/competition/contest_direction_skill_evolution.py`、`src/autoresearch/api/app.py`、`frontend/src/features/projects/RunDetailsDrawer.tsx`、`frontend/src/styles/global.css`、对应后端/前端测试、构建后的 `web/` 与 API 静态资源、`Problem.md`、`Agent.md`。
+- Summary: 当前十二阶段交付将广泛文献放在 `literature/broad/` 并以 `broad_literature` 写入报告，旧进化读取器仍依赖早期路径和键，导致已完成 q001 的进化请求失败。加载器现在优先验证当前交付结构并兼容历史交付；运行详情把最终 MD/PDF 提升为两个独立交付链接，调用链明确区分可公开查看的响应数量，且 API 不再用裸 500 隐去真实错误。
+- Verification: `python -m pytest tests/unit/competition/test_contest_direction_skill_evolution.py tests/unit/api/test_research_api.py --no-cov -q` = 87 passed；前端 Vitest = 18 files / 239 tests passed；相关 Ruff = All checks passed；`npm run build` 的 TypeScript、Vite 与静态同步成功。一次定向 Vitest 路径写错和一次不存在的 `npm run lint` 调用已记录在 P-20260821-082，均未改变产品代码。
+- Problems: 新增并解决 P-20260821-082。
+- Follow-up: 推送 main、部署后端与 Web，重启 API 后用生产 Chrome 验证最终交付链接和进化成功回执。
+- Git: 延续用户对 main 发布的明确授权；只提交本任务文件，排除 `.env`、运行目录、Vault、依赖目录和缓存。

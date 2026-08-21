@@ -252,6 +252,9 @@ async def _start_evolution(request: web.Request) -> web.Response:
             unavailable="unavailable" in str(exc).casefold(),
             not_found="not found" in str(exc).casefold(),
         )
+    except Exception as exc:
+        _logger.exception("unexpected error while starting Skill evolution")
+        return _service_error(exc)
     return web.json_response(result, status=201)
 
 

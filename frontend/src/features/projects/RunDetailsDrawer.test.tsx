@@ -111,14 +111,40 @@ test("shows model outputs inline and summarizes their logical call path", async 
   const drawer = await screen.findByRole("dialog", { name: "运行详情" });
   expect(drawer).toHaveAttribute("data-width", "wide");
   expect(await within(drawer).findAllByText("执行中")).toHaveLength(2);
-  expect(within(drawer).getByText("研究阶段 → 模型请求 × 1 → 模型响应 × 1 → 阶段检查点")).toBeInTheDocument();
+  expect(within(drawer).getByText("研究阶段 → 模型请求 × 1 → 可查看响应 × 1 → 阶段检查点")).toBeInTheDocument();
   await user.click(within(drawer).getByRole("button", { name: /direction-focus-selection-response/ }));
 
   expect(await within(drawer).findByText("调用模型：qwen-test")).toBeInTheDocument();
   expect(within(drawer).getByText(/真实模型输出/)).toBeInTheDocument();
   expect(apiClient.getArtifactText).toHaveBeenCalledWith(responseArtifact.url);
-  expect(within(drawer).getByText("研究计划（1）")).toBeInTheDocument();
+  expect(within(drawer).getByRole("link", { name: /PDF 研究计划/ })).toHaveAttribute(
+    "href",
+    artifactFixtures()[2]!.url,
+  );
   expect(within(drawer).queryByText(attemptArtifact.relative_path)).not.toBeInTheDocument();
+});
+
+test("promotes final Markdown and PDF plans to visible delivery links", async () => {
+  const pdf = artifactFixtures()[2]!;
+  const markdown = {
+    ...pdf,
+    relative_path: "plan/research-plan.md",
+    media_type: "text/markdown",
+    url: "/api/runs/run-fixture123/artifacts/plan/research-plan.md",
+  };
+  vi.mocked(apiClient.getRun).mockResolvedValue(runFixture({ artifacts: [markdown, pdf] }));
+  renderAppAt("/projects?run=run-fixture123");
+
+  const drawer = await screen.findByRole("dialog", { name: "运行详情" });
+  expect(await within(drawer).findByRole("link", { name: /Markdown 研究计划/ })).toHaveAttribute(
+    "href",
+    markdown.url,
+  );
+  expect(within(drawer).getByRole("link", { name: /PDF 研究计划/ })).toHaveAttribute(
+    "href",
+    pdf.url,
+  );
+  expect(within(drawer).queryByText("研究计划（2）")).not.toBeInTheDocument();
 });
 
 test("shows the first pending stage as active while an older API process is still running", async () => {

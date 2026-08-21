@@ -787,7 +787,13 @@ def _load_delivery_evidence(
     if not delivery.is_dir():
         raise ContestDirectionSkillEvolutionError("completed direction delivery directory is absent")
     report_path = delivery / "delivery-report.json"
-    literature_path = delivery / "literature" / "direction-literature.json"
+    current_literature_path = delivery / "literature" / "broad" / "direction-literature.json"
+    legacy_literature_path = delivery / "literature" / "direction-literature.json"
+    literature_path = (
+        current_literature_path
+        if current_literature_path.is_file()
+        else legacy_literature_path
+    )
     selected_path = delivery / "selected-method-skills.json"
     for path in (report_path, literature_path, selected_path):
         if not path.is_file():
@@ -803,7 +809,15 @@ def _load_delivery_evidence(
     literature = ContestDirectionLiteratureArtifact.model_validate_json(
         literature_path.read_text(encoding="utf-8")
     )
-    _verify_report_binding(artifacts, "literature", literature_path, literature.artifact_hash)
+    literature_binding = (
+        "broad_literature" if "broad_literature" in artifacts else "literature"
+    )
+    _verify_report_binding(
+        artifacts,
+        literature_binding,
+        literature_path,
+        literature.artifact_hash,
+    )
 
     pilot_report = artifacts.get("prime_preexperiment")
     if not isinstance(pilot_report, Mapping):

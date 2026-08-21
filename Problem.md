@@ -7599,3 +7599,15 @@ update a factual problem entry below.
 - Resolution: 构建同步同时生成 web/static 兼容目录并为固定资源 URL 添加内容哈希查询参数；API 对活跃运行的首个未完成阶段返回 running；详情抽屉按模型输出、调用路径和其他产物分区，提供结构化模型正文预览并放宽布局。
 - Verification: 前端 238 passed；API 80 passed；ruff 通过；Vite 生产构建通过；生产部署后以 Chrome 验收。
 - Next action: 无。
+
+### P-20260821-082 - 完成运行的进化入口仍读取旧版文献交付路径
+
+- Status: Resolved
+- Severity: High（完成态研究无法生成 Skill 进化候选，UI 只显示通用失败）
+- Discovered: 2026-08-21 17:20 +08:00
+- Source: 生产站点两次进化请求的服务日志、q001 完成交付报告与运行目录交叉核验。
+- Symptom: 十二阶段已完成且研究计划 MD/PDF 已生成，但进化模块固定读取旧版 `literature/direction-literature.json` 和 `literature` 报告绑定；当前流程实际写入 `literature/broad/direction-literature.json`，报告键为 `broad_literature`，因此请求在读取证据前失败。运行详情同时将最终 MD/PDF 混在折叠文件组中，用户难以找到。
+- Impact: “发起进化”在有效完成运行上返回服务器错误；智能体中心和运行详情显示失败；最终研究计划虽存在却不具备清晰交付入口。
+- Resolution: 进化加载器优先读取当前 broad 路径及 `broad_literature` 哈希绑定，同时保留旧路径兼容；API 将意外进化错误转换为结构化错误响应；运行详情新增独立的 Markdown/PDF 研究计划交付区，并将调用链的“模型响应”明确为“可查看响应”。
+- Verification: Skill 演化与 API 定向测试 87 passed；前端 18 files / 239 tests passed；Ruff 通过；TypeScript 与 Vite 生产构建成功。首次前端定向测试命令误带 `frontend/` 前缀导致未找到文件，修正为 `src/...` 后通过；项目未声明 `npm run lint`，因此使用生产构建和 Ruff 完成静态验证。
+- Next action: 部署并在生产 Chrome 中核验 MD/PDF 链接与进化请求。

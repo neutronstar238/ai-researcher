@@ -73,7 +73,7 @@ def completed_direction(
     )
     generic_hash = _sha256(generic_dir / "SKILL.md")
 
-    literature_path = delivery / "literature" / "direction-literature.json"
+    literature_path = delivery / "literature" / "broad" / "direction-literature.json"
     paper_topics = (
         "Residue path constraints in prime gaps",
         "Permutation entropy of arithmetic sequences",
@@ -172,7 +172,7 @@ def completed_direction(
         "status": "completed",
         "preexperiment_executed": True,
         "artifacts": {
-            "literature": {
+            "broad_literature": {
                 "artifact_hash": literature.artifact_hash,
                 "sha256": _sha256(literature_path),
             },
@@ -388,7 +388,9 @@ def test_unknown_or_heldout_paper_record_alias_is_rejected(
             invalid_id = "direction-paper-ffffffffffffffff"
         else:
             literature = json.loads(
-                (delivery / "literature" / "direction-literature.json").read_text("utf-8")
+                (delivery / "literature" / "broad" / "direction-literature.json").read_text(
+                    "utf-8"
+                )
             )
             development_record_ids = {item["record_id"] for item in development["papers"]}
             invalid_id = next(

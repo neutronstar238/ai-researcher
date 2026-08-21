@@ -139,6 +139,8 @@ export function RunDetailsDrawer({ runId, onClose }: RunDetailsDrawerProps) {
               ) : <p className="detail-empty">服务未返回阶段数据</p>}
             </section>
 
+            <PlanDeliverablesSection artifacts={run.artifacts ?? []} />
+
             <ModelOutputsSection
               artifacts={run.artifacts ?? []}
               selected={selectedOutput}
@@ -194,6 +196,33 @@ export function RunDetailsDrawer({ runId, onClose }: RunDetailsDrawerProps) {
         onClose={() => setCancelOpen(false)}
       />
     </Drawer>
+  );
+}
+
+function PlanDeliverablesSection({ artifacts }: { artifacts: ArtifactRecord[] }) {
+  const deliverables = artifacts.filter(isPrimaryPlanArtifact);
+  if (!deliverables.length) return null;
+  return (
+    <section className="run-detail-section" aria-labelledby="plan-deliverable-heading">
+      <div className="run-section-heading">
+        <h3 id="plan-deliverable-heading">研究计划交付件</h3>
+        <span>{deliverables.length} 份</span>
+      </div>
+      <div className="plan-deliverables">
+        {deliverables.map((artifact) => {
+          const pdf = artifact.relative_path.toLowerCase().endsWith(".pdf");
+          return (
+            <a key={artifact.url} href={artifact.url} target="_blank" rel="noreferrer">
+              <span className="plan-file-badge">{pdf ? "PDF" : "MD"}</span>
+              <span>
+                <strong>{pdf ? "PDF 研究计划" : "Markdown 研究计划"}</strong>
+                <small>{formatBytes(artifact.bytes)} · 点击查看或下载</small>
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -277,7 +306,7 @@ function CallTraceSection({ artifacts, stages }: { artifacts: ArtifactRecord[]; 
                 <strong>{trace.stage.ordinal}. {trace.stage.label_zh}</strong>
                 <span className="stage-status" data-status={trace.stage.status}>{stageStatusLabel(trace.stage.status)}</span>
               </div>
-              <p>研究阶段 → 模型请求 × {trace.attempts} → 模型响应 × {trace.outputs} → 阶段检查点</p>
+              <p>研究阶段 → 模型请求 × {trace.attempts} → 可查看响应 × {trace.outputs} → 阶段检查点</p>
               <code>{trace.stage.stage_name}</code>
             </li>
           ))}
@@ -288,7 +317,11 @@ function CallTraceSection({ artifacts, stages }: { artifacts: ArtifactRecord[]; 
 }
 
 function ArtifactGroupsSection({ artifacts }: { artifacts: ArtifactRecord[] }) {
-  const remaining = artifacts.filter((artifact) => !isModelOutput(artifact) && !isProviderTraceArtifact(artifact));
+  const remaining = artifacts.filter((artifact) => (
+    !isModelOutput(artifact)
+    && !isProviderTraceArtifact(artifact)
+    && !isPrimaryPlanArtifact(artifact)
+  ));
   const grouped = remaining.reduce<Record<string, ArtifactRecord[]>>((result, artifact) => {
     (result[artifact.category] ??= []).push(artifact);
     return result;
@@ -356,6 +389,10 @@ function isModelOutput(artifact: ArtifactRecord): boolean {
 
 function isProviderTraceArtifact(artifact: ArtifactRecord): boolean {
   return /^checkpoints\/provider-call-(?:attempts|reservations)\//i.test(artifact.relative_path);
+}
+
+function isPrimaryPlanArtifact(artifact: ArtifactRecord): boolean {
+  return /^plan\/research-plan\.(?:md|pdf)$/i.test(artifact.relative_path);
 }
 
 function modelOutputStage(path: string): string | null {
