@@ -310,6 +310,9 @@ async def _download_artifact(request: web.Request) -> web.StreamResponse:
     except ResearchApiError as exc:
         return _service_error(exc, not_found=True)
     response = web.FileResponse(path)
+    if path.suffix.casefold() in {".md", ".markdown"}:
+        response.content_type = "text/markdown"
+        response.charset = "utf-8"
     response.headers["Content-Disposition"] = f'inline; filename="{path.name}"'
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response

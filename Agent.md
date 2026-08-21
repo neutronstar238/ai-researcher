@@ -17844,3 +17844,13 @@ This file defines the project development standard for coding agents and records
 - Problems: 新增并解决 P-20260821-078、P-20260821-079。
 - Follow-up: 推送后只核验一次远端 CI 最终状态。
 - Git: 用户已授权直接更新 main；本轮作为提交前最后一次聚焦修订。
+
+### 2026-08-21 14:08 +08:00 - Codex /root - Markdown 制品 MIME 跨平台修复
+
+- Request: 按生产问题而非测试规避的原则，修复精简 CI 唯一暴露的跨平台 API 差异。
+- Files changed: `src/autoresearch/api/app.py`、`Problem.md`、`Agent.md`。
+- Summary: Markdown 研究计划下载现在显式返回 text/markdown; charset=utf-8，不再依赖 Windows/Linux 不一致的 MIME 推断。
+- Verification: `python -m pytest tests/unit/api/test_research_api.py --no-cov -p no:cacheprovider -q` = 79 passed；相关 ruff 和 git diff --check 通过。
+- Problems: 新增并解决 P-20260821-080。
+- Follow-up: 推送并核验同一精简 CI。
+- Git: 追加一个仅包含生产 MIME 修复和规定日志的聚焦提交。

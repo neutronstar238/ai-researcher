@@ -7575,3 +7575,15 @@ update a factual problem entry below.
 - Resolution: CI 收敛为干净仓库可复现的核心后端、API、CLI、内核、知识逻辑、文献、LLM、检索、计划渲染与 Skill 演化测试；真实 TeX 编译仅在 runner 存在 latexmk/xelatex 时执行。
 - Verification: 与新 CI 同范围的本地测试为 917 passed；ruff 和差异检查通过。
 - Next action: 无。
+
+### P-20260821-080 - Markdown 制品 MIME 依赖操作系统推断
+
+- Status: Resolved
+- Severity: Medium（Linux 客户端会收到错误内容类型）
+- Discovered: 2026-08-21 14:06 +08:00
+- Source: GitHub Actions 运行 32452854058。
+- Symptom: Windows 将 research-plan.md 推断为 text/markdown，Ubuntu runner 则返回 application/octet-stream，导致 API 行为跨平台不一致。
+- Impact: 浏览器可能把研究计划当作未知二进制下载，且 nosniff 头会阻止客户端自行纠正。
+- Resolution: 制品下载端点对 .md/.markdown 显式设置 text/markdown 与 UTF-8，不再依赖系统 MIME 数据库。
+- Verification: API 单元测试 79 passed；ruff 与差异检查通过。
+- Next action: 无。
