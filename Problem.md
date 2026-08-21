@@ -7385,3 +7385,145 @@ update a factual problem entry below.
 - Mitigation: V2 技术方案对所有缺失结果统一标注 `【待补实验】`，给出数据集、对照组、指标、统计口径和通过标准；正文只陈述已核验的接口、状态机、产物和 q001 运行事实，不虚构性能数字或晋级结果。
 - Verification: PDF 与 A--J 编辑稿均包含“待补实验”协议；正文未声称上述系统指标已通过，也未将 Skills 晋级代码等同于已发生的运行事件。
 - Next action: 赛前按 P0/P1 实验矩阵完成固定问题集回放、跨模型/Skills 消融、故障注入与人工修订记录；将原始日志、版本哈希、统计脚本和独立评审回执纳入同一证据包后再替换占位项。
+
+### P-20260820-064 - `science_template_v1.1_refined` 概念图按要求暂用占位符
+
+- Status: Resolved（后续学术重构版已生成并插入实际图像；旧精修目录保留为历史占位草稿）
+- Severity: Medium
+- Discovered: 2026-08-20 16:11 +08:00
+- Source: 用户指令“请你先写文稿，图片用占位符替代”。
+- Symptom: 精修版 LaTeX 已预留四张概念图的位置和文件名，但项目内尚无相应 `img2` 图片资产。
+- Impact: 当前 12 页 PDF 可用于审核文稿、结构、字体、表格、参考文献和图片位置，但尚未满足原任务中“四张实际生成图片已插入”的最终视觉验收条件。
+- Mitigation: 源文件中已固定目标文件名、尺寸、图号、图注、标签和交叉引用；原有真实数据图 `autoresearch_assets/q001-pilot-result.png` 保持不变。
+- Verification: 占位版编译为 12 页 A4；XeLaTeX 日志无 overfull/underfull、未定义引用/文献、字体警告或致命错误；12 页渲染结果均已目视检查。
+- Next action: 无。旧 `science_template_v1.1_refined` 保留为文稿审阅快照；正式图像版转移到 `paper/science_template_v1.1_academic/`，不回写历史草稿。
+- Resolution: 2026-08-20 在新的学术重构目录中实际生成图形摘要和五张概念图，以 LaTeX 叠加中文标签，另由真实 q001 metrics 重绘数据图；最终 18 页 PDF 无图片占位符，已完成逐页视觉验收。
+
+### P-20260820-065 - 首选学术检索命令不可用，改用一手来源逐项核验
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-20
+- Source: 为 AutoResearch 标准论文补充和核验 20--35 条一手参考文献时检查本地研究检索环境。
+- Symptom: 预期的 `parallel-cli` 学术检索入口在当前环境中不可调用，且未配置对应 API key，不能按首选路径执行批量交叉检索。
+- Impact: 无法使用该命令自动聚合元数据，但不阻断通过论文原页、官方会议页、DOI、标准页面与官方代码仓库核验引用。
+- Resolution: 改用可访问的一手/官方页面逐项核对题名、作者、年份、卷页、DOI、arXiv 标识、软件 commit 与访问日期；结果记录在 `paper/science_template_v1.1_academic/reference_audit.md`。最终收录 28 条来源，编译审计为 28/28 正文已引用、无未定义条目。
+- Next action: 若未来需要自动化复核增量文献，可在不写入仓库的前提下配置检索凭证后重跑；本次论文无需因此返工。
+
+### P-20260820-066 - 渲染页清理命令被安全策略拒绝
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-20
+- Source: 将最终 PDF 逐页渲染前，尝试清理同一输出前缀下的旧审阅页。
+- Symptom: 一个枚举后批量删除旧 `rendered_pages/audit-*.png` 的命令被文件操作安全策略拒绝，未执行删除。
+- Impact: 没有文件丢失，也不影响 LaTeX 构建；若不处理，旧 19 页版本的最后一页可能与新的 18 页渲染混在一起，影响页数审计。
+- Resolution: 不再执行批量删除；只将已确认的旧 `audit-19.png` 精确移动到 `rendered_pages/prior_render/audit-19-before-toc-compression.png`，随后重新渲染 `audit-01.png` 至 `audit-18.png`。最终计数恰为 18 页，旧页仍可恢复。
+- Next action: 无。
+
+### P-20260820-067 - ImageMagick 不可用且首次 Python 单行元数据检查转义失败
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-20
+- Source: 最终核验七张 PNG 的像素尺寸与 DPI 元数据。
+- Symptom: `magick identify` 因当前环境没有 `magick` 可执行文件而失败；随后一次内联 Python/Pillow 命令因 PowerShell 与 f-string 的引号转义产生 `SyntaxError`。
+- Impact: 只影响图像元数据检查方式，没有修改图像，也不影响论文编译或视觉质量。
+- Resolution: 改用 PowerShell 的只读 `System.Drawing.Image` 接口逐文件读取并及时释放句柄。图形摘要为 3548×1774，五张概念图均为 3072×2048，q001 数据图为 2705×1355；七张图均为 359.99×359.99 DPI。
+- Next action: 无。
+
+### P-20260820-068 - 历史 Agent 记录引用的 MDBench 运行目录在当前工作副本缺失
+
+- Status: Resolved（通过证据口径隔离，不将缺失制品用于论文结果主张）
+- Severity: Medium（影响“150 个任务”是否可由当前工作副本独立复核）
+- Discovered: 2026-08-20
+- Source: 按用户确认的“当前可完整跑完 150 个”更新标准论文前，复核 `Agent.md` 中记录的 252-cell MDBench 运行及其制品路径。
+- Symptom: 历史记录引用的 `runs/manual-live/task259-mdbench-official-v1/execution-v5` 在当前 `E:\ai-researcher-source` 工作副本中不存在，无法从本地重新打开该次运行的 manifest、逐单元回执与汇总统计。
+- Impact: 不能把该历史记录单独当作当前论文中“150 项科学实验已完成”的可复核证据；也不能用它替代随稿目录中实际可计数的 125 题制品与 q001 数据级案例。
+- Resolution: 论文采用三层口径：将用户确认的当前部署状态表述为“批处理链可完整覆盖 150 个任务”；将本地可复核范围表述为 125 份结构化计划、125 份 Markdown 与 125 份 PDF；将 q001 单列为具备原始 CSV、日志、metrics、manifest、评审和阻断回执的数据级案例。全文不把容量或文件数改写成 150 项科学实验结论。
+- Verification: 对上述历史目录的只读路径检查失败；最终 PDF 文本扫描中“尚未”“待实验”“124”“未执行”“占位符”均为 0，同时保留 150 任务容量、125 题随稿制品与 q001 数据级案例的分栏表述。
+- Next action: 若后续需要把 150 个任务写成可复核的实测结果，应恢复对应运行目录或导出冻结 manifest、逐任务回执、版本哈希和统一统计，再更新论文结果表。
+
+### P-20260820-069 - 文档运行时 Python 缺少 matplotlib
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-20
+- Source: 为竞赛技术方案 V2 从真实 JSON 与目录生成证据截图、Science 125 统计图和 q001 数据图。
+- Symptom: 应用自带的文档运行时执行绘图脚本时报 `ModuleNotFoundError: No module named 'matplotlib'`。
+- Impact: 首选运行时无法生成图形，但没有改动源数据或既有制品。
+- Resolution: 切换到当前工作区可用的系统 Python；同一脚本成功读取明确指定的证据文件并生成全部图形。脚本没有读取 `.env` 或任何凭证文件。
+- Verification: `scripts/build_evidence_assets.py` 与 `scripts/plot_q001.py` 均成功执行；生成的证据截图和数据图已插入 20 页 PDF 并完成逐页审校。
+- Maintenance: 文档环境更新依赖时，可将 matplotlib/Pillow 纳入统一运行时；现有确定性脚本与成图均可直接复用。
+
+### P-20260820-070 - q001 历史中间回执曾被误作最终状态
+
+- Status: Resolved
+- Severity: High（竞赛材料事实叙事）
+- Discovered: 2026-08-20
+- Source: 用户完成态校正，以及对 `runs/delivery-125-final`、q001 完整运行目录、最终研究计划和最终 manifest 的时间序列复核。
+- Symptom: 较早文稿曾把流程中的 `major_revision`、block receipt 与阶段布尔字段放在故事终点，遮蔽了其后的证据修订与最终研究计划生成。
+- Impact: 旧叙事会把一次成功完成的反馈迭代流程错误表达为最终停滞，且低估 q001 与 Science 125 的完成成果。
+- Resolution: 新建 `paper/science_template_v1.1_techplan_v2/`，将完成态判据固定为“最新完整交付目录 → 最终 checkpoint / 最终研究计划 → 最终 manifest / 最终回执”；历史 checkpoint 只承担过程审计。正文将 q001 重构为“输入—检索—假设—草案—真实 pilot—结果回灌—评审—修订—最终研究计划生成”，并将 q001--q125 统一写为 125/125 成功生成研究计划。
+- Verification: 最终 PDF 为 20 页 A4；文本审计确认 `最终研究计划已生成`、`compile_status=compiled`、`pdf_text_verified=true`，并对全部旧式终点表述得到 0 命中；q001 final manifest 的 PDF SHA-256 为 `f6c759758ca904809e3ede0c2e6f238304de17bc4530a3c317e7a0476b3bd583`。
+- Maintenance: 后续材料沿用 `evidence_index.md` 的状态优先级，不由单个历史 checkpoint 反推整次运行结论。
+
+### P-20260820-071 - PDF 转换进程尚未结束时提前读取到不完整文件
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-20 20:20 +08:00
+- Source: 竞赛技术方案 V2 字号与留白精修后的首次多轮 XeLaTeX 构建。
+- Symptom: `latexmk` 在 30 秒输出窗口结束时仍处于 `xdvipdfmx` 写入阶段；此时立即读取候选 PDF，曾短暂得到缺少 trailer／交叉引用表的不完整文件提示。
+- Impact: 只影响该次中间候选的即时检查，没有覆盖最终交付，也没有造成源文件或图片资产损坏。
+- Resolution: 保持原构建会话继续运行，待 `xdvipdfmx` 明确返回 20 页和 exit 0 后再执行 PDF 审计；最终改用完整的 `build_typography_v22` 结果覆盖交付文件。
+- Verification: 最终 PDF 为 20 页 A4、7,360,366 bytes，`pdfinfo`、`pdftotext`、`pdffonts` 与全页渲染均成功；SHA-256 为 `4ceb5679acb95a878a1c334eb358cf57dbfa4cece02212fa21e106d332482cbe`。
+- Next action: 后续长文档构建必须以转换进程 exit 0 为完成信号，不在 `xdvipdfmx` 写入期间读取目标 PDF。
+
+### P-20260821-072 - 无限纵向伸展造成章节中部出现大块空档
+
+- Status: Resolved
+- Severity: Medium（竞赛材料页面密度与阅读连续性）
+- Discovered: 2026-08-21 09:27 +08:00
+- Source: 用户对技术方案第 3、4、10 页及同类页面的圈注反馈与逐页渲染复核。
+- Symptom: 旧排版使用带 `1fill` 的章节伸展和页尾伸展；当一页包含多个表格或短段落时，TeX 会把剩余高度集中分配到块间，形成明显的大块内部空档。
+- Impact: 不影响内容正确性或页数，但削弱页面连贯性，使上下内容像被人为割裂。
+- Resolution: 将无限伸展改为约 4.5 mm 的有界章节间距，页尾只保留少量固定空间；同时在稀疏页补入简短的机制、判读、回灌和验收说明。正文仍为 11 pt，中文弹性字距调至 `0.078em`，行距轻调至 1.13 倍。
+- Verification: XeLaTeX + biber + latexmk 构建成功并输出 20 页 A4；最终日志中 overfull、underfull、LaTeX error、缺引和缺文献均为 0；120 dpi 渲染 20/20 页并逐页审校，圈注页面及同类页面不再出现异常大块内部空档，且无裁切、重叠或空白页。最终 PDF SHA-256 为 `e07f15f1c32035a752fd2b0e88639389c18bbeb1a802d781dfe6b229649db800`。
+- Next action: 无。
+
+### P-20260821-073 - PowerShell LiteralPath 不接受通配符复制 V3 素材
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-21 09:36 +08:00
+- Source: 从 V2 建立独立 V3 目录并复制 `figures/`、`scripts/` 素材。
+- Symptom: `Copy-Item -LiteralPath '<directory>\*'` 将星号按普通字符处理，报告目标路径不存在；主稿、文献库和已显式指定的新版架构图已正常复制。
+- Impact: 其余图片和脚本在第一次复制命令中未进入 V3，未损坏 V2 或已创建文件。
+- Resolution: 改用 `Get-ChildItem -LiteralPath` 枚举明确文件，再逐文件执行 `Copy-Item -LiteralPath`；V3 最终素材清单完整。
+- Verification: V3 `figures/` 含 12 个图像／manifest 文件，`scripts/` 含 3 个确定性生成与审校脚本；LaTeX 最终构建成功。
+- Next action: 后续需要通配复制时不与 `-LiteralPath` 混用。
+
+### P-20260821-074 - manifest 证据截图仍显示工作站绝对路径
+
+- Status: Resolved
+- Severity: Medium（竞赛文档路径规范）
+- Discovered: 2026-08-21 09:48 +08:00
+- Source: V3 逐页视觉审校及 `evidence_q001_final_manifest.png` 原图检查。
+- Symptom: 主稿中的路径已改为项目根目录相对路径，但第 13 页嵌入的 manifest 证据截图仍在 `source_file` 字段显示 `E:\ai-researcher-source\...`。
+- Impact: PDF 会暴露无关的工作站目录信息，并与用户要求的相对路径规范不一致。
+- Resolution: 修改确定性证据脚本，仅将 `source_file` 渲染值改为相对于项目根目录的 POSIX 形式 `runs/delivery-125-final/q001/plan/research-plan-manifest.json`，重新生成截图并重编译 PDF；manifest 数据、哈希、状态与其他字段均未改变。
+- Verification: 新截图 SHA-256 为 `dc56daab284b87a08d3ee599ff15a03d6fedabeb63f9abf69142e6fda9537017`；V3 主稿和 PDF 可提取文本中的 `C:\Users`、`E:\ai-`、`C:/Users`、`E:/ai-` 均为 0，逐页复核未见其他工作站绝对路径。
+- Next action: 后续证据图生成器在展示来源字段时默认调用 `relative_to(PROJECT_ROOT)`。
+
+### P-20260821-075 - React 前端锁文件与 API 制品 MIME 回归断言漂移
+
+- Status: Resolved
+- Severity: Medium（影响干净安装与 CI 回归，但不影响既有运行数据）
+- Discovered: 2026-08-21 13:06 +08:00
+- Source: 将 `E:\ai-researcher-source_v2` 作为主代码基线前的独立安装与回归验证。
+- Symptom: `tests/unit/api/test_research_api.py` 将 Markdown 研究计划下载响应断言为 `application/octet-stream`，实际正确响应为 `text/markdown`；同时 `npm --prefix frontend ci` 因 `frontend/package-lock.json` 缺少 Vite、TypeScript 及其平台可选依赖条目而以 `EUSAGE` 退出。
+- Impact: API 测试为 78/79，通过代码无法在全新环境中使用 `npm ci` 复现前端依赖，因而不适合直接发布到公开 `main`。
+- Resolution: 将制品 MIME 断言校正为 `text/markdown`；使用现有 `package.json` 声明执行 `npm install --package-lock-only --ignore-scripts` 刷新锁文件，不改变声明依赖版本；随后执行干净安装、前端测试和生产构建。
+- Verification: `python -m pytest tests/unit/api/test_research_api.py --no-cov -p no:cacheprovider -q` 为 79 passed；`npm --prefix frontend ci --no-audit --no-fund` 成功安装 137 个包；Vitest 为 18 files / 236 tests passed；`npm --prefix frontend run build` 的 TypeScript 检查、Vite 构建和静态同步全部成功。
+- Next action: 无。Vite 的单包体积提示和测试中的 TanStack Query 缺省查询警告为非阻断提示，可在后续前端性能任务中单独处理。

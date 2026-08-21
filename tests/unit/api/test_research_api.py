@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
+from yarl import URL
 
 from autoresearch.api.app import _validate_bind_host, create_app
 from autoresearch.api.research_service import ResearchApiService
@@ -118,6 +119,269 @@ async def _wait_for_status(
             return payload
         await asyncio.sleep(0.01)
     raise AssertionError(f"run did not reach {expected}")
+
+
+_FRONTEND_ROUTES = (
+    "/",
+    "/projects",
+    "/literature",
+    "/experiments",
+    "/assets",
+    "/knowledge",
+    "/writing",
+    "/reflections",
+    "/agents",
+    "/approvals",
+    "/settings",
+)
+
+
+@pytest.mark.asyncio
+async def test_frontend_spa_serves_root_and_every_navigation_deep_link(
+    tmp_path: Path,
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        for route in _FRONTEND_ROUTES:
+            response = await client.get(route)
+            assert response.status == 200, route
+            assert response.content_type == "text/html", route
+            document = await response.text()
+            assert '<div id="root"></div>' in document, route
+            assert "研启智链 / AI-Researcher - 研究指挥中心" in document, route
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_frontend_spa_query_string_does_not_change_deep_link_routing(
+    tmp_path: Path,
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        response = await client.get("/projects?run=run%2Fwith%2Fslashes&q=alpha")
+        assert response.status == 200
+        assert response.content_type == "text/html"
+        assert '<div id="root"></div>' in await response.text()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api",
+        "/api/does-not-exist",
+        "/API",
+        "/API/does-not-exist",
+        "/%61pi",
+        "/%61pi/does-not-exist",
+        "/api%2Fdoes-not-exist",
+        "/%2561pi",
+        "/static%252Fdoes-not-exist.js",
+        "/%2Fapi",
+        "/%2e/api",
+        "/x/%2e%2e/static/does-not-exist.js",
+        "/api/%2e%2e/projects",
+        "/api/x/%2e%2e/%2e%2e/projects",
+        "/static/%2e%2e/projects",
+        "/static/x/%2e%2e/%2e%2e/projects",
+        "/%61pi/%2e%2e/projects",
+        "/%73tatic/%2e%2e/projects",
+        "/x/%2e%2e/api",
+        "/static",
+        "/static/does-not-exist.js",
+        "/STATIC",
+        "/STATIC/does-not-exist.js",
+        "/%73tatic",
+        "/%73tatic/does-not-exist.js",
+        "/static%2Fdoes-not-exist.js",
+    ],
+)
+async def test_frontend_spa_fallback_fails_closed_for_api_and_static_prefixes(
+    tmp_path: Path, path: str
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        response = await client.get(URL(path, encoded=True))
+        assert response.status == 404
+        assert response.content_type != "text/html"
+        assert '<div id="root"></div>' not in await response.text()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["/apiary", "/statician", "/caf%C3%A9"])
+async def test_frontend_spa_preserves_non_reserved_prefix_boundaries(
+    tmp_path: Path, path: str
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        response = await client.get(URL(path, encoded=True))
+        assert response.status == 200
+        assert response.content_type == "text/html"
+        assert '<div id="root"></div>' in await response.text()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/index.html",
+        "/favicon.ico",
+        "/app.js",
+        "/.env",
+        "/assets/chunk.js",
+    ],
+)
+async def test_frontend_spa_rejects_unknown_file_shaped_requests(
+    tmp_path: Path, path: str
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        response = await client.get(path)
+        assert response.status == 404
+        assert response.content_type != "text/html"
+        assert '<div id="root"></div>' not in await response.text()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/%",
+        "/%2",
+        "/%GG",
+        "/%25252561pi",
+        "/%00",
+        "/%C2%80",
+        "/%C2%85",
+        "/%C2%9F",
+        "/x%5Capi",
+        "/" + "x" * 4097,
+    ],
+)
+async def test_frontend_spa_fails_closed_for_malformed_or_ambiguous_raw_paths(
+    tmp_path: Path, path: str
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        response = await client.get(URL(path, encoded=True))
+        assert response.status in {400, 404}
+        assert response.content_type != "text/html"
+        assert '<div id="root"></div>' not in await response.text()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/static/unknown.js",
+        "/static/index.html",
+        "/static/%2e%2e/index.html",
+        "/static/%2e%2e/api/health",
+        "/static/app.js/extra",
+    ],
+)
+async def test_frontend_static_allowlist_rejects_unknown_and_traversal(
+    tmp_path: Path, path: str
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        response = await client.get(URL(path, encoded=True))
+        assert response.status == 404
+        assert '<div id="root"></div>' not in await response.text()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def test_frontend_unknown_non_get_methods_never_receive_spa_html(
+    tmp_path: Path, method: str
+) -> None:
+    client = TestClient(
+        TestServer(create_app(service=ResearchApiService(work_root=tmp_path / "api")))
+    )
+    await client.start_server()
+    try:
+        response = await client.request(method, "/projects")
+        assert response.status != 200
+        assert response.content_type != "text/html"
+        assert '<div id="root"></div>' not in await response.text()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_frontend_explicit_routes_keep_precedence_and_content_types(
+    tmp_path: Path,
+) -> None:
+    service = ResearchApiService(
+        work_root=tmp_path / "api",
+        runner=FakeDirectionRunner(),
+        delivery_validator=_accept_fake_delivery,
+    )
+    client = TestClient(TestServer(create_app(service=service)))
+    await client.start_server()
+    try:
+        health = await client.get("/api/health")
+        assert health.status == 200
+        assert health.content_type == "application/json"
+        assert (await health.json())["status"] == "ok"
+
+        created = await (
+            await client.post("/api/runs", json={"direction": "路由优先级测试"})
+        ).json()
+        completed = await _wait_for_status(client, created["run_id"], "completed")
+        run = await client.get(f"/api/runs/{completed['run_id']}")
+        assert run.status == 200
+        assert run.content_type == "application/json"
+
+        artifact = await client.get(
+            f"/api/runs/{completed['run_id']}/artifacts/plan/research-plan.md"
+        )
+        assert artifact.status == 200
+        assert artifact.content_type == "text/markdown"
+        assert "测试研究计划" in await artifact.text()
+
+        script = await client.get("/static/app.js")
+        assert script.status == 200
+        assert script.content_type in {"application/javascript", "text/javascript"}
+        stylesheet = await client.get("/static/styles.css")
+        assert stylesheet.status == 200
+        assert stylesheet.content_type == "text/css"
+    finally:
+        await client.close()
 
 
 @pytest.mark.asyncio
@@ -428,7 +692,7 @@ async def test_frontend_health_and_read_only_evolution_status(tmp_path: Path) ->
     try:
         index = await client.get("/")
         assert index.status == 200
-        assert "科研计划台" in await index.text()
+        assert "研启智链 / AI-Researcher - 研究指挥中心" in await index.text()
         script = await client.get("/static/app.js")
         assert script.status == 200
         assert "/api/runs" in await script.text()

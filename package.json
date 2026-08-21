@@ -16,7 +16,11 @@
     "channel:test": "node ./bin/airesearcher.mjs channels test",
     "readiness": "node ./bin/airesearcher.mjs readiness",
     "prelaunch": "node ./bin/airesearcher.mjs readiness --push-inspiration --require-channel-config --require-channel-sent --require-agent-team",
-    "test": "python -m pytest tests/smoke tests/unit"
+    "test": "python -m pytest tests/smoke tests/unit",
+    "dev": "npm --prefix frontend run dev --",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:test": "npm --prefix frontend run test",
+    "frontend:e2e": "npm --prefix frontend run e2e"
   },
   "engines": {
     "node": ">=20"

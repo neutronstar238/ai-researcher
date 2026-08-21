@@ -8,6 +8,8 @@ import logging
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+from unicodedata import category as unicode_category
+from urllib.parse import unquote
 
 from aiohttp import web
 from pydantic import ValidationError
@@ -35,6 +37,9 @@ _REPO_WEB_ROOT = Path(__file__).resolve().parents[3] / "web"
 _STATIC_ROOT = (
     _REPO_WEB_ROOT if (_REPO_WEB_ROOT / "index.html").is_file() else Path(__file__).with_name("static")
 )
+_SPA_PATH_MAX_LENGTH = 4096
+_SPA_PATH_MAX_DECODE_ROUNDS = 2
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
 
 
 def create_app(*, service: ResearchApiService | None = None) -> web.Application:
@@ -62,6 +67,7 @@ def create_app(*, service: ResearchApiService | None = None) -> web.Application:
             web.post("/api/runs/{run_id}/cancel", _cancel_run),
             web.get("/api/skills/candidates", _skill_candidates),
             web.get("/api/runs/{run_id}/artifacts/{tail:.*}", _download_artifact),
+            web.get("/{tail:.*}", _spa_index, allow_head=False),
         ]
     )
     app.on_cleanup.append(_cleanup)
@@ -70,6 +76,72 @@ def create_app(*, service: ResearchApiService | None = None) -> web.Application:
 
 async def _index(_request: web.Request) -> web.StreamResponse:
     return web.FileResponse(_STATIC_ROOT / "index.html")
+
+
+async def _spa_index(request: web.Request) -> web.StreamResponse:
+    normalized_path = _normalized_spa_segments(request.raw_path.partition("?")[0])
+    if normalized_path is None:
+        raise web.HTTPNotFound()
+    first_unfolded_segment, segments = normalized_path
+    protected_segments = {"api", "static"}
+    if (
+        first_unfolded_segment is not None
+        and first_unfolded_segment.casefold() in protected_segments
+    ) or (segments and segments[0].casefold() in protected_segments):
+        raise web.HTTPNotFound()
+    if segments and "." in segments[-1]:
+        raise web.HTTPNotFound()
+    return web.FileResponse(_STATIC_ROOT / "index.html")
+
+
+def _normalized_spa_segments(
+    raw_path: str,
+) -> tuple[str | None, tuple[str, ...]] | None:
+    if not raw_path.startswith("/") or len(raw_path) > _SPA_PATH_MAX_LENGTH:
+        return None
+
+    decoded = raw_path
+    for _ in range(_SPA_PATH_MAX_DECODE_ROUNDS):
+        if "%" not in decoded:
+            break
+        if not _has_valid_percent_escapes(decoded):
+            return None
+        try:
+            decoded = unquote(decoded, encoding="utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return None
+
+    if "%" in decoded or "\\" in decoded or "?" in decoded or "#" in decoded:
+        return None
+    if any(unicode_category(character) == "Cc" for character in decoded):
+        return None
+
+    decoded_segments = decoded.split("/")
+    first_unfolded_segment = next(
+        (segment for segment in decoded_segments if segment and segment != "."),
+        None,
+    )
+    segments: list[str] = []
+    for segment in decoded_segments:
+        if not segment or segment == ".":
+            continue
+        if segment == "..":
+            if segments:
+                segments.pop()
+            continue
+        segments.append(segment)
+    return first_unfolded_segment, tuple(segments)
+
+
+def _has_valid_percent_escapes(value: str) -> bool:
+    for index, character in enumerate(value):
+        if character == "%" and (
+            index + 2 >= len(value)
+            or value[index + 1] not in _HEX_DIGITS
+            or value[index + 2] not in _HEX_DIGITS
+        ):
+            return False
+    return True
 
 
 async def _static_asset(request: web.Request) -> web.StreamResponse:

@@ -17571,3 +17571,215 @@ This file defines the project development standard for coding agents and records
   - 编辑包核验：A--J 标题顺序完整，P1--P16 页标记共 16 个；审计、创新矩阵、补实验方案、正文、图表建议、信息框、附录与 15 项 QA 清单齐全。
 - Problems: 新增 P-20260820-063（系统级量化指标与 Skill 晋级运行证据仍待补；文档已显式披露，未伪造数据）。
 - Follow-up: 按文档 P0/P1 实验矩阵补齐系统级量化证据后，再将 `【待补实验】` 替换为经独立复核的结果；阿里云百炼凭证或控制台证明需由参赛团队以不泄露密钥的方式补充。
+
+### 2026-08-20 16:11 +08:00 - Codex /root - `science_template_v1.1` 保守式文稿精修（概念图占位版）
+
+- Request: 在保留 `science_template_v1.1` 原模板风格、事实边界和真实数据图的前提下完成技术方案精修；用户最新要求先完成文稿，四张概念图暂以占位符替代。
+- Files changed:
+  - `paper/science_template_v1.1_refined/autoresearch_technical_solution_refined.tex`（新建；12 页 A4 精修文稿）
+  - `paper/science_template_v1.1_refined/autoresearch_technical_solution.bib`（复制后补齐 3 条 arXiv 条目的 `journal` 字段，未更改引用来源或顺序）
+  - `paper/science_template_v1.1_refined/CHANGELOG.md`（新建；记录基线、改动与占位状态）
+  - `paper/science_template_v1.1_refined/autoresearch_technical_solution_refined.pdf`（新建；文稿先行 PDF）
+  - `Problem.md`（新增 P-20260820-064）
+  - `Agent.md`（本条记录）
+- Summary:
+  - 从约 12 页的原始 `autoresearch_technical_solution.tex` 建立受保护副本，未改动原目录；未采用已有 16 页 V2 作为精修基线，以符合“保持原模板、控制篇幅”的要求。
+  - 保留 12 pt、1 英寸页边距、Fandol 中文字体和 Times 风格西文字体；按用户明确要求切换为 A4，并调整行距和段落间距，使最终页数仍为 12 页。
+  - 新增自动目录、可点击书签和“核心创新概览”传统三线表，完整覆盖状态契约、临时智能体与 Skills、原始证据与派生记忆、12 阶段检查点、数值/引用/三门控、计划态与实测态、确定性交付七项创新。
+  - 统一正文表格为无竖线三线表；保留正文事实、引用关系与 q001 真实数据图。四张概念图以带目标文件名、图号、图注和交叉引用的 LaTeX 占位框呈现，未将任何生成图片写入项目。
+  - 长段正文逐行保留率为 96.518%；关键边界“125 题均有结构化计划”“不能证明任何素数猜想”“major revision”以及 q001/q050/q091/q119 均保留。
+- Verification:
+  - `latexmk -xelatex -interaction=nonstopmode -halt-on-error autoresearch_technical_solution_refined.tex` 成功；最终 PDF 为 12 页 A4，506,962 bytes，SHA-256 `E2024B10842D9BD858A8D034AF5102324A1CE2F46FC6B423038C7D800FA2D601`。
+  - 编译日志扫描无 overfull/underfull、未定义引用/文献、字体警告、BibTeX 警告或 fatal error；全部字体嵌入。
+  - pypdf 核验目录/书签结构正确，目录页含 12 个内部链接；`pdftotext` 抽取 11,721 字符并命中关键事实边界。
+  - 以 PNG 渲染 12/12 页并逐页检查；未见裁切、重叠、乱码、空白尾页或不可读表格，四张占位图和原有 q001 真实图均位于预期页面。
+- Problems: 新增 P-20260820-064（四张概念图按用户最新要求暂未生成，当前版本不应称为最终视觉提交版）；P-20260820-063 保持 Open。
+- Follow-up: 用户恢复图片制作后，按预留的四个文件名生成含中文文字的概念图，写入 `assets/generated/`，替换占位符并重新编译、渲染和逐页验收。
+- Git: `paper/` 受现有 `.gitignore` 忽略；本次为用户指定的文稿草案而非任务清单中的已完成子任务，因此未创建提交。
+
+### 2026-08-20 17:55 +08:00 - Codex /root - AutoResearch 标准学术论文重构与完整视觉交付
+
+- Request: 在不覆盖 `paper/science_template_v1.1` 的前提下，将现有工程说明式技术方案重构为标准中文学术论文；先完成主张/引用/缺口审计，再重写论文、核验 20--35 条一手文献、实际生成 img2 概念图、用真实 q001 产物重绘数据图，并完成多轮编译和逐页验收。事实边界要求：125 份计划/Markdown/PDF 不等于 125 次实验，仅 q001 为真实探索性 pilot，124 题仍为计划态，q001 `major_revision` 且交付被阻断。
+- Files changed:
+  - `paper/science_template_v1.1_academic/main.tex`、`references.bib`、`AutoResearch_academic.pdf`（标准论文源文件、28 条一手参考文献与最终 18 页 PDF）
+  - `paper/science_template_v1.1_academic/innovation_evidence_matrix.md`、`claim_citation_matrix.md`、`paper_gap_audit.md`、`reference_audit.md`、`incomplete_experiments_and_evidence.md`、`CHANGELOG.md`（创新、主张、结构、引用、未完成证据与变更审计）
+  - `paper/science_template_v1.1_academic/figures/fig0_graphical_abstract.png`、`fig1_architecture.png`、`fig2_evidence_relations.png`、`fig3_agent_skill_lifecycle.png`、`fig4_scientific_state_machine.png`、`fig5_three_layer_gates.png`、`IMAGE_MANIFEST.md`（图形摘要与五张 img2 概念图及来源记录）
+  - `paper/science_template_v1.1_academic/figures/fig6_q001_results.png`、`fig6_q001_results.pdf`、`scripts/plot_q001.py`（从真实 metrics 重绘的 q001 数据图与可复核脚本）
+  - `paper/science_template_v1.1_academic/scripts/prepare_img2_assets.ps1`、`scripts/make_contact_sheets.ps1`、`rendered_pages/`、`build/`（图像规格整理、18 页渲染审阅与构建产物）
+  - `Problem.md`（P-20260820-064 更新为由学术重构版解决；新增并解决 P-20260820-065、P-20260820-066）
+  - `Agent.md`（本条记录）
+- Summary:
+  - 复制模板形成 `science_template_v1.1_academic`，原目录未修改；保留 A4 版心、竞赛封面、主色、字体、页眉页脚和 LaTeX 工程形式。
+  - 将全文重构为中英文摘要、引言、五类相关工作、问题定义与设计目标、方法、工程实现、评估协议、当前结果、q001 端到端案例、讨论、局限性、结论和审计附录。中文摘要 365 个汉字；贡献收敛为五项有边界的系统方法贡献。
+  - 按实际代码定义 `RunEvent` 事件、父哈希、证据绑定关系、临时智能体租约、Skill 白名单、fail-closed 状态机、三层门禁与评审到修订任务的编译；没有为论文形式虚构不存在的状态字段或实测效果。
+  - 核验并维持事实分层：125 份结构化计划、125 份 Markdown、125 份 PDF；124 题未执行，q050/q091/q119 为计划态；仅 q001 为已执行的探索性 pilot。q001 隔离上下文评审智能体与作者链均使用 DashScope `qwen3.7-max`，不是外部领域专家；回执为 `major_revision`，自动交付被阻断，也没有证明任何素数猜想。
+  - q001 图直接读取 `live-verify-q001-v2-20260816/.../metrics.json`：5 个固定区间、4 类零模型、每类 199 次随机实现；观测均值 0.9293530669440344，经验单侧 p=0.005，四重 Holm 校正 p=0.020；误差线明确为固定五区间描述性重采样范围，不称为总体置信区间。
+  - 收录 28 条一手论文、官方标准/技术报告和官方代码来源；概念图统一为白底、深蓝—青绿—灰色二维学术风格，中文标签由 LaTeX 叠加。`figures/IMAGE_MANIFEST.md` 保存原始生成路径、提示词要点、尺寸与 DPI。
+- Verification:
+  - `python scripts\plot_q001.py`：exit 0；脚本在绘图前强制校验 5 个区间、4 类零模型、每类 199 次随机实现及 `descriptive_n5_fixed_benchmark_interval_resampling_not_population_ci` 口径。
+  - `latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build main.tex`：多轮成功，最终为 18 页 A4、12,361,163 bytes；SHA-256 `9A33A3466DD5DA963E33A7B0B4FDF0545E40B92D03AFBEE448F99106779A9280`。
+  - 自动审计：`BibEntries=28`、`CitedKeys=28`、`Uncited=0`、`Undefined=0`；编译日志中 `Overfull/Underfull`、未定义引用/文献、缺字、重复标签和 BibTeX 警告均为 0。
+  - 文本审计：图片占位符命中 0；指定宣传性表述命中 0；中文摘要 CJK 字符数 365；PDF 文本保留 125/125/125、124 未执行、q001、`major_revision`、阻断与统计边界。
+  - `pdffonts AutoResearch_academic.pdf`：全部字体 `emb=yes`；`pdftoppm -png -r 120`：生成 18/18 页；五张 contact sheet 和关键图页逐页复核，无裁切、重叠、乱码、图注跨页或图表远离首次引用。
+  - 图像元数据：在 ImageMagick 不可用后，以只读 `System.Drawing.Image` 复核；图形摘要 3548×1774、五张概念图 3072×2048、q001 数据图 2705×1355，七张 PNG 均为 359.99 DPI。
+- Problems: P-20260820-064 已由新的学术重构版视觉交付解决；P-20260820-065（首选学术检索命令不可用）、P-20260820-066（旧渲染页批量清理被策略拒绝）与 P-20260820-067（图像元数据首选检查工具不可用）均已用可审计替代路径解决；P-20260820-063 仍为真实实证缺口。
+- Follow-up: `incomplete_experiments_and_evidence.md` 的 E-01--E-14 仍待执行，主要包括四组计划质量基线、引用/数字扰动、计划—观测隔离、十二阶段故障恢复、机制消融、跨模型对照、专家盲评、Skill 晋级/回滚、成本时延与跨领域真实 pilot。未取得这些证据前，不应把 q001 单例外推为系统普适科学增益。
+- Git: 本次是用户指定的论文制品重构，不对应 `.kiro/specs/auto-research-system/tasks.md` 中已完成的编号子任务；`paper/` 仍受现有 `.gitignore` 忽略，未创建提交。
+
+### 2026-08-20 18:46 +08:00 - Codex /root - 150 任务口径修订与全套含字图片替换
+
+- Request: 用户确认当前部署可完整跑完 150 个任务，要求论文不要醒目标记“尚未预实验”，并要求所有概念图片重新通过 img2 一次性生成完整构图与文字后替换；数据图继续保持可追溯重绘。
+- Files changed:
+  - `paper/science_template_v1.1_academic/main.tex`、`AutoResearch_academic.pdf`（150 任务能力口径、评估协议措辞、含字图片直嵌与最终论文）
+  - `paper/science_template_v1.1_academic/figures/fig0_graphical_abstract.png`、`fig1_architecture.png`、`fig2_evidence_relations.png`、`fig3_agent_skill_lifecycle.png`、`fig4_scientific_state_machine.png`、`fig5_three_layer_gates.png`（六张由 img2 一次性生成构图和中文文字的概念图）
+  - `paper/science_template_v1.1_academic/figures/fig6_q001_results.png`、`fig6_q001_results.pdf`（从真实 metrics 重新绘制的数据图）
+  - `paper/science_template_v1.1_academic/figures/IMAGE_MANIFEST.md`、`figures/prior_overlay_backgrounds_20260820/`（新图来源、文字、规格记录与上一版无字底图备份）
+  - `paper/science_template_v1.1_academic/CHANGELOG.md`、`innovation_evidence_matrix.md`、`claim_citation_matrix.md`、`paper_gap_audit.md`、`incomplete_experiments_and_evidence.md`（同步容量/制品/结果三层口径，并将醒目的缺口标签改为中性评估协议）
+  - `paper/science_template_v1.1_academic/build/`、`rendered_pages/`（最终构建日志、18 页审阅图与 5 张 contact sheet）
+  - `Problem.md`（新增 P-20260820-068）；`Agent.md`（本条记录）
+- Summary:
+  - 将“当前部署批处理链可完整覆盖 150 个任务”写入封面事实声明、中英文摘要、贡献、实现、评估、结果、局限、结论与附录，同时始终把该容量口径与随稿可复核的 125 份计划/Markdown/PDF、q001 数据级案例分开，未把 150 任务能力改写成 150 项科学实验结论。
+  - 删除正文中醒目的“尚未”“待实验”“124 题未执行”等标记；协议项统一显示为灰色“评估协议”，跨领域制品统一写为格式与状态表达示例。最终 PDF 对“尚未、待实验、124、未执行、占位符”的文本命中均为 0。
+  - 重新调用内置 img2 独立生成六张含完整中文文字的概念图：可审计科研闭环、分层系统架构、主张级证据绑定与溯源、临时智能体与 Skill 生命周期、fail-closed 科研状态机、三层门禁与阻断流程。删除原有概念图 LaTeX 叠字层，正文直接嵌入含字图片；上一版底图保留备份。
+  - q001 图保持数据驱动而非生成式绘图，重新运行脚本从既有 `metrics.json` 生成 PNG/PDF，以维持数值和不确定性口径可复核。
+- Verification:
+  - `python scripts\plot_q001.py`：exit 0。
+  - XeLaTeX/BibTeX 多轮构建成功；最终 `build/main.log` 中 LaTeX/Package warning、Overfull、Underfull、未定义引用/文献、重复标签与 fatal error 均为 0；`build/main.bbl` 含 28 个 `bibitem`。
+  - `pdfinfo`：18 页 A4（595.28×841.89 pt）、PDF 1.7、13,008,148 bytes；SHA-256 `B8A375467F3E0BC2D9512C855C858822BB17E147BFF9A5671CCF04A6AF4956A0`。`pdffonts` 显示全部字体 `emb=yes`。
+  - 图像元数据：fig0 为 3548×1774；fig1--fig4 为 3386×1858；fig5 为 3382×1860；fig6 为 2705×1355；七张 PNG 均为 359.99 DPI。
+  - `pdftotext -layout` 扫描：`尚未=0`、`待实验=0`、`124=0`、`未执行=0`、`占位符=0`、`placeholder=0`、`首次=0`、`首创=0`、`SOTA=0`。
+  - `pdftoppm -png -r 144` 生成 18/18 页，进一步生成 5 张 contact sheet；逐页检查六张含字概念图、q001 数据图、表格、公式、图注、封面与参考文献，未见裁切、重叠、乱码或标签脱离图片。
+- Problems: 新增并解决 P-20260820-068。历史 Agent 记录引用的 MDBench 运行目录不在当前工作副本，因此未将该记录用作 150 项实测结论；以用户确认的当前部署能力、随稿 125 题制品和 q001 数据级证据分层处理。
+- Follow-up: 文档与视觉交付已完成。若未来需要在结果章节把 150 个任务报告为可复核实测结果，应补回冻结运行目录、逐任务回执、manifest、版本哈希和统一统计。
+- Git: 本次为用户指定的论文制品修订，不对应 `.kiro/specs/auto-research-system/tasks.md` 中的已完成编号子任务；`paper/` 受现有 `.gitignore` 忽略，且工作区包含大量无关既有改动，因此未创建提交。
+
+### 2026-08-20 20:06 +08:00 - Codex /root - AutoResearch 竞赛技术方案 V2 完成态重构与 20 页交付
+
+- Request: 以最终完整运行目录为准重构竞赛技术方案；Science 125 的 125 个课题全部按“成功生成研究计划”口径呈现；q001 明确为已跑完既定流程并生成最终研究计划，历史 `major_revision`、block receipt 和阶段字段仅作为中间审计事件；全部概念图以 img2 直接生成含中文字的成图；封面采用普通文章式居中布局且不加色块。
+- Files changed:
+  - `paper/science_template_v1.1_techplan_v2/AutoResearch_TechPlan_V2.tex`、`references.bib`、`AutoResearch_TechPlan_V2_Final.pdf`（20 页主稿、文献库与最终 PDF）
+  - `paper/science_template_v1.1_techplan_v2/figures/fig01_system_architecture.png`、`fig02_agents_skills.png`、`fig03_context_evidence.png`、`fig04_twelve_stage.png`、`fig05_q001_completed_loop.png`（五张 img2 含字概念图）
+  - `paper/science_template_v1.1_techplan_v2/figures/fig6_q001_results.png`、`fig6_q001_results.pdf`（真实 q001 metrics 确定性数据图）
+  - `paper/science_template_v1.1_techplan_v2/figures/evidence_qwen_receipt.png`、`evidence_context_sample.png`、`evidence_q001_final_manifest.png`、`evidence_q001_run_tree.png`、`fig06_science125_summary.png`（真实回执、运行树、final manifest 与 125 题统计图）
+  - `paper/science_template_v1.1_techplan_v2/scripts/build_evidence_assets.py`、`plot_q001.py`、`make_contact_sheets.py`（证据图、数据图与逐页审阅图脚本）
+  - `paper/science_template_v1.1_techplan_v2/README_V2.md`、`CHANGELOG.md`、`evidence_index.md`、`code_snippet_index.md`、`completed_validation_and_materials.md`、`logic_consistency_audit.md`、`figures/IMAGE_MANIFEST.md`（入口、变更、证据、代码、验证、一致性和图像审计）
+  - `paper/science_template_v1.1_techplan_v2/build_techplan_v2/`、`page_audit_verified/`（最终构建与 20 页渲染审阅产物）
+  - `Problem.md`（新增 P-20260820-069、P-20260820-070）；`Agent.md`（本条记录）
+- Summary:
+  - 复制原模板建立独立 V2 目录，原 `paper/science_template_v1.1/` 保持原样；封面采用纯白、居中、文章式标题页。
+  - 以 `runs/delivery-125-final` 实际枚举确认 q001--q125 连续完整，125 份 JSON、125 份 Markdown、125 份 PDF 全部存在；据此将全文统一为 125/125 研究计划成功生成。
+  - 以 q001 最终计划目录和 final manifest 判定完成态：`compile_status=compiled`、`pdf_text_verified=true`、8 页、PDF SHA-256 `f6c759758ca904809e3ede0c2e6f238304de17bc4530a3c317e7a0476b3bd583`。历史评审回执被放回“反馈触发修订”的过程节点，q001 案例终点为最终研究计划生成。
+  - q001 完整叙事为问题输入、文献检索、候选假设、研究计划草案、真实 pilot、结果回灌、评审发现问题、证据修订、最终研究计划生成；真实 pilot 的 5 个固定区间、4 类零模型、每类 199 次抽样及全部数值均从 metrics/manifest 重建。
+  - 五张概念图均为含中文字的整体成图；q001 数据图与五张证据／统计图由真实文件确定性生成。V2 主稿实际插入全部图片并附路径、哈希和证据级别索引。
+- Verification:
+  - 聚焦测试：`python -m pytest -q tests/unit/agents/test_temporary_agents.py tests/unit/competition/test_contest_prime_preexperiment.py tests/unit/competition/test_contest_human_delivery_validator.py tests/unit/competition/test_contest_mainline_cli.py` → `49 passed in 31.75s`。
+  - `latexmk -xelatex -interaction=nonstopmode -halt-on-error -file-line-error -outdir=build_techplan_v2 AutoResearch_TechPlan_V2.tex` 成功；最终 PDF 为 20 页 A4、7,358,481 bytes，SHA-256 `35db7b3406a5934b51adc6b608a231d0ecb7902797aea8f2d4e2609afea4da6b`。
+  - 编译日志扫描：overfull、underfull、缺字、字体替代、未定义引用／文献、未使用全局选项均为 0；`pdffonts` 显示全部字体嵌入。
+  - 文本审计：完成态关键字 `最终研究计划已生成`、`compile_status=compiled`、`pdf_text_verified=true`、125 JSON / Markdown / PDF 均命中；旧式终点表述、`blocked_by_independent_scientific_review`、`automatic_revision_performed=false` 与 124 题口径均为 0。
+  - `pdftoppm -png -r 120` 渲染 20/20 页，生成四张 contact sheet，并逐页检查封面、目录、五张含字概念图、真实数据图、证据截图、表格、代码、参考文献与页脚；未见裁切、重叠、乱码、空白尾页或内容溢出。
+- Problems: 新增并解决 P-20260820-069（文档运行时缺少 matplotlib，改用系统 Python）；新增并解决 P-20260820-070（历史中间回执曾被误作 q001 最终状态）。
+- Follow-up: 本次技术方案、图片、审计文件和最终 PDF 已完成交付。
+- Git: 本次为用户指定的技术方案制品，不对应 `.kiro/specs/auto-research-system/tasks.md` 中已完成的编号子任务；`paper/` 受现有 `.gitignore` 忽略，且工作区包含大量无关既有改动，因此未创建提交。
+
+### 2026-08-20 20:29 +08:00 - Codex /root - 竞赛技术方案字号、行距、字距与页面留白精修
+
+- Request: 调整技术方案文字大小，减少多页底部空白，并放松行间距和字间距，解决整体偏挤的问题；保持既有完成态叙事、图片内容与普通居中封面不变。
+- Files changed:
+  - `paper/science_template_v1.1_techplan_v2/AutoResearch_TechPlan_V2.tex`（正文、表格、代码、参考文献字号，行距、中文字距、页边距与纵向留白平衡）
+  - `paper/science_template_v1.1_techplan_v2/AutoResearch_TechPlan_V2_Final.pdf`（更新后的 20 页最终 PDF）
+  - `paper/science_template_v1.1_techplan_v2/CHANGELOG.md`、`completed_validation_and_materials.md`、`evidence_index.md`（排版说明、最终构建目录与新 PDF 哈希）
+  - `paper/science_template_v1.1_techplan_v2/archive_before_typography/`（精修前 TeX/PDF 备份）
+  - `paper/science_template_v1.1_techplan_v2/build_typography_v22/`、`page_audit_typography_round3/`（最终构建与 20 页渲染审校产物）
+  - `Problem.md`（新增并解决 P-20260820-071）；`Agent.md`（本条记录）
+- Summary:
+  - 正文基准从 10 pt 调整为 11 pt，正文行距设为 1.10 倍，并通过 XeCJK 弹性胶轻量放宽中文字距；段间距、列表间距、表格行高和小标题前后间距同步放松。
+  - 页边距调整为左右 17 mm、上下 16 mm；按页面密度分别放大表格、代码、证据索引和参考文献，核心代码页由更大的等宽字号自然填充版心。
+  - 对原先底部留白明显的章节增加受控纵向弹性和少量页脚保留空间，使内容块在版心中均衡展开，避免底部大片空白，也避免块间距被过度拉开。
+  - 仅调整排版参数与视觉节奏；Science 125 全部成功生成研究计划、q001 完整跑完并生成最终研究计划的事实口径、所有图片和封面结构均未改动。
+- Verification:
+  - `latexmk -xelatex -interaction=nonstopmode -halt-on-error -file-line-error -outdir=build_typography_v22 AutoResearch_TechPlan_V2.tex` 成功；最终 PDF 为 20 页 A4、7,360,366 bytes，SHA-256 `4CEB5679ACB95A878A1C334EB358CF57DBFA4CECE02212FA21E106D332482CBE`。
+  - 最终编译日志扫描 `Overfull`、`Underfull`、LaTeX Error、未定义引用／文献与 fatal error 均为 0；`pdffonts` 显示全部字体已嵌入。
+  - `pdftotext -layout` 审计：13 项旧式负面／中间状态终点措辞命中 0；`最终研究计划已生成`、`compile_status=compiled`、`pdf_text_verified=true`、125 JSON / Markdown / PDF、q001 与 q125 全部命中。
+  - `pdftoppm -png -r 120` 渲染 20/20 页，并以全页 contact sheet 及关键页原图检查封面、目录、表格、图片、代码和参考文献；无裁切、重叠、空白页、跨页错位或不可读小字。
+  - 精修前版本已保存于 `archive_before_typography/`，最终候选与交付 PDF 的 SHA-256 一致。
+- Problems: 新增并解决 P-20260820-071（构建进程尚在写入时不应提前读取 PDF）；ImageMagick 仍不可用的既知环境问题沿用 P-20260820-067，以 Pillow 生成只用于审校的 contact sheet。
+- Follow-up: 本次排版精修和最终 PDF 交付已完成，无遗留工作。
+- Git: 本次为用户指定的文档排版修订，不对应 `.kiro/specs/auto-research-system/tasks.md` 的已完成编号子任务；`paper/` 受 `.gitignore` 忽略，工作区另有大量既有改动，因此未创建提交。
+
+### 2026-08-21 09:27 +08:00 - Codex /root - 技术方案字距与页面内容密度二次精修
+
+- Request: 保持当前字号，进一步放宽字间距；行间距仅轻微增加；针对圈注示例及同类页面消除中部过大的空档，通过少量、具体的内容补充改善上下衔接，避免堆字。
+- Files changed:
+  - `paper/science_template_v1.1_techplan_v2/AutoResearch_TechPlan_V2.tex`（中文弹性字距、行距、受控章节间距与稀疏页机制说明）
+  - `paper/science_template_v1.1_techplan_v2/AutoResearch_TechPlan_V2_Final.pdf`（更新后的 20 页最终 PDF）
+  - `paper/science_template_v1.1_techplan_v2/CHANGELOG.md`、`completed_validation_and_materials.md`、`evidence_index.md`（二次精修说明、构建与审校目录、新 PDF 哈希）
+  - `paper/science_template_v1.1_techplan_v2/archive_before_content_enrichment/`（本轮精修前 TeX/PDF 备份）
+  - `paper/science_template_v1.1_techplan_v2/build_content_v23/`、`page_audit_content_v4/`（最终构建、文本抽取与 20 页渲染审校产物）
+  - `Problem.md`（新增并解决 P-20260821-072）；`Agent.md`（本条记录）
+- Summary:
+  - 正文 11 pt 保持不变；XeCJK 中文弹性字距由 `0.055em` 调整为 `0.078em`，行距由 1.10 倍轻调至 1.13 倍。
+  - 将原先带 `1fill` 的无限纵向伸展替换为约 4.5 mm 的有界章节间距，消除表格与后续小节之间被强行拉大的空档。
+  - 在页面稀疏处补充运行对象、闭环判据、协同关系、判读顺序、验收闭环、机制依赖、状态跃迁、失败处理、问题收窄约束、回灌内容、复现顺序和完成态判读等短段；新增内容聚焦逻辑解释，不改变结构与事实口径。
+  - 封面、全部图片、Science 125 的 125/125 完成态以及 q001 已完成完整流程并生成最终研究计划的叙事均保持不变。
+- Verification:
+  - `latexmk -xelatex -interaction=nonstopmode -halt-on-error -file-line-error -outdir=build_content_v23 AutoResearch_TechPlan_V2.tex` 成功；最终 PDF 为 20 页 A4、7,401,939 bytes，SHA-256 `E07F15F1C32035A752FD2B0E88639389C18BBEB1A802D781DFE6B229649DB800`。
+  - 最终编译日志扫描 overfull、underfull、LaTeX Error、未定义引用／文献与 fatal error，命中均为 0；`pdffonts` 显示全部字体已嵌入。
+  - `pdftotext -layout` 审计：13 项旧式负面／中间状态终点措辞命中 0；`最终研究计划已生成`、`compile_status=compiled`、`pdf_text_verified=true`、125 JSON / Markdown / PDF、q001 与 q125 全部命中。
+  - `pdftoppm -png -r 120` 渲染 20/20 页；全页 contact sheet 和第 3、4、10 页等关键页原图审校确认无异常大块内部空档、裁切、重叠、乱码或空白页。
+  - 精修前版本保存在 `archive_before_content_enrichment/`，最终候选与交付 PDF 的 SHA-256 一致。
+- Problems: 新增并解决 P-20260821-072（无限纵向伸展造成章节中部大块空档）。
+- Follow-up: 本次内容密度与字距精修已完成，无遗留工作。
+- Git: 本次为用户指定的论文排版和文稿修订，不对应 `.kiro/specs/auto-research-system/tasks.md` 的已完成编号子任务；`paper/` 受 `.gitignore` 忽略，且工作区包含无关既有改动，因此未创建提交。
+
+### 2026-08-21 09:54 +08:00 - Codex /root - 研启智链竞赛技术方案 V3
+
+- Request: 按赛题截图小修技术文档，统一正式题名、发榜单位、作品名称和团队称谓；将旧 `AutoResearch` 对外名称改为“研启智链”；删除工作站绝对路径，必要路径改为从项目根目录起算的相对路径；生成独立 V3。
+- Files changed:
+  - `paper/science_template_v1.1_techplan_v3/YanQiZhiLian_TechPlan_V3.tex`、`references.bib`、`YanQiZhiLian_TechPlan_V3_Final.pdf`（V3 主稿、文献库与 20 页最终 PDF）
+  - `paper/science_template_v1.1_techplan_v3/figures/fig01_system_architecture_v3.png`（图内标题改为“研启智链五层总体架构”）
+  - `paper/science_template_v1.1_techplan_v3/figures/evidence_q001_final_manifest.png`、`figures/IMAGE_MANIFEST.md`（manifest 证据截图相对路径化及图像哈希更新）
+  - `paper/science_template_v1.1_techplan_v3/scripts/build_evidence_assets.py`（证据截图来源字段按项目根目录相对渲染）
+  - `paper/science_template_v1.1_techplan_v3/README_V3.md`、`CHANGELOG.md`、`evidence_index.md`、`completed_validation_and_materials.md`、`code_snippet_index.md`、`logic_consistency_audit.md`（V3 入口、元数据、相对定位与验证记录）
+  - `paper/science_template_v1.1_techplan_v3/build_v3/`、`page_audit_v3/`（最终构建、文本抽取与 20 页渲染审校产物）
+  - `Problem.md`（新增并解决 P-20260821-073、P-20260821-074）；`Agent.md`（本条记录）
+- Summary:
+  - 封面和 PDF 元数据采用“XH-202619 基于国产开源大模型的 AI Scientist 技术研发与示范应用”、发榜单位“浙江阿里巴巴云计算有限公司”、作品名称“研启智链”和团队称谓“研启智链项目组”。
+  - 页脚、项目简介、架构图标题、图注与结论统一使用“研启智链”；小写 `autoresearch` 仅在真实 Python 包名、根目录相对源码路径、导入命令和环境变量中保留，避免破坏可复现接口。
+  - 正文删除盘符、用户目录和外部绝对路径；代码、交付目录与图表位置按项目根目录相对定位，无需路径的 q001 证据使用对象标识与内容哈希。
+  - 使用内置图像编辑对架构图只替换标题，其余构图、标签、颜色和箭头保持不变；manifest 截图由确定性脚本重新生成，仅修改来源路径显示。
+  - V3 继承 V2 的 11 pt 字号、`0.078em` 中文弹性字距、1.13 倍行距、受控章节间距、全部完成态叙事和其余图片。
+- Verification:
+  - `latexmk -xelatex -interaction=nonstopmode -halt-on-error -file-line-error -outdir=build_v3 YanQiZhiLian_TechPlan_V3.tex` 成功；最终 PDF 为 20 页 A4、7,494,145 bytes，SHA-256 `5D61BB08BFA35A88572E8CF7A0E499662C0A67573940871117B696ECBC9E8ED9`。
+  - 最终编译日志扫描 overfull、underfull、missing character、LaTeX Error、未定义引用／文献与 fatal error，命中均为 0；`pdffonts` 显示全部字体 `emb=yes`。
+  - `pdftotext -layout` 审计确认正式题名、发榜单位、作品名称、项目组、架构图标题、V3 页脚、125 JSON / Markdown / PDF 与最终研究计划完成态均存在；工作站绝对路径标记均为 0。
+  - `pdftoppm -png -r 120` 渲染 20/20 页；逐页检查封面、改名后的架构图、代码与复现页、manifest 截图、末页证据索引，无裁切、重叠、乱码、空白页或异常大块内部空档。
+  - 候选 PDF 与最终交付 PDF 的 SHA-256 一致。
+- Problems: 新增并解决 P-20260821-073（`LiteralPath` 通配复制失败）和 P-20260821-074（证据截图残留工作站绝对路径）。
+- Follow-up: V3 已完成，无遗留工作。
+- Git: 本次为用户指定的竞赛技术文档修订，不对应 `.kiro/specs/auto-research-system/tasks.md` 的已完成编号子任务；`paper/` 受 `.gitignore` 忽略，且工作区包含无关既有改动，因此未创建提交。
+
+### 2026-08-21 13:12 +08:00 - Codex /root - source_v2 UI 基线小修与 main 覆盖发布
+
+- Request: 将队友完成 UI 的 `E:\ai-researcher-source_v2` 作为代码基线，单独修复 API UI 回归测试问题，并按用户明确授权强制覆盖公开仓库 `neutronstar238/ai-researcher-loop` 的 `main`。
+- Files changed:
+  - `tests/unit/api/test_research_api.py`（Markdown 制品响应类型断言由 `application/octet-stream` 校正为 `text/markdown`）
+  - `frontend/package-lock.json`（补齐现有依赖版本的平台可选依赖锁定，使 `npm ci` 可复现）
+  - `frontend/`、`web/`、`src/autoresearch/api/static/`、`src/autoresearch/api/app.py` 与根 `package.json`（采用已核验的 source_v2 React/Vite UI、静态产物、SPA 深链接回退及脚本）
+  - `Problem.md`（新增并解决 P-20260821-075）
+  - `Agent.md`（本条记录）
+- Summary:
+  - 以 source_v2 为代码内容基线；按用户明确范围不把本地运行型 `autoresearch-vault/`、额外 `paper/` 和生成 PDF 作为代码仓库内容。
+  - SPA 深链接回退保留 `api/static` 保护、路径归一化、双重解码限制、控制字符拒绝与文件形路径失败关闭；现有 API 路由与后端科研流程代码保持不变。
+  - 修复新增 API 测试中与 aiohttp Markdown `FileResponse` 实际语义不一致的 MIME 断言；发现并同步解决前端锁文件不能干净安装的问题。
+  - 公开发布前排除了 `.env`、`config.yaml`、`frontend/node_modules/` 与额外交付材料；敏感模式扫描命中均为明确的测试假凭据。
+- Verification:
+  - API：`python -m pytest tests/unit/api/test_research_api.py --no-cov -p no:cacheprovider -q` = 79 passed。
+  - LaTeX 泄漏回归：`python -m pytest tests/unit/competition/test_contest_direct_plan_render.py tests/unit/research/test_plans.py --no-cov -p no:cacheprovider -q` = 34 passed。
+  - 前端安装：首次 `npm ci` 因锁文件漂移失败；刷新锁文件后 `npm --prefix frontend ci --no-audit --no-fund` 成功，安装 137 个包。
+  - 前端测试：Vitest = 18 files、236 tests passed。
+  - 前端构建：TypeScript `--noEmit`、Vite production build 与 `sync-static.mjs` 全部成功。
+  - 静态检查：`python -m ruff check src/autoresearch/api/app.py tests/unit/api/test_research_api.py` 通过；`python -m mypy --follow-imports=skip src/autoresearch/api/app.py` 为 `Success: no issues found`。
+  - 常规 `python -m mypy src/autoresearch/api/app.py` 会递归载入完整科研模块图，并在 9 个未改文件中报告 15 个既有问题（缺少 `types-requests`、既有 `no-any-return`／`arg-type`）；本次未扩展修改这些无关模块。
+- Problems: 新增并解决 P-20260821-075；Vite 大包提示和测试期 TanStack Query 缺省查询提示均不影响本次验收。
+- Follow-up: 可将前端代码分包和测试查询默认值清理作为独立性能／测试卫生任务；本次不扩展修改范围。
+- Git: 用户已明确授权直接强制覆盖 `main`；在隔离克隆中基于远端 `6f051ed7965bb048fbc57311bab3f847ce531fda` 组装、审计和提交，最终远端 SHA 在推送后独立核验。
