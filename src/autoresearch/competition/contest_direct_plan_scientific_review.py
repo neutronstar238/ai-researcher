@@ -21,6 +21,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from autoresearch.competition.contest_direct_plan import ContestDirectPlanArtifact
+from autoresearch.competition.contest_direct_plan_render import (
+    project_reference_for_display,
+)
 from autoresearch.competition.contest_direct_plan_revision import (
     ContestDirectPlanRevisionArtifact,
 )
@@ -709,13 +712,32 @@ def review_contest_direct_plan_science(
         ):
             raise ContestDirectPlanScientificReviewError("final plan references are not a sequence")
         try:
-            validate_locked_bibliography(
-                tuple(str(item).strip() for item in plan_references),
-                references,
-                minimum=min(MIN_RESEARCH_PLAN_REFERENCES, len(references)),
-                maximum=MAX_RESEARCH_PLAN_REFERENCES,
-                require_exact_catalog=True,
-            )
+            normalized_plan_references = tuple(str(item).strip() for item in plan_references)
+            if final.source_kind == "materialized_final_plan":
+                locked_references = references[:MAX_RESEARCH_PLAN_REFERENCES]
+                validate_locked_bibliography(
+                    locked_references,
+                    references,
+                    minimum=min(MIN_RESEARCH_PLAN_REFERENCES, len(references)),
+                    maximum=MAX_RESEARCH_PLAN_REFERENCES,
+                    require_exact_catalog=True,
+                )
+                expected_display_references = tuple(
+                    project_reference_for_display(item) for item in locked_references
+                )
+                if normalized_plan_references != expected_display_references:
+                    raise ValueError(
+                        "materialized bibliography differs from the deterministic locked-catalog "
+                        "display projection"
+                    )
+            else:
+                validate_locked_bibliography(
+                    normalized_plan_references,
+                    references,
+                    minimum=min(MIN_RESEARCH_PLAN_REFERENCES, len(references)),
+                    maximum=MAX_RESEARCH_PLAN_REFERENCES,
+                    require_exact_catalog=True,
+                )
         except ValueError as exc:
             raise ContestDirectPlanScientificReviewError(
                 f"final plan does not preserve the locked reference identity/order: {exc}"

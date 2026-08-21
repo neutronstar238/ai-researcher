@@ -251,8 +251,8 @@ def build_contest_direct_plan_messages(
         else "未提供文献；不要虚构参考文献。"
     )
     preexperiment_block = preexperiment or (
-        "未提供预实验结果。Results 必须明确说明尚未执行预实验，并仅写预期结果、"
-        "可检验判据和可能的负结果，禁止捏造已执行数据或数值。"
+        "本次交付范围止于研究计划。Results 第一行必须写“本交付范围为研究计划”，"
+        "随后仅写预期结果、可检验判据和可能的负结果，禁止捏造已执行数据或数值。"
     )
     messages: list[dict[str, str]] = [
         {
@@ -275,7 +275,7 @@ def build_contest_direct_plan_messages(
                         "报告标题和说明文字使用中文，技术名、公式与真实论文题名可保留英文",
                         "这是研究计划而非已完成论文",
                         "围绕一个可证伪主假设形成可执行研究路径",
-                        "没有预实验时不得虚构结果或数值",
+                        "交付范围止于研究计划时不得虚构结果或数值",
                         "不得把有限计算写成开放数学问题的证明",
                     ],
                 },
@@ -349,9 +349,9 @@ def build_contest_direct_plan_messages(
                 "Experiments 要写清可执行步骤，"
                 "Baselines 和 Metrics 要能检验假设。References 只能逐项使用上面提供"
                 "的真实文献，不得新增或猜测条目。若有预实验上下文，只能复述其中"
-                "真实出现的结果；若没有，paper_abstract 必须使用将来时或计划语气，"
+                "真实出现的结果；若交付范围止于研究计划，paper_abstract 必须使用将来时或计划语气，"
                 "不得写成‘已经发现、已经验证、结果表明’，results 第一行必须明确"
-                "‘尚未执行预实验’，并只给可检验判据、支持/反驳/不确定三种判定。"
+                "‘本交付范围为研究计划’，并只给可检验判据、支持/反驳/不确定三种判定。"
                 "没有先验证据时不要臆造预期效应量、p值或确定的胜负结论。资源规模"
                 "必须能在普通工作站上完成；不要声称解决黎曼猜想等开放难题。"
                 "Datasets/Source/Target 与 Technical Details、Methods、Experiments 中的"

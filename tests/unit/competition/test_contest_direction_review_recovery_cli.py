@@ -19,6 +19,7 @@ from autoresearch.competition.contest_direction_review_recovery_cli import (
     ContestDirectionReviewRecoveryError,
     _BlockedReviewBundle,
     _replay_v5_gap_chain,
+    _revision_requirements,
     _source_block_receipt_payload,
     _stdout_json,
     _validate_v4_reference_lock_payload,
@@ -38,6 +39,14 @@ from autoresearch.competition.model_authorship import record_model_authorship_re
 from autoresearch.llm.client import LLMJsonCompletionResult
 
 _REFERENCES = tuple(f"Locked source {index}" for index in range(1, 6))
+
+
+def test_review_recovery_inherits_verified_result_boundaries() -> None:
+    requirements = "\n".join(_revision_requirements())
+
+    assert "不得引入任何新数字" in requirements
+    assert "替代解释" in requirements
+    assert "Datasets/Source/Target" in requirements
 
 
 def test_cli_stdout_json_is_ascii_safe_for_non_utf8_windows_consoles() -> None:

@@ -559,6 +559,56 @@ def test_materialized_final_plan_bytes_and_corrected_fields_are_reviewed(
     assert '"status": "evidence_corrected_after_qwen_revision"' not in serialized
 
 
+def test_materialized_display_bibliography_preserves_locked_catalog(
+    tmp_path: Path,
+) -> None:
+    artifact_path, _, _ = _pilot(tmp_path)
+    locked_references = (
+        "[1] record_id=paper-a\n题名：Paper A\n正式发表DOI：10.1000/a\nURL：https://doi.org/10.1000/a",
+        "[2] record_id=paper-b\n题名：Paper B\n正式发表DOI：10.1000/b\nURL：https://doi.org/10.1000/b",
+    )
+    materialized = {
+        "document_type": "科学假设与研究计划",
+        "title": "最终物化标题",
+        "abstract": "这是交付给评审器的最终摘要。",
+        "problem_statement": "这是最终物化的问题陈述。",
+        "rationale": "这是最终物化的研究理由。",
+        "technical_details": "这是最终物化的技术细节。",
+        "datasets": {
+            "description": "最终物化数据说明。",
+            "source": "最终物化数据来源。",
+            "target": "最终物化目标特征。",
+        },
+        "methods": "最终物化方法。",
+        "experiments": {
+            "steps": "最终物化实验步骤。",
+            "baselines": "最终物化基线。",
+            "metrics": "最终物化指标。",
+        },
+        "results": "最终物化预实验结果与局限。",
+        "references": [
+            "题名：Paper A；正式 DOI：10.1000/a；URL：https://doi.org/10.1000/a",
+            "题名：Paper B；正式 DOI：10.1000/b；URL：https://doi.org/10.1000/b",
+        ],
+    }
+    materialized_path = tmp_path / "research-plan.json"
+    materialized_path.write_text(
+        json.dumps(materialized, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    result = review_contest_direct_plan_science(
+        final_plan=materialized_path,
+        preexperiment_artifact=artifact_path,
+        reference_catalog=locked_references,
+        output_dir=tmp_path / "review",
+        require_exact_reference_catalog=True,
+        llm_call=lambda **_: _completion(_review_payload()),
+    )
+
+    assert result.final_plan_source_kind == "materialized_final_plan"
+
+
 def test_invalid_content_retains_raw_response_and_receipt_without_retry(
     tmp_path: Path,
 ) -> None:

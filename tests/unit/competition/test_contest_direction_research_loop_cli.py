@@ -590,6 +590,7 @@ def test_full_mock_loop_uses_scientific_order_and_real_adapter(
     def final_review(**kwargs: Any) -> Any:
         calls.append("independent-final-review")
         assert callable(kwargs["llm_call"])
+        assert Path(kwargs["final_plan"]).name == "research-plan.json"
         recalled_contexts.append(kwargs["derived_memory_context"])
         root = Path(kwargs["output_dir"])
         root.mkdir(parents=True)

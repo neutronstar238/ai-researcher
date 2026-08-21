@@ -1142,7 +1142,7 @@ def run_contest_direction_research_loop(
         checkpoint_root=root,
     ) as context_completion:
         final_review = scientific_review_runner(
-            final_plan=plan,
+            final_plan=rendered.json_path,
             preexperiment_artifact=pilot_path,
             reference_catalog=final_reference_catalog,
             selected_skill_contexts=tuple(
@@ -4004,7 +4004,7 @@ def _resume_existing_direction_research_loop(
             checkpoint_root=root,
         ) as context_completion:
             final_review = scientific_review_runner(
-                final_plan=plan,
+                final_plan=rendered.json_path,
                 preexperiment_artifact=pilot_path,
                 reference_catalog=final_reference_catalog,
                 selected_skill_contexts=tuple(

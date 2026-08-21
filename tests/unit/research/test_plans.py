@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 from autoresearch.research import (
@@ -6,8 +7,33 @@ from autoresearch.research import (
     generate_research_plan,
     render_research_plan_tex,
 )
+from autoresearch.research import (
+    plans as plans_module,
+)
 from autoresearch.research.plans import METHOD_ALIGNED_SEED_NOT_FOUND_REF
 from autoresearch.schemas import ResearchCandidate, ResearchPlan, ValidationStatus
+
+
+def test_pdf_page_count_tolerates_non_utf8_pdfinfo_output(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    pdf_path = tmp_path / "research-plan.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n")
+
+    monkeypatch.setattr(plans_module.shutil, "which", lambda _name: "pdfinfo")
+    monkeypatch.setattr(
+        plans_module.subprocess,
+        "run",
+        lambda *args, **_kwargs: subprocess.CompletedProcess(
+            args=args[0],
+            returncode=0,
+            stdout=b"Title: \xd6\xd0\xce\xc4\nPages:          7\n",
+            stderr=b"",
+        ),
+    )
+
+    assert plans_module._pdf_page_count(pdf_path) == 7
 
 
 def _candidate(title: str = "AI-Researcher system proposal") -> ResearchCandidate:

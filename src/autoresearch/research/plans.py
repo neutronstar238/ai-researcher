@@ -897,12 +897,11 @@ def _pdf_page_count(pdf_path: Path) -> int | None:
     result = subprocess.run(
         [pdfinfo, str(pdf_path)],
         capture_output=True,
-        text=True,
         check=False,
     )
     if result.returncode != 0:
         return None
-    for line in result.stdout.splitlines():
+    for line in _process_output(result.stdout).splitlines():
         if line.startswith("Pages:"):
             _, value = line.split(":", 1)
             try:

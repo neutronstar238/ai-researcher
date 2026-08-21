@@ -43,6 +43,7 @@ from autoresearch.competition.contest_direction_merged_literature import (
     ContestDirectionMergedLiteratureArtifact,
 )
 from autoresearch.competition.contest_direction_research_loop_cli import (
+    _REVISION_RESULT_REQUIREMENTS,
     _load_rendered_plan,
     _read_json,
     _verify_rendered_pdf,
@@ -1217,6 +1218,7 @@ def _revision_requirements() -> tuple[str, ...]:
         "逐项响应终审的全部重大问题，并在不损害证据边界时处理次要问题。",
         "评审批评不是新增科学事实；真实观察只能来自原先已核验的探索性预实验。",
         "保留锁定参考目录，未执行工作必须使用计划语气，截止到研究计划。",
+        *_REVISION_RESULT_REQUIREMENTS,
     )
 
 

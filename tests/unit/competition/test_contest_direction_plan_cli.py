@@ -180,7 +180,7 @@ def _plan_artifact(*, references: tuple[str, ...]) -> ContestDirectPlanArtifact:
         experiments="按冻结时间切分运行基线、候选方法、消融和失败分析。",
         baselines="无解释约束模型、简单统计检测器和参数量匹配模型。",
         metrics="检测性能、解释稳定性、运行时间和内存占用。",
-        results="尚未执行预实验；将按支持、反驳或无法区分三类判据解释。",
+        results="本交付范围为研究计划；将按支持、反驳或无法区分三类判据解释。",
         references=references,
     )
     input_hash = "6" * 64
@@ -374,8 +374,7 @@ def test_mock_end_to_end_preserves_order_provenance_and_partial_source_failure(
         "page_count_method": "pypdf-test",
         "maximum_allowed_pages": 20,
     }
-    assert report["independent_scientific_review"]["insertion_point_ready"] is True
-    assert report["independent_scientific_review"]["must_not_delete_or_rewrite_plan"] is True
+    assert "independent_scientific_review" not in report
     assert report["file_inventory"]
     assert all("sha256" in item for item in report["file_inventory"])
     persisted = json.loads((output / "delivery-report.json").read_text(encoding="utf-8"))

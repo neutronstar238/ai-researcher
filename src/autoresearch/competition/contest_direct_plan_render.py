@@ -894,16 +894,8 @@ def _public_plan_projection(payload: Mapping[str, Any]) -> dict[str, Any]:
         },
         "results": _self_contained_prose(payload["results"]),
         "references": [
-            (
-                projected_reference.citation
-                + (
-                    f"；URL：{projected_reference.url}"
-                    if projected_reference.url is not None
-                    else ""
-                )
-            )
+            project_reference_for_display(reference)
             for reference in _as_items(payload["references"])
-            for projected_reference in (_project_reference_for_display(reference),)
         ],
     }
     specified_direction = payload.get("specified_direction")
@@ -1602,6 +1594,15 @@ def _project_reference_for_display(reference: Any) -> _DisplayReference:
     return _self_contained_reference(
         citation="；".join(parts),
         url=fields.get("url"),
+    )
+
+
+def project_reference_for_display(reference: Any) -> str:
+    """Return the exact public bibliography entry used by every rendered view."""
+
+    projected = _project_reference_for_display(reference)
+    return projected.citation + (
+        f"；URL：{projected.url}" if projected.url is not None else ""
     )
 
 

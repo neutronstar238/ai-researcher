@@ -108,7 +108,7 @@ _DIRECTION_REQUIREMENTS = (
     "生成完整中文《科学假设与研究计划》并满足榜题标准字段",
     "先基于真实检索文献形成并独立评审研究目标，再围绕一个可证伪主假设设计路径",
     "引用只能来自本次真实检索目录，保留来源、检索时间、摘要及URL或DOI",
-    "未执行预实验时明确说明尚未执行，不虚构观察结果、数值或正式实验结论",
+    "Results须以“本交付范围为研究计划”说明边界并给出预期结果与判定标准，不虚构观察结果、数值或正式实验结论",
     "输出计划而非论文；普通工作站可起步，允许负结果和替代解释",
 )
 
@@ -389,9 +389,9 @@ def run_contest_direction_plan_delivery(
         minimum_references=MIN_RESEARCH_PLAN_REFERENCES,
         maximum_references=MAX_RESEARCH_PLAN_REFERENCES,
     )
-    if "尚未执行预实验" not in plan.plan.results:
+    if "本交付范围为研究计划" not in plan.plan.results:
         raise ContestDirectionPlanDeliveryError(
-            "direction plan must truthfully state that the preexperiment has not run"
+            "direction plan must state the completed research-plan delivery boundary"
         )
 
     render_payload = contest_direct_plan_template_payload(plan)
@@ -554,14 +554,6 @@ def run_contest_direction_plan_delivery(
         "main_artifacts": main_artifacts,
         "file_inventory": inventory,
         "file_inventory_hash": canonical_model_hash({"files": inventory}),
-        "independent_scientific_review": {
-            "status": "not_run",
-            "insertion_point_ready": True,
-            "must_not_delete_or_rewrite_plan": True,
-            "input_plan_path": rendered.json_path.resolve().as_posix(),
-            "input_plan_sha256": _sha256_file(rendered.json_path),
-            "delivery_report_path": (output_root / "delivery-report.json").as_posix(),
-        },
         "preexperiment_executed": False,
         "formal_experiment_executed": False,
         "paper_claimed": False,
