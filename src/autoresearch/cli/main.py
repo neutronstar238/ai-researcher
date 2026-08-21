@@ -564,6 +564,7 @@ def doctor() -> None:
     """Check local scaffold health without contacting external services."""
 
     config = SystemConfig()
+    vault_path = config.knowledge_base.vault_path
     checks = [
         (
             "python >= 3.10",
@@ -590,11 +591,6 @@ def doctor() -> None:
             config.project_root.exists(),
             str(config.project_root),
         ),
-        (
-            "knowledge vault",
-            config.knowledge_base.vault_path.exists(),
-            str(config.knowledge_base.vault_path),
-        ),
     ]
     dependency_check = diagnose_requests_dependency_set()
 
@@ -603,6 +599,13 @@ def doctor() -> None:
         label = "OK" if ok else "FAIL"
         typer.echo(f"[{label}] {name}: {detail}")
         failed = failed or not ok
+    if vault_path.exists():
+        typer.echo(f"[OK] knowledge vault: {vault_path}")
+    else:
+        typer.echo(
+            f"[INFO] knowledge vault: not initialized at {vault_path}; "
+            "run obsidian-setup when needed"
+        )
     typer.echo(
         f"[{dependency_check.status.value}] "
         f"{dependency_check.name}: {dependency_check.detail}"

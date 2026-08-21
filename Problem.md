@@ -7539,3 +7539,15 @@ update a factual problem entry below.
 - Resolution: 在形成内容哈希和构造模型前，将缺失引用次数统一归一化为 0；恢复“系统消息 + 显式输入 + 派工消息，选中 Skill 再增加一条独立只读上下文”的 [3, 4] 断言，并增加空值归一化回归断言。
 - Verification: python -m pytest tests/unit/research/test_adaptive_capabilities.py --no-cov -p no:cacheprovider -q 为 3 passed；python -m ruff check src/autoresearch/research/adaptive_capabilities.py tests/unit/research/test_adaptive_capabilities.py 通过。后续 GitHub Actions 结果记录在对应 Agent 条目。
 - Next action: 无。
+
+### P-20260821-077 - CI checkout 缺少本地 Vault 时 doctor 错误退出
+
+- Status: Resolved
+- Severity: High（阻断 GitHub Actions smoke 测试）
+- Discovered: 2026-08-21 13:29 +08:00
+- Source: 本地按 CI 命令执行 tests/smoke tests/unit，并结合用户确认 autoresearch-vault/ 是按运行场景生成且不纳入 Git。
+- Symptom: doctor 将默认 autoresearch-vault/ 不存在标为 FAIL 并以 1 退出；干净 checkout 因设计上不包含本地知识库，必然导致 test_cli_doctor_smoke 失败。
+- Impact: 即使代码、配置解析和依赖均健康，CI 仍会在首个 CLI smoke 测试退出，且会错误暗示运行型知识库必须提交到仓库。
+- Resolution: 保留 Vault 存在时的 OK 状态；缺失时改为 INFO 并提示按需运行 obsidian-setup，不计入 doctor 的致命失败。Python、包导入、配置解析、项目根目录和依赖诊断仍维持原失败语义。
+- Verification: python -m pytest tests/smoke/test_cli.py tests/unit/cli/test_main.py --no-cov -p no:cacheprovider -q 为 115 passed；相关 ruff 检查通过；新增隔离临时目录回归测试明确覆盖缺失 Vault 的退出码和提示。
+- Next action: 无。

@@ -17802,3 +17802,22 @@ This file defines the project development standard for coding agents and records
 - Problems: 新增并解决 P-20260821-076。
 - Follow-up: 等待并核验远端 GitHub Actions 全流程。
 - Git: 作为已授权 main 发布的 CI 修复追加一个聚焦提交。
+
+### 2026-08-21 13:33 +08:00 - Codex /root - doctor 对未初始化本地 Vault 的 CI 修复
+
+- Request: 修复仓库 CI，同时保持用户确认的范围：autoresearch-vault/ 为运行时本地知识库，不计入 Git，缺失不应视为代码故障。
+- Files changed:
+  - `src/autoresearch/cli/main.py`（未初始化 Vault 由致命检查改为信息提示）
+  - `tests/unit/cli/test_main.py`（环境无关断言及缺失 Vault 回归测试）
+  - `Problem.md`（新增并解决 P-20260821-077）
+  - `Agent.md`（本条记录）
+- Summary:
+  - 本地执行 CI 测试集合时，首个失败为 test_cli_doctor_smoke；输出显示唯一失败项是干净 checkout 中不存在 autoresearch-vault/。
+  - doctor 现在对已有 Vault 继续输出 OK；对尚未初始化的 Vault 输出 INFO 和按需 setup 指引并保持退出码 0。其他真正的环境健康检查仍会阻断。
+  - 没有创建、复制或提交任何 Vault 内容，也没有改变知识库作为系统共享记忆底座的运行时定位。
+- Verification:
+  - `python -m pytest tests/smoke/test_cli.py tests/unit/cli/test_main.py --no-cov -p no:cacheprovider -q` = 115 passed。
+  - `python -m ruff check src/autoresearch/cli/main.py tests/unit/cli/test_main.py` = All checks passed。
+- Problems: 新增并解决 P-20260821-077。
+- Follow-up: 推送后重新核验 GitHub Actions 完整 ruff、mypy、smoke 和 unit 流程。
+- Git: 作为已授权 main 发布的第二个聚焦 CI 修复提交。

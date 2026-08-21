@@ -47,8 +47,20 @@ def test_doctor_command_checks_local_scaffold() -> None:
     assert result.exit_code == 0
     assert "[OK] python >= 3.10" in result.stdout
     assert "[OK] config parser" in result.stdout
-    assert "[OK] knowledge vault" in result.stdout
+    assert "knowledge vault:" in result.stdout
     assert "requests dependency set:" in result.stdout
+
+
+def test_doctor_treats_missing_local_vault_as_advisory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "[INFO] knowledge vault: not initialized at autoresearch-vault" in result.stdout
 
 
 def test_init_demo_creates_readme_and_config(tmp_path: Path) -> None:
