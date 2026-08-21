@@ -7587,3 +7587,15 @@ update a factual problem entry below.
 - Resolution: 制品下载端点对 .md/.markdown 显式设置 text/markdown 与 UTF-8，不再依赖系统 MIME 数据库。
 - Verification: API 单元测试 79 passed；ruff 与差异检查通过。
 - Next action: 无。
+
+### P-20260821-081 - v2 Web 未完整部署且运行中阶段被标为待执行
+
+- Status: Resolved
+- Severity: High（生产 UI 与实际运行状态不一致）
+- Discovered: 2026-08-21 16:02 +08:00
+- Source: 生产站点 DOM、静态资源哈希、运行 API 与服务端产物时间线交叉核验。
+- Symptom: 服务器仍提供旧版固定静态资源；切换 v2 后浏览器继续命中旧 app.js 缓存。API 仅识别已完成检查点，使正在执行的首个未完成阶段显示为“待执行”；运行详情还把大量产物平铺，模型响应与调用路径难以辨认。
+- Impact: 用户看到的界面并非 source_v2，且阶段状态、模型输出与调用链可见性均会误导运行判断。
+- Resolution: 构建同步同时生成 web/static 兼容目录并为固定资源 URL 添加内容哈希查询参数；API 对活跃运行的首个未完成阶段返回 running；详情抽屉按模型输出、调用路径和其他产物分区，提供结构化模型正文预览并放宽布局。
+- Verification: 前端 238 passed；API 80 passed；ruff 通过；Vite 生产构建通过；生产部署后以 Chrome 验收。
+- Next action: 无。

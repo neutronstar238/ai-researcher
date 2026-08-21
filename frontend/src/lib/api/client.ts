@@ -41,6 +41,15 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
+export async function requestText(path: string): Promise<string> {
+  const response = await fetch(path, { headers: { Accept: "application/json, text/plain" } });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText || "产物读取失败");
+  }
+  return text;
+}
+
 async function readJson(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) {
@@ -78,6 +87,7 @@ export const apiClient = {
     (await request<{ run_id: string; stages: StageRecord[] }>(`/api/runs/${encodeURIComponent(id)}/stages`)).stages,
   getArtifacts: async (id: string) =>
     (await request<{ run_id: string; artifacts: ArtifactRecord[] }>(`/api/runs/${encodeURIComponent(id)}/artifacts`)).artifacts,
+  getArtifactText: (url: string) => requestText(url),
   selectedSkills: (id: string) =>
     request<SelectedSkillsResponse>(`/api/runs/${encodeURIComponent(id)}/skills`),
   createRun: (input: RunCreateInput) =>

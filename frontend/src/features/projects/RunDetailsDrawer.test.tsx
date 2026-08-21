@@ -14,6 +14,7 @@ vi.mock("../../lib/api/client", async (importOriginal) => {
       createBatch: vi.fn(),
       createRun: vi.fn(),
       evolution: vi.fn(),
+      getArtifactText: vi.fn(),
       getRun: vi.fn(),
       getStages: vi.fn(),
       listBatches: vi.fn(),
@@ -48,6 +49,7 @@ beforeEach(() => {
   vi.mocked(apiClient.listRuns).mockResolvedValue([]);
   vi.mocked(apiClient.listBatches).mockResolvedValue([]);
   vi.mocked(apiClient.getStages).mockResolvedValue([]);
+  vi.mocked(apiClient.getArtifactText).mockResolvedValue("{}");
   vi.mocked(apiClient.getRun).mockResolvedValue(runFixture());
 });
 
@@ -76,6 +78,61 @@ test("renders all twelve server stages and uses artifact URLs verbatim without p
   expect(artifact).toHaveAttribute("rel", "noreferrer");
   expect(drawer).not.toHaveTextContent("runs/research-api");
   expect(drawer).not.toHaveTextContent("output_dir");
+});
+
+test("shows model outputs inline and summarizes their logical call path", async () => {
+  const user = userEvent.setup();
+  const responseArtifact = {
+    ...artifactFixtures()[0]!,
+    relative_path: "literature/refinement/direction-focus-selection-response.json",
+    bytes: 2048,
+    url: "/api/runs/run-fixture123/artifacts/literature/refinement/direction-focus-selection-response.json",
+  };
+  const attemptArtifact = {
+    ...artifactFixtures()[0]!,
+    relative_path: "checkpoints/provider-call-attempts/focus-selection/call-1/attempt-01-reservation.json",
+    url: "/api/runs/run-fixture123/artifacts/checkpoints/provider-call-attempts/focus-selection/call-1/attempt-01-reservation.json",
+  };
+  const stages = stageFixtures(1);
+  stages[1] = { ...stages[1]!, status: "running" };
+  vi.mocked(apiClient.getRun).mockResolvedValue(runFixture({
+    status: "running",
+    stages,
+    artifacts: [responseArtifact, attemptArtifact, artifactFixtures()[2]!],
+  }));
+  vi.mocked(apiClient.getArtifactText).mockResolvedValue(JSON.stringify({
+    completion: {
+      model_name: "qwen-test",
+      parsed_json: { selected_candidate_number: 1, rationale: "真实模型输出" },
+    },
+  }));
+  renderAppAt("/projects?run=run-fixture123");
+
+  const drawer = await screen.findByRole("dialog", { name: "运行详情" });
+  expect(drawer).toHaveAttribute("data-width", "wide");
+  expect(await within(drawer).findAllByText("执行中")).toHaveLength(2);
+  expect(within(drawer).getByText("研究阶段 → 模型请求 × 1 → 模型响应 × 1 → 阶段检查点")).toBeInTheDocument();
+  await user.click(within(drawer).getByRole("button", { name: /direction-focus-selection-response/ }));
+
+  expect(await within(drawer).findByText("调用模型：qwen-test")).toBeInTheDocument();
+  expect(within(drawer).getByText(/真实模型输出/)).toBeInTheDocument();
+  expect(apiClient.getArtifactText).toHaveBeenCalledWith(responseArtifact.url);
+  expect(within(drawer).getByText("研究计划（1）")).toBeInTheDocument();
+  expect(within(drawer).queryByText(attemptArtifact.relative_path)).not.toBeInTheDocument();
+});
+
+test("shows the first pending stage as active while an older API process is still running", async () => {
+  vi.mocked(apiClient.getRun).mockResolvedValue(runFixture({
+    status: "running",
+    stages: stageFixtures(3),
+  }));
+  renderAppAt("/projects?run=run-fixture123");
+
+  const drawer = await screen.findByRole("dialog", { name: "运行详情" });
+  const fourthStage = await within(drawer).findByRole("listitem", { name: "阶段 4 planning-literature-lock" });
+  const fifthStage = await within(drawer).findByRole("listitem", { name: "阶段 5 skill-routing" });
+  expect(within(fourthStage).getByText("执行中")).toBeInTheDocument();
+  expect(fifthStage).toHaveTextContent("待执行");
 });
 
 test.each([

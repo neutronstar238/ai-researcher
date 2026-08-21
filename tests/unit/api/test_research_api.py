@@ -450,6 +450,46 @@ async def test_local_api_runs_existing_loop_and_resumes_without_paid_provider(
 
 
 @pytest.mark.asyncio
+async def test_active_run_marks_first_incomplete_stage_as_running(tmp_path: Path) -> None:
+    service = ResearchApiService(
+        work_root=tmp_path / "api-runs",
+        config_path=tmp_path / "config.yaml",
+        env_path=tmp_path / ".env",
+        vault_root=tmp_path / "vault",
+    )
+    client = TestClient(TestServer(create_app(service=service)))
+    await client.start_server()
+    try:
+        created_response = await client.post(
+            "/api/runs", json={"direction": "阶段状态测试", "dry_run": True}
+        )
+        created = await created_response.json()
+        job = service._jobs[created["run_id"]]
+        job["status"] = "running"
+        output = Path(job["output_dir"])
+        evidence = output / "literature" / "broad" / "direction-literature.json"
+        evidence.parent.mkdir(parents=True, exist_ok=True)
+        evidence.write_text('{"source":"test"}\n', encoding="utf-8")
+        record_completed_stage(
+            root=output,
+            ordinal=1,
+            stage_name="broad-literature-query",
+            stage_input_hash="a" * 64,
+            artifacts=(evidence,),
+        )
+
+        response = await client.get(f"/api/runs/{created['run_id']}/stages")
+        assert response.status == 200
+        stages = (await response.json())["stages"]
+        assert stages[0]["status"] == "completed"
+        assert stages[1]["status"] == "running"
+        assert stages[2]["status"] == "pending"
+        assert sum(stage["status"] == "running" for stage in stages) == 1
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_api_never_marks_an_unvalidated_runner_result_completed(tmp_path: Path) -> None:
     service = ResearchApiService(
         work_root=tmp_path / "api-runs",

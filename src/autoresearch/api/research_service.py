@@ -450,20 +450,26 @@ class ResearchApiService:
                     if verified is not None:
                         completed[(ordinal, name)] = verified
         rows: list[dict[str, Any]] = []
+        active_stage_assigned = False
+        run_is_active = job.get("status") in {"running", "cancel_requested"}
         for ordinal, name, label in STAGES:
             receipt = completed.get((ordinal, name))
+            status = (
+                "completed"
+                if receipt is not None
+                else "invalid"
+                if (ordinal, name) in invalid
+                else "pending"
+            )
+            if run_is_active and status == "pending" and not active_stage_assigned:
+                status = "running"
+                active_stage_assigned = True
             rows.append(
                 {
                     "ordinal": ordinal,
                     "stage_name": name,
                     "label_zh": label,
-                    "status": (
-                        "completed"
-                        if receipt is not None
-                        else "invalid"
-                        if (ordinal, name) in invalid
-                        else "pending"
-                    ),
+                    "status": status,
                     "artifact_count": (
                         len(receipt.get("artifacts", [])) if receipt is not None else 0
                     ),

@@ -17854,3 +17854,13 @@ This file defines the project development standard for coding agents and records
 - Problems: 新增并解决 P-20260821-080。
 - Follow-up: 推送并核验同一精简 CI。
 - Git: 追加一个仅包含生产 MIME 修复和规定日志的聚焦提交。
+
+### 2026-08-21 16:45 +08:00 - Codex /root - v2 Web 强制覆盖与运行详情可观测性修复
+
+- Request: 核验服务器是否真正部署 source_v2 UI，并修复阶段状态、模型实际输出、调用路径和详情界面拥挤问题。
+- Files changed: `frontend/` 的运行详情、API 客户端、类型、抽屉样式与构建同步脚本；`src/autoresearch/api/research_service.py`；对应 API/前端测试；构建后的 `web/` 与 API 静态资源；`Problem.md`、`Agent.md`。
+- Summary: 修复 v2 静态资源部署与缓存命中；活跃运行的首个未完成阶段现在显示“执行中”；模型结构化正文可在详情中直接预览，调用路径按阶段汇总，其余公开产物折叠分类；宽抽屉与双列阶段布局降低拥挤。
+- Verification: `npm run test`（frontend）= 238 passed；API 单元测试 = 80 passed；ruff = All checks passed；`npm run build` 成功。
+- Problems: 新增并解决 P-20260821-081。
+- Follow-up: 推送 main、部署后端与 Web，并通过生产 Chrome 页面复核。
+- Git: 用户已授权直接更新 main；提交严格排除 `.env`、`runs/`、Vault、缓存与本地产物。

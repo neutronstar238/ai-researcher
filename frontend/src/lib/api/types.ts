@@ -8,7 +8,7 @@ export type RunStatus =
   | "interrupted"
   | "dry_run";
 
-export type StageStatus = "completed" | "pending" | "invalid";
+export type StageStatus = "completed" | "running" | "pending" | "invalid";
 
 export interface StageRecord {
   ordinal: number;

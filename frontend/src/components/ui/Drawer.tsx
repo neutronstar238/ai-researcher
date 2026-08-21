@@ -5,11 +5,12 @@ import { FOCUSABLE_SELECTOR, registerOverlay, type OverlayHandle } from "./overl
 export interface DrawerProps {
   open: boolean;
   title: string;
+  wide?: boolean;
   onClose(): void;
   children: ReactNode;
 }
 
-export function Drawer({ open, title, onClose, children }: DrawerProps) {
+export function Drawer({ open, title, wide = false, onClose, children }: DrawerProps) {
   const titleId = useId();
   const drawerRef = useRef<HTMLElement>(null);
   const overlayRef = useRef<OverlayHandle | null>(null);
@@ -61,6 +62,7 @@ export function Drawer({ open, title, onClose, children }: DrawerProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         className="drawer"
+        data-width={wide ? "wide" : "default"}
         onKeyDown={trapFocus}
       >
         <div className="dialog-heading">
