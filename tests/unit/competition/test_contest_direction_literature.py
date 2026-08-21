@@ -581,16 +581,28 @@ def test_v4_query_plan_rejects_fifth_alternative_before_search_without_retry() -
     assert search_calls == []
 
 
+def test_v4_query_plan_completes_missing_mechanism_and_counterevidence_roles() -> None:
+    projected = literature_module._project_queries(
+        {"queries": list(V3_QUERY_PLAN[:2])},
+        compiler_version="source-query-compiler-v4",
+    )
+
+    assert projected[:2] == V3_QUERY_PLAN[:2]
+    assert len(projected) == 4
+    assert "mechanism" in projected[2]
+    assert "limitations" in projected[3]
+
+
 @pytest.mark.parametrize(
     "queries",
-    [V3_QUERY_PLAN[:3], (*V3_QUERY_PLAN, "(extra OR surplus) AND (query OR phrase)")],
+    [V3_QUERY_PLAN[:1], (*V3_QUERY_PLAN, "(extra OR surplus) AND (query OR phrase)")],
 )
-def test_v4_query_plan_rejects_non_exact_query_count_before_search(
+def test_v4_query_plan_rejects_unusable_query_count_before_search(
     queries: tuple[str, ...],
 ) -> None:
     search_calls: list[str] = []
 
-    with pytest.raises(ContestDirectionLiteratureError, match="requires exactly 4 queries"):
+    with pytest.raises(ContestDirectionLiteratureError, match="requires 2 to 4 queries"):
         retrieve_contest_direction_literature(
             direction="一个开放研究方向",
             searchers={

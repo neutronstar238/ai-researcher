@@ -7551,3 +7551,27 @@ update a factual problem entry below.
 - Resolution: 保留 Vault 存在时的 OK 状态；缺失时改为 INFO 并提示按需运行 obsidian-setup，不计入 doctor 的致命失败。Python、包导入、配置解析、项目根目录和依赖诊断仍维持原失败语义。
 - Verification: python -m pytest tests/smoke/test_cli.py tests/unit/cli/test_main.py --no-cov -p no:cacheprovider -q 为 115 passed；相关 ruff 检查通过；新增隔离临时目录回归测试明确覆盖缺失 Vault 的退出码和提示。
 - Next action: 无。
+
+### P-20260821-078 - v4 查询数量不完整会中断生产检索
+
+- Status: Resolved
+- Severity: High（会阻断方向检索与后续 Skill 演化）
+- Discovered: 2026-08-21 13:42 +08:00
+- Source: source_v2 覆盖后的 Skill 演化运行与 v4 查询编译器生产路径复核。
+- Symptom: 查询模型返回 2 或 3 条有效角色查询时，生产代码直接以“必须恰好 4 条”中断；同时 Boolean 运算符 or/not 会进入相关性词元，可能导致完整摘要筛选不足。
+- Impact: 有效的核心对象与方法查询无法进入真实文献检索，后续证据排序和 Skill 演化全部停止。
+- Resolution: v4 编译器现在从已验证的核心对象组确定性补齐缺失的机制/零模型与反证/局限角色，不新增模型调用或具体科学对象；1 条或超过 4 条仍拒绝。相关性词元过滤补入 or/not。
+- Verification: 检索编译与 Skill 演化定向测试 42 passed；精简后的仓库内可复现测试集 917 passed。
+- Next action: 无。
+
+### P-20260821-079 - CI 混入未入库运行制品与本机工具验收
+
+- Status: Resolved
+- Severity: High（干净 checkout 必然产生大量伪失败）
+- Discovered: 2026-08-21 13:57 +08:00
+- Source: GitHub Actions 运行 32451040950。
+- Symptom: 原 CI 无差别运行全部 smoke/unit，其中多组历史验收测试直接读取未纳入 Git 的 runs/、论文产物和本机 TeX/开发工具；远端因此在 3106 项通过后仍出现 87 个失败与 7 个错误。
+- Impact: CI 状态不能代表代码质量，并会把用户明确排除的运行数据和额外交付材料误判为仓库必需依赖。
+- Resolution: CI 收敛为干净仓库可复现的核心后端、API、CLI、内核、知识逻辑、文献、LLM、检索、计划渲染与 Skill 演化测试；真实 TeX 编译仅在 runner 存在 latexmk/xelatex 时执行。
+- Verification: 与新 CI 同范围的本地测试为 917 passed；ruff 和差异检查通过。
+- Next action: 无。

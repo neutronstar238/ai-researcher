@@ -119,7 +119,7 @@ def test_topic_candidates_must_span_three_executable_programs(
                 "candidates": candidates,
                 "selected_candidate_id": "C001",
                 "selection_rationale": (
-                    "This candidate is falsifiable and fits the deadline while preserving "
+                    "This candidate is falsifiable and feasible while preserving "
                     "a task-level independent unit."
                 ),
             }
@@ -168,7 +168,7 @@ def test_one_run_selects_executes_writes_manuscript_and_invokes_pdf(
                     "selected_candidate_id": "C001",
                     "selection_rationale": (
                         "The selected program has ten independent tasks, a direct "
-                        "falsification rule, and the smallest execution risk before deadline."
+                        "falsification rule, and the smallest execution risk."
                     ),
                 }
             )
@@ -383,7 +383,6 @@ def _sprint_spec(tmp_path: Path, *, sprint_id: str) -> Any:
             "Select a falsifiable local systems experiment and generate its complete "
             "evidence-bound report without post-start manual research decisions."
         ),
-        deadline=datetime(2026, 8, 15, 23, 59, tzinfo=timezone.utc),
         route_a_campaign_path=route,
         llm_config_path=llm,
     )
@@ -462,7 +461,7 @@ def _selection() -> SprintTopicSelection:
         selected_candidate_id="C001",
         selection_rationale=(
             "The selected program has the clearest task-level falsification rule and "
-            "fits the local execution deadline."
+            "fits the local execution boundary."
         ),
         provider="ollama-openai-compatible",
         base_url="http://127.0.0.1:11434/v1",
@@ -501,7 +500,7 @@ def _preregistration(
         benchmark_id=benchmark_root.name,
         project_id="test-project",
         created_at=datetime.now(timezone.utc),
-        deadline=datetime(2026, 8, 15, 23, 59, tzinfo=timezone.utc),
+        deadline=datetime.max.replace(tzinfo=timezone.utc),
         route_a_campaign_path=(tmp_path / "route-a").as_posix(),
         route_a_manifest_sha256="c" * 64,
         route_a_lineage_hash="d" * 64,

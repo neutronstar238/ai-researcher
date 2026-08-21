@@ -101,7 +101,6 @@ class DeterministicSprintFixture:
                 "Select a falsifiable local systems experiment and generate a complete "
                 "evidence-bound report without post-start manual research decisions."
             ),
-            deadline=datetime(2026, 8, 15, 23, 59, tzinfo=timezone.utc),
             route_a_campaign_path=route,
             llm_config_path=llm,
         )
@@ -241,7 +240,7 @@ class DeterministicSprintFixture:
             benchmark_id=benchmark_dir.name,
             project_id="task262-sprint-migration",
             created_at=datetime.now(timezone.utc),
-            deadline=datetime(2026, 8, 15, 23, 59, tzinfo=timezone.utc),
+            deadline=datetime.max.replace(tzinfo=timezone.utc),
             route_a_campaign_path=(self.root / "route-a").as_posix(),
             route_a_manifest_sha256="c" * 64,
             route_a_lineage_hash="d" * 64,

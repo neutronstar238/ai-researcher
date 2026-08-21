@@ -176,7 +176,7 @@ def _fixture_preregistration(
         root,
         benchmark_id=root.name,
         project_id="test-project",
-        deadline=datetime(2026, 8, 15, 23, 59, tzinfo=timezone.utc),
+        deadline=datetime.max.replace(tzinfo=timezone.utc),
         route_a_campaign_path=route_a,
         route_a_manifest_sha256=file_hash(route_manifest),
         route_a_lineage_hash="a" * 64,

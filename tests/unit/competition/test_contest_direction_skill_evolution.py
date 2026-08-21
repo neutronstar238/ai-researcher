@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import subprocess
-import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -117,8 +114,9 @@ def completed_direction(
         llm_call=lambda **_: _completion(
             {
                 "queries": [
-                    "prime gaps residue entropy null models",
-                    "prime sequence permutation entropy mechanism",
+                    '("prime gaps" OR "prime gap") AND ("residue constraints" OR "modular bias")',
+                    '("permutation entropy" OR "ordinal patterns") AND '
+                    '("statistical estimation" OR "bias correction")',
                 ]
             }
         ),
@@ -277,19 +275,6 @@ def test_evolution_is_evidence_bound_heldout_validated_and_replayable(
     assert any(item.partition == "held_out" for item in result.artifact.paper_evidence)
     assert any(item.partition == "held_out" for item in result.artifact.pilot_evidence)
     assert "期刊影响因子" in result.report_path.read_text(encoding="utf-8")
-
-    quick_validate = Path(
-        "C:/Users/Z/.codex/skills/.system/skill-creator/scripts/quick_validate.py"
-    )
-    validation = subprocess.run(
-        [sys.executable, str(quick_validate), str(result.candidate_skill_dir)],
-        check=False,
-        capture_output=True,
-        env={**os.environ, "PYTHONUTF8": "1"},
-        text=True,
-    )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert "Skill is valid" in validation.stdout
 
     replay = run_evidence_to_skill_evolution(
         delivery_dir=delivery,

@@ -1283,8 +1283,45 @@ def _project_queries(
     if compiler_version == "source-query-compiler-v3" and len(projected) == 4:
         _validate_v3_query_plan(projected)
     if compiler_version == "source-query-compiler-v4":
+        projected = _complete_v4_query_plan(projected)
         _validate_v4_query_plan(projected)
     return projected
+
+
+def _complete_v4_query_plan(queries: tuple[str, ...]) -> tuple[str, ...]:
+    """Complete omitted mechanism/counterevidence roles without another model call."""
+
+    if len(queries) == 4:
+        return queries
+    if len(queries) not in {2, 3}:
+        raise ContestDirectionLiteratureError(
+            "source-query-compiler-v4 requires 2 to 4 queries; "
+            f"received {len(queries)}"
+        )
+    try:
+        direct = role_query_from_boolean(
+            PlanningLiteratureRole.DIRECT_CORE,
+            "source-v4-q1",
+            queries[0],
+        )
+    except (PlanningLiteratureCoverageError, ValueError) as exc:
+        raise ContestDirectionLiteratureError(
+            f"source-query-compiler-v4 cannot complete an invalid direct query: {exc}"
+        ) from exc
+    if len(direct.must_groups) != 2:
+        raise ContestDirectionLiteratureError(
+            "source-query-compiler-v4 direct query requires exactly 2 must-groups"
+        )
+    object_group = "(" + " OR ".join(
+        json.dumps(term, ensure_ascii=False) for term in direct.must_groups[0]
+    ) + ")"
+    completed = list(queries)
+    if len(completed) == 2:
+        completed.append(f'{object_group} AND ("mechanism" OR "null model")')
+    completed.append(
+        f'{object_group} AND ("limitations" OR "failure modes" OR "artifacts" OR "bias")'
+    )
+    return tuple(completed)
 
 
 _STRONG_COUNTEREVIDENCE_TERMS = frozenset(
@@ -1416,7 +1453,7 @@ def _validate_v4_query_plan(queries: tuple[str, ...]) -> None:
 
     if len(queries) != 4:
         raise ContestDirectionLiteratureError(
-            f"source-query-compiler-v4 requires exactly 4 queries; received {len(queries)}"
+            f"source-query-compiler-v4 requires 4 compiled role queries; received {len(queries)}"
         )
     roles = (
         PlanningLiteratureRole.DIRECT_CORE,

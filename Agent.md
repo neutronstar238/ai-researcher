@@ -17821,3 +17821,26 @@ This file defines the project development standard for coding agents and records
 - Problems: 新增并解决 P-20260821-077。
 - Follow-up: 推送后重新核验 GitHub Actions 完整 ruff、mypy、smoke 和 unit 流程。
 - Git: 作为已授权 main 发布的第二个聚焦 CI 修复提交。
+
+### 2026-08-21 14:01 +08:00 - Codex /root - 甲方交付清理、v4 生产补全与 CI 收敛
+
+- Request: 移除开发期模拟 Sprint 截止时间痕迹；修复 v4 查询不足暴露出的生产问题而非只改测试；缩减 CI 为甲方仓库可复现的必要检查，并完成最终 main 提交。
+- Files changed:
+  - `src/autoresearch/campaign/sprint.py`、`src/autoresearch/campaign/cli.py`（移除 Sprint 截止时间规格、CLI 参数、到期阻断和甲方可见叙事）
+  - `src/autoresearch/competition/contest_direction_literature.py`（生产查询角色确定性补全）
+  - `src/autoresearch/competition/contest_direction_skill_evolution.py`（Boolean 运算符不参与相关性词元）
+  - `.github/workflows/ci.yml`（仅运行仓库内可复现测试）
+  - 相关 campaign、competition 与 smoke 测试（验证生产行为；删除工作站绝对工具路径）
+  - `Problem.md`（新增并解决 P-20260821-078、P-20260821-079）；`Agent.md`（本条记录）
+- Summary:
+  - AutonomousResearchSprint 不再对外暴露或执行开发期截止时间机制，默认文案、审计说明和论文渲染文案同步清理。
+  - v4 查询模型只返回 2 或 3 条有效查询时，系统复用第一条经解析的核心对象组，补齐通用机制/零模型和反证/局限角色；不增加模型调用、不固定 Skill 数量、不编造具体科学对象。
+  - 移除 Skill 演化测试中的工作站绝对 quick_validate 路径；CI 不再读取未提交 runs/、paper/、Vault 成品或假定本机存在 TeX。
+- Verification:
+  - v4 检索与 Skill 演化：42 passed。
+  - Sprint、迁移和 systems 定向验证：15 passed，1 个真实服务 smoke 按条件跳过。
+  - 新 CI 同范围本地验证：917 passed，1 条第三方弃用警告，不影响结果。
+  - 相关 ruff、git diff --check、source_v2 与隔离发布克隆文件哈希一致性检查均通过。
+- Problems: 新增并解决 P-20260821-078、P-20260821-079。
+- Follow-up: 推送后只核验一次远端 CI 最终状态。
+- Git: 用户已授权直接更新 main；本轮作为提交前最后一次聚焦修订。

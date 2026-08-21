@@ -158,7 +158,6 @@ class SprintSpec(StrictCampaignModel):
     sprint_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
     project_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
     high_level_brief: str = Field(min_length=20)
-    deadline: datetime
     route_a_campaign_path: str
     route_a_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     llm_config_path: str
@@ -172,8 +171,6 @@ class SprintSpec(StrictCampaignModel):
 
     @model_validator(mode="after")
     def _validate_sprint_boundary(self) -> SprintSpec:
-        if self.deadline.tzinfo is None or self.deadline.utcoffset() is None:
-            raise ValueError("sprint deadline must be timezone-aware")
         if len(set(self.program_ids)) != len(self.program_ids):
             raise ValueError("sprint program IDs must be unique")
         if not self.local_execution_only:
@@ -470,7 +467,6 @@ def build_sprint_spec(
     sprint_id: str,
     project_id: str,
     high_level_brief: str,
-    deadline: datetime,
     route_a_campaign_path: Path | str,
     llm_config_path: Path | str,
     compile_pdf: bool = True,
@@ -494,7 +490,6 @@ def build_sprint_spec(
         sprint_id=sprint_id,
         project_id=project_id,
         high_level_brief=high_level_brief,
-        deadline=deadline,
         route_a_campaign_path=route_root.as_posix(),
         route_a_manifest_sha256=file_hash(route_manifest),
         llm_config_path=llm_path.as_posix(),
@@ -605,8 +600,8 @@ class AutonomousResearchSprint:
                 input_hashes={},
                 output_hashes={"spec": data_hash(spec)},
                 note=(
-                    "The operator supplied the high-level brief, deadline, local-compute "
-                    "boundary, and imported Route A evidence before autonomous runtime."
+                    "The operator supplied the high-level brief, local-compute boundary, "
+                    "and imported Route A evidence before autonomous runtime."
                 ),
             )
             self._append_event(
@@ -667,8 +662,6 @@ class AutonomousResearchSprint:
         _load_manifest(root / "sprint-manifest.json", spec=spec)
         _load_ledger(root / "autonomy-ledger.json", sprint_id=spec.sprint_id)
         _verify_prelaunch_inputs(spec)
-        if datetime.now(timezone.utc) > spec.deadline:
-            return self._block(root, spec, "sprint deadline has passed")
         try:
             snapshot = self._ensure_literature(root, spec)
             selection = self._ensure_topic_selection(root, spec, snapshot)
@@ -1006,7 +999,7 @@ class AutonomousResearchSprint:
             self.preregister(
                 benchmark_root,
                 project_id=spec.project_id,
-                deadline=spec.deadline,
+                deadline=datetime.max.replace(tzinfo=timezone.utc),
                 route_a_campaign_dir=spec.route_a_campaign_path,
                 llm_config_path=spec.llm_config_path,
             )
@@ -1772,8 +1765,8 @@ def build_sprint_autonomy_audit(
         post_start_manual_research_decisions=int(post_start_manual),
         local_model_fallback_count=int(fallbacks),
         limitations=(
-            "The high-level brief, executable program catalogue, and compute/deadline "
-            "bounds were fixed by humans before runtime.",
+            "The high-level brief, executable program catalogue, and local-compute "
+            "boundary were fixed by humans before runtime.",
             "Route A evidence was imported from a prior campaign rather than generated "
             "inside this sprint invocation.",
             "The selected program controls a real primary analysis and manuscript, but "
@@ -1903,7 +1896,7 @@ def _topic_selection_messages(
                 '"novelty_risk":"...","falsification_conditions":["...","..."],'
                 '"literature_refs":["L001"]}],"selected_candidate_id":"C001",'
                 '"selection_rationale":"..."}. The selection rationale must weigh novelty '
-                "risk, falsifiability, independent task count, and the deadline."
+                "risk, falsifiability, independent task count, and execution feasibility."
             ),
         },
     ]
@@ -2144,7 +2137,7 @@ def _render_manuscript_markdown(
             "",
             (
                 "This sprint is bounded autonomous research. Humans fixed the high-level "
-                "brief, installed program catalogue, deadline, and compute boundary before "
+                "brief, installed program catalogue, and compute boundary before "
                 "runtime. Route A evidence was imported. The selected program controlled "
                 "the primary analysis and manuscript, but arbitrary experiment code was "
                 "not synthesized. External submission remains unauthorized."
@@ -2334,7 +2327,7 @@ def _deterministic_audit_appendix(
         "",
         (
             "Autonomy is bounded. Before runtime, a human supplied the high-level brief, "
-            "deadline, local-compute restriction, imported Route A evidence, and an "
+            "local-compute restriction, imported Route A evidence, and an "
             "installed catalogue of executable programs. After start, the live local "
             "model selected among those programs and generated manuscript prose; "
             "deterministic code executed the benchmark, validation, statistical "
@@ -2364,7 +2357,7 @@ def _deterministic_audit_appendix(
         (
             "Every reported quantity has a bounded lineage. Source evidence identifies "
             "the frozen task input; the preregistration identifies task family, fault, "
-            "comparison modes, seeds, metric, stopping rule, evaluator code, and deadline; "
+            "comparison modes, seeds, metric, stopping rule, and evaluator code; "
             "the matrix manifest identifies each cell result; and the endpoint artifact "
             "identifies the ordered task differences and bootstrap configuration. The "
             "manuscript renderer consumes that endpoint rather than retyping values from "
@@ -2383,7 +2376,7 @@ def _deterministic_audit_appendix(
             "No cloud model or external GPU is part of the recorded run, and fallback "
             "models are disabled. A resume operation reuses completed hash-verified "
             "artifacts and only retries the first missing stage; changing the brief, "
-            "model configuration, imported campaign, program catalogue, or deadline "
+            "model configuration, imported campaign, or program catalogue "
             "creates a specification mismatch rather than an unnoticed continuation."
         ),
         "",

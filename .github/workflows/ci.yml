@@ -32,5 +32,25 @@ jobs:
       - name: Run mypy
         run: poetry run mypy src
 
-      - name: Run smoke and unit tests
-        run: poetry run pytest tests/smoke tests/unit
+      - name: Run repository-contained tests
+        run: >-
+          poetry run pytest
+          tests/smoke/test_cli.py
+          tests/unit/agents
+          tests/unit/api
+          tests/unit/cli
+          tests/unit/config
+          tests/unit/evidence
+          tests/unit/kernel
+          tests/unit/knowledge
+          tests/unit/literature
+          tests/unit/llm
+          tests/unit/observability
+          tests/unit/schemas
+          tests/unit/competition/test_contest_direct_plan.py
+          tests/unit/competition/test_contest_direct_plan_render.py
+          tests/unit/competition/test_contest_direct_plan_revision.py
+          tests/unit/competition/test_contest_direction_literature.py
+          tests/unit/competition/test_contest_direction_skill_evolution.py
+          tests/unit/research/test_adaptive_capabilities.py
+          tests/unit/research/test_plans.py

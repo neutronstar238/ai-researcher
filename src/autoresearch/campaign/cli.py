@@ -459,12 +459,8 @@ def campaign_sprint_run(
         ),
     ] = (
         "Identify and execute the strongest falsifiable local experiment about "
-        "evidence-bound autonomous research loops under the August 15 deadline."
+        "evidence-bound autonomous research loops on local compute."
     ),
-    deadline: Annotated[
-        str,
-        typer.Option("--deadline", help="ISO date or timezone-aware datetime."),
-    ] = "2026-08-15",
     route_a_campaign: Annotated[
         Path,
         typer.Option(
@@ -502,7 +498,6 @@ def campaign_sprint_run(
             sprint_id=sprint_id,
             project_id=project_id,
             high_level_brief=brief,
-            deadline=_parse_deadline(deadline),
             route_a_campaign_path=route_a_campaign,
             llm_config_path=llm_config,
             compile_pdf=compile_pdf,

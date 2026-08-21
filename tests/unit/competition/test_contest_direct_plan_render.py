@@ -17,6 +17,8 @@ from autoresearch.competition.contest_direct_plan_render import (
     validate_contest_plan_payload,
 )
 
+_LATEX_AVAILABLE = shutil.which("latexmk") is not None or shutil.which("xelatex") is not None
+
 
 def _payload() -> dict[str, object]:
     return {
@@ -415,6 +417,7 @@ def test_json_folded_backspace_commands_are_repaired_in_body_prose() -> None:
     assert "额外写一个孤立控制字符" in tex
 
 
+@pytest.mark.skipif(not _LATEX_AVAILABLE, reason="requires latexmk or xelatex")
 def test_real_chinese_pdf_compiles_with_json_folded_backspace(tmp_path: Path) -> None:
     payload = _payload()
     payload["methods"] = "在 $t\\bar{t} \\to \\text{dilepton}$ 通道上测量，并用 \\pmatrix{1,2} 记号。"
@@ -486,6 +489,7 @@ def test_model_literal_backslash_n_becomes_prose_space() -> None:
     assert "支持判据" in tex and "支持判据" in markdown
 
 
+@pytest.mark.skipif(not _LATEX_AVAILABLE, reason="requires latexmk or xelatex")
 def test_unknown_latex_commands_are_self_repaired_and_reported(tmp_path: Path) -> None:
     payload = _payload()
     payload["methods"] = "采用 \\unknowncommand 建模，并用 \\foo{bar} 记号标注。"
